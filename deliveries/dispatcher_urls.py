@@ -18,6 +18,8 @@ urlpatterns = [
  path('templates/<int:pk>/add-point/', route_views.template_add_point, name='template_add_point'),
  path('template-items/<int:pk>/update/', route_views.template_item_update, name='template_item_update'),
  path('routes/<int:pk>/generate/', route_views.route_generate, name='route_generate'),
+ path('runs/<int:pk>/', route_views.run_detail, name='run_detail'),
  path('runs/<int:pk>/reassign/', route_views.run_reassign, name='run_reassign'),
+ path('runs/<int:pk>/delivery/<int:delivery_pk>/move/', route_views.run_delivery_move, name='run_delivery_move'),
  path('import/', views.import_excel, name='import_excel'),
 ]
