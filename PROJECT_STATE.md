@@ -1,35 +1,36 @@
 # Courier Control — Project State
 
-> Перед разработкой читать этот файл + `ROADMAP.md`, затем проверять актуальный `main` и CI. После крупного блока обновлять.
+> Перед разработкой читать этот файл + `ROADMAP.md` + `DESIGN_SPEC.md`, затем проверять актуальный `main` и CI. После крупного блока обновлять.
 
 **Последнее обновление:** 2026-09-15 · **repo:** `Hardoffx/courier-control` · **branch:** `main`
-**Стадия:** code-side management-pitch demo MVP complete; deployment is next external milestone.
+**Стадия:** functional demo MVP complete; **approved frontend Design V1 implementation started**.
 
-## Продолжение
-Команды **`Дальше`** и **`Курьер Бот — продолжай`**: прочитать state+roadmap, проверить main/CI, самостоятельно взять следующий крупный блок, реализовать/проверить/починить CI и обновить handoff.
+## Continuation
+`Дальше` / `Курьер Бот — продолжай` → read state + roadmap + DESIGN_SPEC, check main/CI, autonomously implement next large cohesive block, verify/fix CI, update handoff. Do not invent a new visual direction.
 
-## Решения
-Django; Excel-like dispatcher + mobile courier; colors presentation-only; GPS optional; Excel primary input; persistent routes independent from courier; weekday/weekend independent; reserve marker. **SQLite for demo/pilot; PostgreSQL later.**
+## Approved frontend source of truth
+`DESIGN_SPEC.md` = **Courier Control Design V1 — Minimal + Route Map**, explicitly approved by user on 2026-09-15.
+Core contract: minimal list-first workflow + secondary route map; courier mobile-first; dispatcher first-class on desktop/tablet/**phone**; dispatcher modes List / Map / Split (split only where width permits); internal map shows whole-route progress, Yandex Maps remains navigation to one stop. Material design-direction changes require explicit user approval.
 
-## Реализовано
-- Operational MVP + point directory/import + route templates/runs + courier/dispatcher workflow + history/GPS/problems/copy/learning.
-- SQLite deployment foundation, PWA, backup/restore, health, nginx/Gunicorn examples.
-- Hardened Excel preview with user-bound expiring one-use server-side staging.
-- Management statistics: today/7/30/custom range, overall and per-courier totals/done/problem/rate, daily table, UTF-8 CSV export.
-- Repeatable `seed_demo` presentation dataset.
-- **Management quality gate added:** tests now verify dispatcher-only stats access, exact total/done/problem/rate calculation, courier denial, Excel-friendly UTF-8 BOM CSV content, and repeatable demo seeding with stable expected counts (4 demo users, 2 routes, 70 deliveries after one or repeated runs).
-- CI #110 was green. CI #111 for the new management quality-gate tests started after commit `e1bfcf069ab2f8f071b1e639d8f5b4c68efedfe6` and was in progress at this update.
+## Existing product
+Operational Django MVP, Excel import/staging, point directory, persistent routes/templates/runs, courier workflow, dispatcher workflow, GPS/problems/history, management statistics/CSV, repeatable demo seed, SQLite single-server pilot deployment foundation.
 
-## Remaining
-1. Verify CI #111 and fix if needed.
-2. Real management XLSX end-to-end validation; improve theme/indexed fills only if actual file exposes mismatch.
-3. Dense views/broader security review are pre-production debt, not demo blocker.
-4. SQLite + local staging are intentional single-server pilot choices.
+## Frontend V1 progress
+- [x] `DESIGN_SPEC.md` committed with visual tokens, responsive contract, courier/dispatcher/map behavior, acceptance checklist and change control.
+- [x] Shared application shell rebuilt toward V1: white sticky top bar, blue/navy design tokens, desktop dispatcher sidebar, mobile dispatcher drawer, responsive components, courier bottom navigation, safe-area/touch sizing.
+- [x] Courier main route screen rebuilt toward approved mockup: dominant blue next-stop card, Yandex/call actions, strong done/problem actions, compact state-aware route list, expandable stop details, mobile bottom Route/Map navigation.
+- [x] Courier map section/interaction placeholder established. It is explicitly non-fake; real provider/data integration remains pending.
+- [ ] Dispatcher dashboard V1 visual rebuild.
+- [ ] Dispatcher mobile delivery-card layout.
+- [ ] Dispatcher List / Map / Split interaction and real map provider.
+- [ ] Align routes/couriers/points/import/stats secondary screens.
+- [ ] Final visual QA.
 
-## Следующий этап — внешний dependency
-Once CI #111 is green, code-side demo is ready to deploy. Need **actual VPS access/target** and either a domain or explicit IP-only initial demo. Then: install app, persistent SQLite, env/secret, migrate, collectstatic, systemd Gunicorn, nginx, HTTPS if domain, create pilot accounts, smoke-test `/healthz/`, dispatcher, courier, Excel import and PWA.
+## Immediate next large block
+1. Check CI after frontend shell/courier changes and fix any template regressions.
+2. Rebuild **dispatcher dashboard V1**: desktop sidebar-compatible layout, KPI cards, clean filters/table/status chips/courier progress; add responsive phone card presentation without losing actions.
+3. Establish List / Map / Split UI controls with honest map placeholder/data contract; real provider integration can follow as its own block.
+4. Add/adjust smoke/template tests where useful.
 
-After deployment, ingest one real management XLSX and do evidence-driven fixes from the actual workflow.
-
-## Протокол
-`Дальше` → state+roadmap+main+CI → large cohesive unfinished block → autonomous implementation → verify → update state. Ask user only when external VPS/domain access is genuinely required.
+## External deployment
+Deployment remains ready after frontend V1 reaches visual acceptance. SQLite/local staging remain intentional for single-server pilot. Real VPS/domain and real management XLSX are still external dependencies, but frontend V1 now intentionally precedes deployment per user approval.
