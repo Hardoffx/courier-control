@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, timedelta
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
@@ -82,12 +82,25 @@ def route_generate(request,pk):
 
 @dispatcher_required
 def run_detail(request,pk):
-    run=get_object_or_404(RouteRun.objects.select_related('route','template','assigned_courier'),pk=pk); deliveries=run.deliveries.select_related('point').prefetch_related('events__actor').order_by('route_order','id'); points=DeliveryPoint.objects.filter(is_active=True).order_by('kind','name'); return render(request,'dispatcher/route_run_detail.html',{'run':run,'deliveries':deliveries,'couriers':_couriers(),'points':points})
+    run=get_object_or_404(RouteRun.objects.select_related('route','template','assigned_courier'),pk=pk); deliveries=run.deliveries.select_related('point').prefetch_related('events__actor').order_by('route_order','id'); points=DeliveryPoint.objects.filter(is_active=True).order_by('kind','name'); previous=RouteRun.objects.filter(route=run.route,run_date__lt=run.run_date).order_by('-run_date').first(); return render(request,'dispatcher/route_run_detail.html',{'run':run,'deliveries':deliveries,'couriers':_couriers(),'points':points,'previous_run':previous})
 
 @dispatcher_required
 @require_POST
 def run_add_point(request,pk):
     run=get_object_or_404(RouteRun,pk=pk); point=get_object_or_404(DeliveryPoint,pk=request.POST.get('point_id'),is_active=True); last=run.deliveries.order_by('-route_order').first(); delivery=Delivery.objects.create(delivery_date=run.run_date,route_run=run,point=point,source_label=point.code or point.name,address=point.address,phone=point.phone,time_window=request.POST.get('time_window','').strip()[:64],courier=run.assigned_courier,route_order=(last.route_order+1 if last else 1),status=Delivery.Status.IN_PROGRESS if run.assigned_courier else Delivery.Status.NEW); DeliveryEvent.objects.create(delivery=delivery,actor=request.user,action='run_point_added',note=f'Добавлено вручную в {run.route.name} только на {run.run_date:%d.%m.%Y}'); messages.success(request,f'Добавлено: {point.name}'); return redirect('run_detail',pk=pk)
+
+@dispatcher_required
+@require_POST
+def run_copy_previous(request,pk):
+    run=get_object_or_404(RouteRun,pk=pk); previous=RouteRun.objects.filter(route=run.route,run_date__lt=run.run_date).order_by('-run_date').first()
+    if not previous: messages.warning(request,'Предыдущий маршрут не найден'); return redirect('run_detail',pk=pk)
+    if run.deliveries.filter(status=Delivery.Status.DONE).exists(): messages.warning(request,'Нельзя заменить состав: в этом дне уже есть выполненные точки'); return redirect('run_detail',pk=pk)
+    source=list(previous.deliveries.select_related('point').order_by('route_order','id'))
+    with transaction.atomic():
+        run.deliveries.all().delete()
+        for order,old in enumerate(source,start=1):
+            d=Delivery.objects.create(delivery_date=run.run_date,route_run=run,point=old.point,source_label=old.source_label,address=old.address,organization=old.organization,recipient=old.recipient,phone=old.phone,comment=old.comment,time_window=old.time_window,row_color=old.row_color,courier=run.assigned_courier,route_order=order,status=Delivery.Status.IN_PROGRESS if run.assigned_courier else Delivery.Status.NEW); DeliveryEvent.objects.create(delivery=d,actor=request.user,action='copied_previous',note=f'Скопировано из маршрута {previous.run_date:%d.%m.%Y}')
+    messages.success(request,f'Состав скопирован с {previous.run_date:%d.%m.%Y}: {len(source)} точек'); return redirect('run_detail',pk=pk)
 
 @dispatcher_required
 @require_POST
