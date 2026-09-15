@@ -1,5 +1,7 @@
 from io import BytesIO
 from datetime import timedelta
+from zipfile import ZIP_DEFLATED,ZipFile
+from unittest.mock import patch
 from openpyxl import Workbook
 from django.core.management import call_command
 from django.test import TestCase
@@ -9,7 +11,7 @@ from accounts.models import User
 from .models import Delivery, DeliveryEvent, DeliveryPoint, Route, RouteRun, RouteTemplate, RouteTemplateItem
 from .route_services import generate_route_run, reassign_route_run, learn_template_from_run
 from .point_matching import match_point
-from .import_services import import_workbook, preview_workbook
+from .import_services import import_workbook, preview_workbook, validate_upload
 from .import_staging import stage_upload, consume_upload
 
 class PilotShellTests(TestCase):
@@ -58,7 +60,7 @@ class PointImportTests(TestCase):
         stream=BytesIO(); wb.save(stream); return stream.getvalue()
     def test_cmd_matches_by_code_before_address(self): self.assertEqual(match_point('458','Совсем другой адрес').point,self.point)
     def test_import_uses_canonical_address_and_phone(self): summary=import_workbook(self.workbook(),self.dispatcher); delivery=Delivery.objects.get(); self.assertEqual(summary.created,1); self.assertEqual(delivery.address,'Москва, Каноническая 10')
-    def test_preview_does_not_write_database(self): summary=preview_workbook(self.workbook(code='999',address='Новая точка')); self.assertEqual(summary.new_points,1); self.assertEqual(Delivery.objects.count(),0); self.assertEqual(DeliveryPoint.objects.count(),1)
+    def test_preview_does_not_write_database(self): summary=preview_workbook(self.workbook(code='999',address='Новая точка')); self.assertEqual(summary.new_points,0); self.assertEqual(Delivery.objects.count(),0); self.assertEqual(DeliveryPoint.objects.count(),1)
     def test_reimport_skips_same_row(self): import_workbook(self.workbook(),self.dispatcher); second=import_workbook(self.workbook(),self.dispatcher); self.assertEqual(second.skipped,1)
     def test_header_can_be_below_preamble(self): self.assertEqual(import_workbook(self.workbook(preamble=True),self.dispatcher).created,1)
     def test_same_point_can_be_visited_twice_with_different_slot(self): self.assertEqual(import_workbook(self.workbook(second_visit=True),self.dispatcher).created,2)
@@ -67,6 +69,15 @@ class PointImportTests(TestCase):
         with self.assertRaises(ValueError): consume_upload(token,other.pk)
         name,content=consume_upload(token,self.dispatcher.pk); self.assertEqual(name,'route.xlsx'); self.assertTrue(content)
         with self.assertRaises(ValueError): consume_upload(token,self.dispatcher.pk)
+    def test_staged_upload_expiry_is_enforced(self):
+        token=stage_upload(self.workbook(),self.dispatcher.pk,'route.xlsx')
+        with patch('django.core.signing.time.time',return_value=timezone.now().timestamp()+3600):
+            with self.assertRaises(ValueError): consume_upload(token,self.dispatcher.pk)
+    def test_xlsx_archive_expansion_limit(self):
+        stream=BytesIO()
+        with ZipFile(stream,'w',ZIP_DEFLATED) as archive:
+            archive.writestr('[Content_Types].xml','x'); archive.writestr('xl/worksheets/sheet1.xml','0'*(51*1024*1024))
+        with self.assertRaises(ValueError): validate_upload('route.xlsx',stream.getvalue())
 
 class RouteTemplateTests(TestCase):
     def setUp(self):
