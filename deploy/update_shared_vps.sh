@@ -2,6 +2,7 @@
 set -Eeuo pipefail
 APP_DIR=/opt/courier-control
 APP_USER=courierctl
+APP_GROUP=courierctl
 SERVICE=courier-control.service
 
 if [[ ${EUID:-$(id -u)} -ne 0 ]]; then
@@ -9,10 +10,11 @@ if [[ ${EUID:-$(id -u)} -ne 0 ]]; then
   exit 1
 fi
 [[ -d "$APP_DIR/.git" ]] || { echo "$APP_DIR is not installed" >&2; exit 1; }
+id "$APP_USER" >/dev/null 2>&1 || { echo "$APP_USER user is missing" >&2; exit 1; }
 
-git -C "$APP_DIR" fetch --depth 1 origin main
-git -C "$APP_DIR" reset --hard origin/main
-chown -R "$APP_USER:$APP_USER" "$APP_DIR"
+runuser -u "$APP_USER" -- git -C "$APP_DIR" fetch --depth 1 origin main
+runuser -u "$APP_USER" -- git -C "$APP_DIR" reset --hard origin/main
+chown -R "$APP_USER:$APP_GROUP" "$APP_DIR"
 runuser -u "$APP_USER" -- "$APP_DIR/.venv/bin/pip" install -r "$APP_DIR/requirements.txt"
 cd "$APP_DIR"
 runuser -u "$APP_USER" -- .venv/bin/python manage.py check
@@ -24,7 +26,11 @@ systemctl restart "$SERVICE"
 nginx -t
 systemctl reload nginx
 for _ in {1..15}; do
-  curl -fsS http://127.0.0.1:8010/healthz/ && exit 0
+  if curl -fsS http://127.0.0.1:8010/healthz/; then
+    echo
+    echo "Courier Control updated successfully."
+    exit 0
+  fi
   sleep 1
 done
 journalctl -u "$SERVICE" -n 80 --no-pager
