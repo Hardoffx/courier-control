@@ -4,31 +4,113 @@
   {% elif not map_points %}
   <div class="cc-map-state"><b>Нет точек с координатами</b><span>После геокодирования адресов реальные точки автоматически появятся здесь.</span></div>
   {% else %}
-  <div class="cc-yandex-map" data-map-root></div>
+  <div class="cc-yandex-map" data-map-root data-map-instance="{{ map_json_id }}" data-yandex-api-url="https://api-maps.yandex.ru/v3/?apikey={{ yandex_maps_api_key|urlencode }}&amp;lang={{ yandex_maps_lang|default:'ru_RU'|urlencode }}">
+    <div class="cc-map-state cc-map-lazy-state"><b>Карта маршрута</b><span>Загрузится только при открытии этого блока.</span></div>
+  </div>
   {{ map_points|json_script:map_json_id }}
-  <script src="https://api-maps.yandex.ru/v3/?apikey={{ yandex_maps_api_key|urlencode }}&lang=ru_RU"></script>
   <script>
-  (async function(){
-    const root=document.querySelector('[data-map-root][data-map-instance="{{ map_json_id }}"]') || document.currentScript.parentElement.querySelector('[data-map-root]');
-    if(!root||!window.ymaps3)return;
-    try{
-      await ymaps3.ready;
-      const points=JSON.parse(document.getElementById('{{ map_json_id }}').textContent);
-      if(!points.length)return;
-      const {YMap,YMapDefaultSchemeLayer,YMapDefaultFeaturesLayer,YMapMarker}=ymaps3;
-      const center=[points.reduce((s,p)=>s+p.coordinates[0],0)/points.length,points.reduce((s,p)=>s+p.coordinates[1],0)/points.length];
-      const map=new YMap(root,{location:{center:center,zoom:points.length===1?15:11}});
-      map.addChild(new YMapDefaultSchemeLayer({}));
-      map.addChild(new YMapDefaultFeaturesLayer({}));
-      points.forEach(p=>{
-        const el=document.createElement('button');
-        el.type='button'; el.className='cc-map-marker cc-map-marker--'+p.status; el.textContent=p.status==='done'?'✓':String(p.order||'•'); el.title=p.label+' · '+p.address;
-        el.addEventListener('click',()=>{const target=document.querySelector('[data-delivery-id="'+p.id+'"]');if(target){target.scrollIntoView({behavior:'smooth',block:'center'});target.classList.add('map-focus');setTimeout(()=>target.classList.remove('map-focus'),1600)}});
-        map.addChild(new YMapMarker({coordinates:p.coordinates},el));
+  (function(){
+    const scriptNode=document.currentScript;
+    const wrap=scriptNode.closest('[data-cc-map]');
+    const root=wrap&&wrap.querySelector('[data-map-root]');
+    const pointsNode=document.getElementById('{{ map_json_id }}');
+    if(!wrap||!root||!pointsNode)return;
+    let started=false;
+    const markerById=new Map();
+
+    function api(){
+      if(window.ymaps3)return Promise.resolve(window.ymaps3);
+      if(!window.__ccYandexMapsPromise){
+        window.__ccYandexMapsPromise=new Promise((resolve,reject)=>{
+          const tag=document.createElement('script');
+          tag.src=root.dataset.yandexApiUrl;
+          tag.async=true;
+          tag.dataset.ccYandexMaps='1';
+          tag.onload=()=>window.ymaps3?resolve(window.ymaps3):reject(new Error('Yandex Maps API unavailable after script load'));
+          tag.onerror=()=>reject(new Error('Yandex Maps API script failed to load'));
+          document.head.appendChild(tag);
+        });
+      }
+      return window.__ccYandexMapsPromise;
+    }
+
+    function highlightMarker(id){
+      markerById.forEach(el=>el.classList.remove('is-focused'));
+      const marker=markerById.get(String(id));
+      if(marker){marker.classList.add('is-focused');setTimeout(()=>marker.classList.remove('is-focused'),1600)}
+    }
+
+    function bindListFocus(){
+      document.querySelectorAll('[data-delivery-id]').forEach(target=>{
+        const id=target.dataset.deliveryId;
+        if(!id||target.dataset.mapFocusBound==='1')return;
+        target.dataset.mapFocusBound='1';
+        target.addEventListener('mouseenter',()=>highlightMarker(id));
+        target.addEventListener('click',event=>{
+          if(event.target.closest('a,button,input,select,textarea,label,form,summary'))return;
+          highlightMarker(id);
+        });
       });
-    }catch(error){root.innerHTML='<div class="cc-map-state"><b>Не удалось загрузить карту</b><span>Рабочий список остаётся доступен. Проверьте ключ, домен и соединение с Yandex Maps.</span></div>';console.error('Courier Control Yandex map:',error)}
+    }
+
+    async function init(){
+      if(started)return;
+      started=true;
+      root.innerHTML='<div class="cc-map-state"><b>Загружаем карту…</b><span>Рабочий список остаётся доступен.</span></div>';
+      try{
+        await api();
+        await window.ymaps3.ready;
+        const points=JSON.parse(pointsNode.textContent);
+        if(!points.length)return;
+        root.innerHTML='';
+        const {YMap,YMapDefaultSchemeLayer,YMapDefaultFeaturesLayer,YMapMarker}=window.ymaps3;
+        const center=[points.reduce((s,p)=>s+p.coordinates[0],0)/points.length,points.reduce((s,p)=>s+p.coordinates[1],0)/points.length];
+        const map=new YMap(root,{location:{center:center,zoom:points.length===1?15:11}});
+        map.addChild(new YMapDefaultSchemeLayer({}));
+        map.addChild(new YMapDefaultFeaturesLayer({}));
+        points.forEach(p=>{
+          const el=document.createElement('button');
+          el.type='button';
+          el.className='cc-map-marker cc-map-marker--'+p.status;
+          el.textContent=p.status==='done'?'✓':String(p.order||'•');
+          el.title=p.label+' · '+p.address;
+          markerById.set(String(p.id),el);
+          el.addEventListener('click',()=>{
+            const targets=[...document.querySelectorAll('[data-delivery-id="'+p.id+'"]')];
+            const target=targets.find(node=>node.offsetParent!==null)||targets[0];
+            if(target){target.scrollIntoView({behavior:'smooth',block:'center'});target.classList.add('map-focus');setTimeout(()=>target.classList.remove('map-focus'),1600)}
+            highlightMarker(p.id);
+          });
+          map.addChild(new YMapMarker({coordinates:p.coordinates},el));
+        });
+        bindListFocus();
+        wrap.dataset.mapReady='1';
+        wrap.dispatchEvent(new CustomEvent('cc:map-ready',{bubbles:true}));
+      }catch(error){
+        root.innerHTML='<div class="cc-map-state"><b>Не удалось загрузить карту</b><span>Рабочий список остаётся доступен. Проверьте ключ, домен и соединение с Yandex Maps.</span></div>';
+        console.error('Courier Control Yandex map:',error);
+      }
+    }
+
+    wrap.addEventListener('cc:map-visible',init);
+    document.addEventListener('click',event=>{
+      const link=event.target.closest('a[href^="#"]');
+      if(!link)return;
+      try{const target=document.querySelector(link.getAttribute('href'));if(target&&target.contains(wrap))init()}catch(error){}
+    });
+    window.addEventListener('hashchange',()=>{
+      if(!location.hash)return;
+      try{const target=document.querySelector(location.hash);if(target&&target.contains(wrap))init()}catch(error){}
+    });
+    if(location.hash){
+      try{const target=document.querySelector(location.hash);if(target&&target.contains(wrap))init()}catch(error){}
+    }
+    if('IntersectionObserver' in window){
+      const observer=new IntersectionObserver(entries=>{if(entries.some(entry=>entry.isIntersecting)){observer.disconnect();init()}},{rootMargin:'160px'});
+      observer.observe(wrap);
+    }
   })();
   </script>
   {% endif %}
 </div>
-<style>.cc-map-wrap,.cc-yandex-map{width:100%;height:100%;min-height:400px}.cc-yandex-map{border-radius:12px;overflow:hidden}.cc-map-state{min-height:400px;border:1px dashed #cfd7e3;border-radius:12px;background:#f8fafc;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:28px;color:var(--muted)}.cc-map-state b{color:var(--ink);font-size:17px;margin-bottom:7px}.cc-map-marker{width:34px;height:34px;border:3px solid #fff;border-radius:50%;background:#1f73d8;color:#fff;font-weight:850;box-shadow:0 2px 9px #0004;cursor:pointer}.cc-map-marker--done{background:#15945b}.cc-map-marker--problem{background:#d9484f}.cc-map-marker--new{background:#667085}.map-focus{outline:3px solid #6ba9ff!important;outline-offset:2px}@media(max-width:700px){.cc-map-wrap,.cc-yandex-map,.cc-map-state{min-height:58vh}}</style>
+<style>.cc-map-wrap,.cc-yandex-map{width:100%;height:100%;min-height:400px}.cc-yandex-map{border-radius:12px;overflow:hidden}.cc-map-state{min-height:400px;border:1px dashed #cfd7e3;border-radius:12px;background:#f8fafc;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:28px;color:var(--muted)}.cc-map-state b{color:var(--ink);font-size:17px;margin-bottom:7px}.cc-map-marker{width:34px;height:34px;border:3px solid #fff;border-radius:50%;background:#1f73d8;color:#fff;font-weight:850;box-shadow:0 2px 9px #0004;cursor:pointer;transition:transform .15s,box-shadow .15s}.cc-map-marker--done{background:#15945b}.cc-map-marker--problem{background:#d9484f}.cc-map-marker--new{background:#667085}.cc-map-marker.is-focused{transform:scale(1.16);box-shadow:0 0 0 4px #1473e655,0 3px 12px #0005}.map-focus{outline:3px solid #6ba9ff!important;outline-offset:2px}@media(max-width:700px){.cc-map-wrap,.cc-yandex-map,.cc-map-state{min-height:58vh}}</style>
