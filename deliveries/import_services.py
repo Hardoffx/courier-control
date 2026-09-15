@@ -90,6 +90,6 @@ def import_workbook(content,actor=None):
             duplicate=Delivery.objects.filter(delivery_date=row['delivery_date'],address=row['address'],source_label=row['source_label'],route_order=row['route_order']).exists()
             if duplicate: summary.skipped+=1; continue
             delivery=Delivery.objects.create(delivery_date=row['delivery_date'],address=row['address'],source_label=row['source_label'],organization=row['organization'],recipient=row['recipient'],phone=row['phone'],comment=row['comment'],courier=row['courier'],route_order=row['route_order'],time_window=row['time_window'],row_color=row['row_color'],point=row['point']); summary.created+=1
-            DeliveryEvent.objects.create(delivery=delivery,actor=actor,event_type=DeliveryEvent.Type.CREATED,note='Импорт из Excel')
+            DeliveryEvent.objects.create(delivery=delivery,actor=actor,action='created',note='Импорт из Excel')
             if row['courier_name'] and not row['courier']: summary.warnings.append(f"Строка {row['excel_row']}: курьер «{row['courier_name']}» не найден")
     return summary
