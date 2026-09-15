@@ -15,43 +15,44 @@ COLORS={'FFFFFF00':'yellow','FFFFC000':'yellow','FF92D050':'green','FFC6E0B4':'g
 class ImportSummary:
     created:int=0; skipped:int=0; matched:int=0; new_points:int=0; warnings:list=field(default_factory=list)
 
-
 def _date(raw):
     if not raw: return timezone.localdate()
     if isinstance(raw,datetime): return raw.date()
     if hasattr(raw,'year'): return raw
     return timezone.localdate()
 
+def _find_header(ws,scan_rows=20):
+    best=None
+    for row_number,row in enumerate(ws.iter_rows(min_row=1,max_row=min(ws.max_row,scan_rows),values_only=True),start=1):
+        headers=[str(v or '').strip().lower() for v in row]; columns={ALIASES[h]:i for i,h in enumerate(headers) if h in ALIASES}; score=len(columns)+(5 if 'address' in columns else 0)
+        if best is None or score>best[0]: best=(score,row_number,columns)
+    if not best or 'address' not in best[2]: raise ValueError('Не найдена строка заголовков с колонкой «Адрес» в первых 20 строках')
+    return best[1],best[2]
 
 def import_workbook(content,actor):
-    wb=load_workbook(BytesIO(content),data_only=True); ws=wb.active; rows=list(ws.iter_rows(values_only=True))
-    if not rows: raise ValueError('Файл пуст')
-    headers=[str(v or '').strip().lower() for v in rows[0]]; columns={ALIASES[h]:i for i,h in enumerate(headers) if h in ALIASES}
-    if 'address' not in columns: raise ValueError('Не найдена колонка «Адрес»')
-    summary=ImportSummary()
-    def val(row,key): return str(row[columns[key]] or '').strip() if key in columns else ''
+    wb=load_workbook(BytesIO(content),data_only=True); ws=wb.active
+    if ws.max_row<1: raise ValueError('Файл пуст')
+    header_row,columns=_find_header(ws); summary=ImportSummary()
+    def val(row,key): return str(row[columns[key]] or '').strip() if key in columns and columns[key]<len(row) else ''
     with transaction.atomic():
-        for number,row in enumerate(rows[1:],start=1):
+        for excel_row,row in enumerate(ws.iter_rows(min_row=header_row+1,values_only=True),start=header_row+1):
             address=val(row,'address')
-            if not address: summary.skipped+=1; continue
+            if not address: continue
             label=val(row,'source_label'); phone=val(row,'phone'); match=resolve_point(label,address,phone,create=True); point=match.point
             if match.created: summary.new_points+=1
             else: summary.matched+=1
-            canonical=canonical_delivery_values(point,label,address,phone)
-            courier=User.objects.filter(role=User.Role.COURIER,username__iexact=val(row,'courier'),is_active=True).first() if val(row,'courier') else None
-            delivery_date=_date(row[columns['delivery_date']] if 'delivery_date' in columns else None)
-            order=number
+            canonical=canonical_delivery_values(point,label,address,phone); time_window=val(row,'time_window'); courier=User.objects.filter(role=User.Role.COURIER,username__iexact=val(row,'courier'),is_active=True).first() if val(row,'courier') else None
+            delivery_date=_date(row[columns['delivery_date']] if 'delivery_date' in columns else None); order=excel_row-header_row
             if 'route_order' in columns and row[columns['route_order']] is not None:
                 try: order=int(row[columns['route_order']])
-                except (TypeError,ValueError): summary.warnings.append(f'Строка {number+1}: неверный порядок')
+                except (TypeError,ValueError): summary.warnings.append(f'Строка {excel_row}: неверный порядок')
             row_color=''
-            try: row_color=COLORS.get(getattr(ws.cell(row=number+1,column=columns['address']+1).fill.fgColor,'rgb',None),'')
+            try: row_color=COLORS.get(getattr(ws.cell(row=excel_row,column=columns['address']+1).fill.fgColor,'rgb',None),'')
             except Exception: pass
-            duplicate=Delivery.objects.filter(delivery_date=delivery_date,point=point).exclude(status=Delivery.Status.DONE).first() if point else None
+            duplicate=Delivery.objects.filter(delivery_date=delivery_date,point=point,source_label=canonical['source_label'],time_window=time_window,route_order=order).first() if point else None
             if duplicate:
-                summary.skipped+=1; summary.warnings.append(f'Строка {number+1}: {canonical["source_label"] or canonical["address"]} уже есть на {delivery_date:%d.%m}')
+                summary.skipped+=1; summary.warnings.append(f'Строка {excel_row}: уже импортирована — {canonical["source_label"] or canonical["address"]}, позиция {order}')
                 continue
-            d=Delivery.objects.create(delivery_date=delivery_date,point=point,source_label=canonical['source_label'],address=canonical['address'],organization=val(row,'organization'),recipient=val(row,'recipient'),phone=canonical['phone'],comment=val(row,'comment'),time_window=val(row,'time_window'),row_color=row_color,courier=courier,route_order=order,status=Delivery.Status.IN_PROGRESS if courier else Delivery.Status.NEW)
-            DeliveryEvent.objects.create(delivery=d,actor=actor,action='imported',note=f'Справочник: {match.method}')
-            summary.created+=1
+            d=Delivery.objects.create(delivery_date=delivery_date,point=point,source_label=canonical['source_label'],address=canonical['address'],organization=val(row,'organization'),recipient=val(row,'recipient'),phone=canonical['phone'],comment=val(row,'comment'),time_window=time_window,row_color=row_color,courier=courier,route_order=order,status=Delivery.Status.IN_PROGRESS if courier else Delivery.Status.NEW)
+            DeliveryEvent.objects.create(delivery=d,actor=actor,action='imported',note=f'Справочник: {match.method}; Excel row: {excel_row}'); summary.created+=1
     return summary
