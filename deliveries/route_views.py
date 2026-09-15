@@ -16,7 +16,7 @@ def dispatcher_required(view):
         return view(request,*args,**kwargs)
     return wrapped
 
-def _couriers(): return User.objects.filter(role=User.Role.COURIER,is_active=True).order_by('-is_reserve_courier','first_name','username')
+def _couriers(): return User.objects.filter(role=User.Role.COURIER,is_active=True,is_superuser=False).order_by('-is_reserve_courier','first_name','username')
 def _ids(raw):
     result=[]
     for value in (raw or '').split(','):
