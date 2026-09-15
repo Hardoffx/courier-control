@@ -3,112 +3,83 @@
 Roadmap отражает порядок разработки, а не обещанные календарные сроки.
 
 ## Phase 0 — Foundation
-- [x] Django project structure
-- [x] Custom User: dispatcher/courier
-- [x] Delivery / DeliveryEvent
-- [x] DeliveryPoint directory model
-- [x] Initial migrations
-- [x] Environment-based PostgreSQL configuration
-- [x] Basic CI workflow
+- [x] Django project structure / custom User / Delivery / DeliveryEvent / DeliveryPoint / migrations / PostgreSQL config / CI
 
 ## Phase 1 — Daily operational loop
-- [x] Dispatcher daily dashboard
-- [x] Create/edit delivery
-- [x] Assign courier
-- [x] Bulk courier assignment
-- [x] Courier mobile Today screen
-- [x] Done/problem actions
-- [x] Completion timestamp + optional GPS
-- [x] Add phone from courier screen
-- [x] Reorder remaining route
-- [x] Audit events
-- [x] Search/filter dispatcher table
-- [x] Independent row colors
-- [x] Core automated workflow tests added
+- [x] Dispatcher dashboard, create/edit, single+bulk assignment, search/filter
+- [x] Courier Today, done/problem, optional GPS, phone, reorder
+- [x] Audit events, independent row colors, core workflow tests
 
 ## Phase 2 — Familiar Excel workflow + reference directory
-- [x] XLSX upload foundation
-- [x] Column aliases
+- [x] XLSX upload foundation + column aliases
 - [x] Initial row-fill preservation
-- [x] Initial point classification fallback
-- [x] Dedicated DeliveryPoint management UI outside Django Admin
-- [ ] Reliable matching: existing point by code/address/name
-- [ ] Auto-fill canonical address/phone/type from directory
-- [x] Explicit manual correction of point type/address/phone in directory
-- [ ] Learn/reuse corrected mappings on future imports
-- [ ] Better Excel header detection for real management files
+- [x] Point classification fallback
+- [x] DeliveryPoint management UI
+- [x] Reliable conservative matching: code/address/name
+- [x] Canonical address/phone/type reuse from directory
+- [x] Manual corrections are reused by later matching/imports
+- [x] Header detection scans first 20 rows instead of requiring row 1
 - [ ] Handle theme/indexed fills where practical
 - [ ] Import preview before final commit
-- [ ] Duplicate detection / safe repeated import
-- [ ] Import result summary: created/skipped/warnings/unmatched
+- [x] Duplicate detection / safe repeated import
+- [x] Legitimate repeat visits supported when order/time differs
+- [x] Import result summary: created/skipped/warnings/matched/new points
 
 ## Phase 2.5 — Persistent courier route memory
-Цель: ежедневный маршрут не собирать с нуля. У каждого курьера есть полный потенциальный маршрут и отдельные варианты по режиму дня.
-
-- [ ] RouteTemplate model owned by courier
-- [ ] Template kinds: weekday / weekend / custom
-- [ ] RouteTemplateItem references canonical DeliveryPoint
-- [ ] Store default order, enabled-by-default and typical time window/overrides per template item
-- [ ] Allow same point to have different order/time in weekday and weekend templates
-- [ ] Dispatcher template editor showing the courier's full possible route
-- [ ] One-click enable/disable points for a concrete day
-- [ ] Fast reorder with drag-and-drop
-- [ ] Up/down controls as non-JS/mobile fallback
-- [ ] Generate a selected day's Delivery rows from template
-- [ ] Re-generate/update day safely without duplicating completed work
-- [ ] Learn/update a template from an imported or manually corrected real route
-- [ ] Tests for weekday/weekend separation and daily generation
+- [x] Route independent from courier + default courier
+- [x] RouteTemplate weekday/weekend/custom model
+- [x] RouteTemplateItem canonical DeliveryPoint
+- [x] Order/enabled/time/comment per template item
+- [x] Weekday/weekend separation
+- [x] Dispatcher template editor
+- [x] Enable/disable concrete template points
+- [ ] Fast drag-and-drop
+- [x] Up/down fallback
+- [x] Generate selected day's Delivery rows from template
+- [x] Safe re-generation without duplicating completed work
+- [x] Actual RouteRun courier can differ from default courier
+- [x] Add an extra canonical point directly to one generated day without changing template
+- [ ] Learn/update a template from imported/corrected real route
+- [x] Core route generation tests
 
 ## Phase 3 — Courier and dispatcher usability
 - [ ] Courier management UI: create/deactivate/edit/name/phone/login/reset password
-- [ ] Dispatcher date navigation: today/tomorrow/previous day
+- [x] Dispatcher date navigation
 - [ ] Copy previous day's route as a starting point
 - [ ] Bulk route/order operations
-- [ ] Better mobile courier cards: source/type/time emphasis
-- [ ] Clear next-stop visual state
+- [ ] Drag/drop route/day ordering
+- [ ] Better mobile courier cards + clear next stop
 - [ ] Problem reason presets + free comment
 - [ ] Dispatcher completion time/GPS/problem details
 - [ ] Event/history view per delivery
 - [ ] Responsive polish
 
 ## Phase 4 — Quality gate
-- [x] Tests: role permission baseline
-- [x] Tests: single assignment
-- [x] Tests: courier cannot edit another courier's delivery
-- [x] Tests: completion without GPS
-- [x] Tests: route reorder and stable numbering
-- [x] Tests: point classification baseline
-- [ ] Tests: bulk assignment
-- [ ] Tests: completion with GPS
-- [ ] Tests: point matching
-- [ ] Tests: Excel import representative fixture
-- [ ] Tests: duplicate/re-import behavior
-- [ ] Tests: route template generation and safe refresh
-- [ ] CI green on latest `main`
-- [ ] Refactor dense views into services/helpers
-- [ ] Security review of auth/forms/uploads
+- [x] Role permissions / single assignment / cross-courier protection
+- [x] Completion without GPS / reorder / point classification
+- [x] Point matching tests
+- [x] Excel representative workbook tests including preamble/header detection
+- [x] Duplicate/re-import and legitimate repeat-visit tests
+- [x] Route template generation/safe refresh tests
+- [x] Daily RouteRun extra-point test
+- [ ] Bulk assignment test
+- [ ] Completion with GPS test
+- [ ] CI green on latest main after each major block
+- [ ] Further refactor dense views
+- [ ] Security review auth/forms/uploads
 
 ## Phase 5 — Deployable pilot
-- [ ] Production PostgreSQL
-- [ ] Gunicorn + reverse proxy
-- [ ] HTTPS/domain
-- [ ] Production env/secrets
-- [ ] Static files verified
-- [ ] Create dispatcher account
-- [ ] Create pilot courier accounts
-- [ ] Backup strategy
-- [ ] Error logging
-- [ ] Health check
+- [ ] PostgreSQL / Gunicorn / reverse proxy / HTTPS/domain / env+secrets
+- [ ] Static files / dispatcher+pilot courier accounts
+- [ ] Backup / error logging / health check
 - [ ] PWA/home-screen polish
-- [ ] First real Excel end-to-end
-- [ ] Pilot feedback fixes
+- [ ] First real Excel end-to-end + pilot feedback fixes
 
 ## Phase 6 — Management pitch MVP
 - [ ] Daily/weekly courier statistics
 - [ ] Completion/problem performance
 - [ ] Export/report
-- [ ] Short demo scenario
-- [ ] Clean demo environment
+- [ ] Demo scenario + clean demo environment
 
 ## Later / not blocking MVP
 OCR in web product; automatic route optimization; continuous tracking; advanced maps/geocoding; Telegram integration; notifications; customer portal; SaaS multi-tenancy; native apps.
