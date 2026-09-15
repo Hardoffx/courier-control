@@ -17,7 +17,7 @@ MAX_XLSX_FILES=1000
 
 @dataclass
 class ImportSummary:
-    created:int=0; skipped:int=0; matched:int=0; new_points:int=0; warnings:list=field(default_factory=list); preview:list=field(default_factory=list); total_rows:int=0
+    created:int=0; skipped:int=0; matched:int=0; new_points:int=0; would_create_points:int=0; warnings:list=field(default_factory=list); preview:list=field(default_factory=list); total_rows:int=0
 
 def validate_upload(name,content):
     if not (name or '').lower().endswith('.xlsx'): raise ValueError('Разрешены только файлы .xlsx')
@@ -90,7 +90,7 @@ def preview_workbook(content):
         if len(summary.preview)<100:
             summary.preview.append({'row':row['excel_row'],'label':row['source_label'],'address':row['address'],'date':row['delivery_date'],'time_window':row['time_window'],'duplicate':duplicate,'new_point':row['point'] is None,'match':str(row['point']) if row['point'] else '','courier':row['courier']})
         if row['courier_name'] and not row['courier']: summary.warnings.append(f"Строка {row['excel_row']}: курьер «{row['courier_name']}» не найден")
-    summary.new_points=len(new_point_keys)
+    summary.would_create_points=len(new_point_keys)
     return summary
 
 def import_workbook(content,actor=None):
