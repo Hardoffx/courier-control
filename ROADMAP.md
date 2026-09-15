@@ -11,57 +11,42 @@ Roadmap отражает порядок разработки, а не обеща
 - [x] Audit events, independent row colors, core workflow tests
 
 ## Phase 2 — Familiar Excel workflow + reference directory
-- [x] XLSX upload foundation + column aliases
-- [x] Initial row-fill preservation
-- [x] Point classification fallback
-- [x] DeliveryPoint management UI
-- [x] Reliable conservative matching: code/address/name
-- [x] Canonical address/phone/type reuse from directory
-- [x] Manual corrections are reused by later matching/imports
-- [x] Header detection scans first 20 rows instead of requiring row 1
-- [ ] Handle theme/indexed fills where practical
+- [x] XLSX upload + aliases + initial fill preservation
+- [x] Point directory + conservative code/address/name matching
+- [x] Canonical address/phone/type reuse + corrected mappings reuse
+- [x] Header detection scans first 20 rows
+- [x] Duplicate detection/safe re-import + legitimate repeat visits
+- [x] Import result summary
+- [ ] Theme/indexed fills where practical
 - [ ] Import preview before final commit
-- [x] Duplicate detection / safe repeated import
-- [x] Legitimate repeat visits supported when order/time differs
-- [x] Import result summary: created/skipped/warnings/matched/new points
 
 ## Phase 2.5 — Persistent courier route memory
 - [x] Route independent from courier + default courier
-- [x] RouteTemplate weekday/weekend/custom model
-- [x] RouteTemplateItem canonical DeliveryPoint
-- [x] Order/enabled/time/comment per template item
-- [x] Weekday/weekend separation
-- [x] Dispatcher template editor
-- [x] Enable/disable concrete template points
-- [ ] Fast drag-and-drop
-- [x] Up/down fallback
-- [x] Generate selected day's Delivery rows from template
-- [x] Safe re-generation without duplicating completed work
-- [x] Actual RouteRun courier can differ from default courier
-- [x] Add an extra canonical point directly to one generated day without changing template
-- [ ] Learn/update a template from imported/corrected real route
-- [x] Core route generation tests
+- [x] Weekday/weekend/custom templates + canonical points + order/enabled/time/comment
+- [x] Dispatcher template editor + enable/disable
+- [x] Drag-and-drop ordering + up/down fallback
+- [x] Generate day safely + actual courier override + completed-work preservation
+- [x] Add one-off canonical point to generated day
+- [ ] Learn/update template from imported/corrected real route
 
 ## Phase 3 — Courier and dispatcher usability
-- [ ] Courier management UI: create/deactivate/edit/name/phone/login/reset password
+- [x] Courier management UI: create/edit/deactivate/name/phone/login/password change
+- [x] Explicit reserve courier marker («затычка») while retaining normal courier permissions
 - [x] Dispatcher date navigation
+- [x] Batch/drag ordering for template and generated day
+- [x] Dispatcher generated-day completion time/GPS/problem/last-event visibility
 - [ ] Copy previous day's route as a starting point
-- [ ] Bulk route/order operations
-- [ ] Drag/drop route/day ordering
 - [ ] Better mobile courier cards + clear next stop
 - [ ] Problem reason presets + free comment
-- [ ] Dispatcher completion time/GPS/problem details
-- [ ] Event/history view per delivery
+- [ ] Full event/history view per delivery
 - [ ] Responsive polish
 
 ## Phase 4 — Quality gate
-- [x] Role permissions / single assignment / cross-courier protection
-- [x] Completion without GPS / reorder / point classification
-- [x] Point matching tests
-- [x] Excel representative workbook tests including preamble/header detection
-- [x] Duplicate/re-import and legitimate repeat-visit tests
-- [x] Route template generation/safe refresh tests
-- [x] Daily RouteRun extra-point test
+- [x] Role/cross-courier/single assignment/completion/reorder/classification baseline
+- [x] Point matching + Excel header/duplicate/repeat tests
+- [x] Route generation/safe refresh/day extra-point tests
+- [x] Courier create/deactivate/reserve tests
+- [x] Batch template/day reorder tests
 - [ ] Bulk assignment test
 - [ ] Completion with GPS test
 - [ ] CI green on latest main after each major block
