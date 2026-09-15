@@ -9,14 +9,12 @@ from .models import Delivery, DeliveryEvent, DeliveryPoint, Route, RouteRun, Rou
 from .route_services import generate_route_run, reassign_route_run, learn_template_from_run
 from .point_matching import match_point
 from .import_services import import_workbook, preview_workbook
+from .import_staging import stage_upload, consume_upload
 
 class PilotShellTests(TestCase):
-    def test_health_checks_database(self):
-        response=self.client.get('/healthz/'); self.assertEqual(response.status_code,200); self.assertEqual(response.json()['database'],'ok')
-    def test_manifest_is_available(self):
-        response=self.client.get('/manifest.webmanifest'); self.assertEqual(response.status_code,200); self.assertEqual(response.json()['display'],'standalone')
-    def test_service_worker_is_available(self):
-        response=self.client.get('/service-worker.js'); self.assertEqual(response.status_code,200); self.assertIn('javascript',response['Content-Type'])
+    def test_health_checks_database(self): response=self.client.get('/healthz/'); self.assertEqual(response.status_code,200); self.assertEqual(response.json()['database'],'ok')
+    def test_manifest_is_available(self): response=self.client.get('/manifest.webmanifest'); self.assertEqual(response.status_code,200); self.assertEqual(response.json()['display'],'standalone')
+    def test_service_worker_is_available(self): response=self.client.get('/service-worker.js'); self.assertEqual(response.status_code,200); self.assertIn('javascript',response['Content-Type'])
 
 class DeliveryWorkflowTests(TestCase):
     def setUp(self): self.dispatcher=User.objects.create_user(username='dispatcher',password='pass',role=User.Role.DISPATCHER); self.courier=User.objects.create_user(username='courier',password='pass',role=User.Role.COURIER); self.other=User.objects.create_user(username='other',password='pass',role=User.Role.COURIER); self.delivery=Delivery.objects.create(delivery_date=timezone.localdate(),address='Москва, Тестовая 1',route_order=1)
@@ -50,6 +48,11 @@ class PointImportTests(TestCase):
     def test_reimport_skips_same_row(self): import_workbook(self.workbook(),self.dispatcher); second=import_workbook(self.workbook(),self.dispatcher); self.assertEqual(second.skipped,1)
     def test_header_can_be_below_preamble(self): self.assertEqual(import_workbook(self.workbook(preamble=True),self.dispatcher).created,1)
     def test_same_point_can_be_visited_twice_with_different_slot(self): self.assertEqual(import_workbook(self.workbook(second_visit=True),self.dispatcher).created,2)
+    def test_staged_upload_is_owned_and_one_time(self):
+        other=User.objects.create_user(username='other-dispatcher',role=User.Role.DISPATCHER); token=stage_upload(self.workbook(),self.dispatcher.pk,'route.xlsx')
+        with self.assertRaises(ValueError): consume_upload(token,other.pk)
+        name,content=consume_upload(token,self.dispatcher.pk); self.assertEqual(name,'route.xlsx'); self.assertTrue(content)
+        with self.assertRaises(ValueError): consume_upload(token,self.dispatcher.pk)
 
 class RouteTemplateTests(TestCase):
     def setUp(self):
