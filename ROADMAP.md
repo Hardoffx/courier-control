@@ -61,6 +61,7 @@ Roadmap отражает порядок разработки, а не обеща
 - [x] Import preview render/contract tests
 - [x] PWA service worker avoids caching login/authenticated operational HTML
 - [x] Responsive route-template render contract tests
+- [x] Deployment shell syntax validation in CI
 - [ ] Further refactor dense views
 - [ ] Broader security review auth/forms/uploads
 
@@ -72,7 +73,11 @@ Roadmap отражает порядок разработки, а не обеща
 - [x] Excel confirmation via expiring user-bound server-side staging token
 - [x] Explicit PILOT_ACCEPTANCE.md gate/checklist
 - [x] Pilot env example includes SQLite/staging/Yandex variables
-- [ ] Actual VPS/domain/HTTPS deployment + restore drill
+- [x] One-command shared-VPS installer isolated from existing Courier Bot
+- [x] Safe shared-VPS update command + dedicated courierctl/systemd/Gunicorn ports
+- [x] Temporary pre-domain nginx listener and health smoke-check workflow
+- [ ] Execute installer on actual VPS and confirm health
+- [ ] Domain + HTTPS + restore drill
 - [ ] Yandex credentials/domain restrictions + real coordinate acceptance
 - [ ] Pilot accounts / first real management Excel / one real test day / feedback fixes
 
