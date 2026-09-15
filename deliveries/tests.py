@@ -1,9 +1,13 @@
+from io import BytesIO
+from openpyxl import Workbook
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 from accounts.models import User
 from .models import Delivery, DeliveryEvent, DeliveryPoint, Route, RouteRun, RouteTemplate, RouteTemplateItem
 from .route_services import generate_route_run, reassign_route_run
+from .point_matching import match_point
+from .import_services import import_workbook
 
 class DeliveryWorkflowTests(TestCase):
     def setUp(self):
@@ -20,6 +24,18 @@ class DeliveryWorkflowTests(TestCase):
         first=self.delivery; first.courier=self.courier; first.save(); second=Delivery.objects.create(delivery_date=timezone.localdate(),address='Москва, Тестовая 2',courier=self.courier,route_order=2); self.client.login(username='courier',password='pass'); self.client.post(reverse('courier_reorder',args=[second.pk]),{'direction':'up'}); first.refresh_from_db(); second.refresh_from_db(); self.assertEqual(second.route_order,1); self.assertEqual(first.route_order,2)
     def test_courier_cannot_open_point_directory(self):
         self.client.login(username='courier',password='pass'); self.assertEqual(self.client.get(reverse('point_list')).status_code,403)
+
+class PointImportTests(TestCase):
+    def setUp(self):
+        self.dispatcher=User.objects.create_user(username='dispatcher2',role=User.Role.DISPATCHER); self.point=DeliveryPoint.objects.create(name='CMD 458',code='458',address='Москва, Каноническая 10',phone='+79990000000',kind=DeliveryPoint.Kind.CMD)
+    def workbook(self,address='Старый адрес',code='458'):
+        wb=Workbook(); ws=wb.active; ws.append(['Код','Адрес','Время']); ws.append([code,address,'09:30']); stream=BytesIO(); wb.save(stream); return stream.getvalue()
+    def test_cmd_matches_by_code_before_address(self):
+        match=match_point('458','Совсем другой адрес'); self.assertEqual(match.point,self.point); self.assertEqual(match.method,'code')
+    def test_import_uses_canonical_address_and_phone(self):
+        summary=import_workbook(self.workbook(),self.dispatcher); delivery=Delivery.objects.get(); self.assertEqual(summary.created,1); self.assertEqual(summary.matched,1); self.assertEqual(delivery.point,self.point); self.assertEqual(delivery.address,'Москва, Каноническая 10'); self.assertEqual(delivery.phone,'+79990000000')
+    def test_reimport_skips_same_point_same_date(self):
+        import_workbook(self.workbook(),self.dispatcher); second=import_workbook(self.workbook(),self.dispatcher); self.assertEqual(Delivery.objects.count(),1); self.assertEqual(second.skipped,1)
 
 class RouteTemplateTests(TestCase):
     def setUp(self):
