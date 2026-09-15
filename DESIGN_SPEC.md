@@ -52,19 +52,29 @@ Dispatcher must be able to control operations fully from a phone.
 ## Responsive targets
 Must be intentionally checked at ~375/390/430 px phone widths, tablet ~768–1024 px, laptop ~1280–1440 px and wide desktop. Courier prioritizes phone. Dispatcher must be first-class on phone, tablet and desktop.
 
-## Map implementation contract
-Map is lazy/secondary: do not make initial list workflow depend on map loading. V1 may ship visual/map container before provider integration, but production route map must use actual route points/order/status. Never fake route progress as operational data. Provider choice/configuration is implementation detail; external Yandex navigation remains one-stop navigation.
+## Map implementation contract — Yandex Maps only
+**Yandex Maps is the approved and mandatory V1 map provider.** Do not replace it with Google Maps, OpenStreetMap/Leaflet, Mapbox or another provider without explicit user approval.
+
+Integration target: current Yandex Maps **JavaScript API 3.0** for embedded interactive maps. The API key must be supplied through deployment configuration/environment and restricted by HTTP Referer/domain in Yandex Developer Dashboard. No production key is committed to Git.
+
+- Map remains lazy/secondary: initial list workflow must work even if Yandex API is unavailable or slow.
+- Courier internal Yandex map displays the whole day's actual route/progress: completed green, current blue, upcoming neutral, problem red, numbered/order-aware points and route line where supported by the selected Yandex API package/service.
+- Dispatcher uses the same Yandex map data in `Карта` and `Список + карта`; selecting a courier/row and map point must synchronize.
+- External `Открыть в Яндекс Картах` remains the one-stop navigation action and is separate from the embedded control map.
+- Operational route progress must never be faked. If coordinates are unavailable, show a clear non-map/ungeocoded state instead of inventing marker positions.
+- Geocoding/routing usage must be implemented through Yandex services compatible with the project's key/tariff and configured limits.
+- On phones use `Список | Карта`; split map/list is desktop/tablet only when width permits.
 
 ## Visual acceptance checklist
 - [ ] Shared V1 design tokens/components
 - [ ] Courier next-stop card matches approved hierarchy
 - [ ] Courier compact route list/states
 - [ ] Courier done/problem flows
-- [ ] Courier map mode + route/map navigation
+- [ ] Courier Yandex map mode + route/map navigation
 - [ ] Dispatcher desktop shell/sidebar/KPIs
 - [ ] Dispatcher delivery table/filter/action hierarchy
 - [ ] Dispatcher courier progress summary
-- [ ] Dispatcher List/Map/Split control
+- [ ] Dispatcher Yandex List/Map/Split control
 - [ ] Dispatcher phone card layout and controls
 - [ ] Tablet layout
 - [ ] Statistics/import/routes/couriers visually aligned to V1
