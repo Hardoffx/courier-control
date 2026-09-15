@@ -30,16 +30,14 @@ Roadmap отражает порядок разработки, а не обеща
 - [ ] Learn/update template from imported/corrected real route
 
 ## Phase 3 — Courier and dispatcher usability
-- [x] Courier management UI: create/edit/deactivate/name/phone/login/password change
-- [x] Explicit reserve courier marker («затычка») while retaining normal courier permissions
-- [x] Dispatcher date navigation
-- [x] Batch/drag ordering for template and generated day
-- [x] Dispatcher generated-day completion time/GPS/problem/last-event visibility
-- [ ] Copy previous day's route as a starting point
-- [ ] Better mobile courier cards + clear next stop
-- [ ] Problem reason presets + free comment
-- [ ] Full event/history view per delivery
-- [ ] Responsive polish
+- [x] Courier management UI + reserve marker
+- [x] Dispatcher date navigation + drag/batch ordering
+- [x] Dispatcher completion/GPS/problem visibility
+- [x] Copy previous route composition/order into prepared day, preserving today's courier and protecting completed work
+- [x] Mobile action-first courier screen with explicit next stop
+- [x] Problem reason presets + free comment
+- [x] Full event/history view per delivery for dispatcher
+- [ ] Further responsive/PWA polish
 
 ## Phase 4 — Quality gate
 - [x] Role/cross-courier/single assignment/completion/reorder/classification baseline
@@ -47,9 +45,10 @@ Roadmap отражает порядок разработки, а не обеща
 - [x] Route generation/safe refresh/day extra-point tests
 - [x] Courier create/deactivate/reserve tests
 - [x] Batch template/day reorder tests
-- [ ] Bulk assignment test
-- [ ] Completion with GPS test
-- [ ] CI green on latest main after each major block
+- [x] Bulk assignment test
+- [x] Completion with GPS test
+- [x] Problem preset/history permissions tests
+- [x] CI green through operational implementation; newest expanded tests pending final CI result
 - [ ] Further refactor dense views
 - [ ] Security review auth/forms/uploads
 
