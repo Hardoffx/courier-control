@@ -1,5 +1,6 @@
 from functools import wraps
 from datetime import date, timedelta
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
@@ -14,6 +15,7 @@ from .models import Delivery, DeliveryEvent, DeliveryPoint, RouteRun
 from .import_services import import_workbook, preview_workbook, validate_upload
 from .import_staging import stage_upload, consume_upload
 from .point_matching import canonical_delivery_values, resolve_point
+from .map_data import delivery_map_items
 
 PROBLEM_REASONS=('Нет доступа','Не принимают','Получатель недоступен','Неверный адрес','Нужно вернуться позже','Другая проблема')
 
@@ -44,13 +46,13 @@ def dispatcher_dashboard(request):
     if status: deliveries=deliveries.filter(status=status)
     if courier_filter=='unassigned': deliveries=deliveries.filter(courier__isnull=True)
     elif courier_filter.isdigit(): deliveries=deliveries.filter(courier_id=int(courier_filter))
-    deliveries=deliveries.order_by('route_run__route__name','courier_id','route_order','id'); couriers=User.objects.filter(role=User.Role.COURIER,is_active=True).order_by('first_name','username'); counts={key:base.filter(status=key).count() for key,_ in Delivery.Status.choices}; courier_stats=[]
+    deliveries=list(deliveries.order_by('route_run__route__name','courier_id','route_order','id')); couriers=User.objects.filter(role=User.Role.COURIER,is_active=True).order_by('first_name','username'); counts={key:base.filter(status=key).count() for key,_ in Delivery.Status.choices}; courier_stats=[]
     for courier in couriers:
         qs=base.filter(courier=courier); courier_stats.append({'courier':courier,'total':qs.count(),'done':qs.filter(status=Delivery.Status.DONE).count(),'problem':qs.filter(status=Delivery.Status.PROBLEM).count()})
     runs=[]
     for run in RouteRun.objects.filter(run_date=selected_date).select_related('route','template','assigned_courier').prefetch_related('deliveries').order_by('route__name'):
         rows=list(run.deliveries.all()); total=len(rows); done=sum(d.status==Delivery.Status.DONE for d in rows); problem=sum(d.status==Delivery.Status.PROBLEM for d in rows); runs.append({'run':run,'total':total,'done':done,'problem':problem,'percent':round(done*100/total) if total else 0})
-    return render(request,'dispatcher/dashboard.html',{'deliveries':deliveries,'couriers':couriers,'row_colors':Delivery.RowColor.choices,'point_kinds':DeliveryPoint.Kind.choices,'statuses':Delivery.Status.choices,'counts':counts,'courier_stats':courier_stats,'today':timezone.localdate(),'selected_date':selected_date,'prev_date':selected_date-timedelta(days=1),'next_date':selected_date+timedelta(days=1),'route_runs':runs,'filters':{'q':q,'kind':kind,'status':status,'courier':courier_filter}})
+    return render(request,'dispatcher/dashboard.html',{'deliveries':deliveries,'total_count':base.count(),'couriers':couriers,'row_colors':Delivery.RowColor.choices,'point_kinds':DeliveryPoint.Kind.choices,'statuses':Delivery.Status.choices,'counts':counts,'courier_stats':courier_stats,'today':timezone.localdate(),'selected_date':selected_date,'prev_date':selected_date-timedelta(days=1),'next_date':selected_date+timedelta(days=1),'route_runs':runs,'filters':{'q':q,'kind':kind,'status':status,'courier':courier_filter},'map_points':delivery_map_items(deliveries),'yandex_maps_api_key':settings.YANDEX_MAPS_JS_API_KEY})
 
 def _resolve_courier(courier_id):
     if not courier_id: return None
@@ -117,7 +119,7 @@ def import_excel(request):
 @login_required
 def courier_today(request):
     if request.user.is_dispatcher: return redirect('dispatcher_dashboard')
-    today=timezone.localdate(); deliveries=Delivery.objects.filter(delivery_date=today,courier=request.user).select_related('point','route_run__route').order_by('route_order','id'); done=deliveries.filter(status=Delivery.Status.DONE).count(); next_delivery=deliveries.exclude(status=Delivery.Status.DONE).exclude(status=Delivery.Status.PROBLEM).first() or deliveries.exclude(status=Delivery.Status.DONE).first(); return render(request,'courier/today.html',{'deliveries':deliveries,'done':done,'total':deliveries.count(),'today':today,'next_delivery':next_delivery,'problem_reasons':PROBLEM_REASONS})
+    today=timezone.localdate(); deliveries=list(Delivery.objects.filter(delivery_date=today,courier=request.user).select_related('point','route_run__route').order_by('route_order','id')); done=sum(d.status==Delivery.Status.DONE for d in deliveries); next_delivery=next((d for d in deliveries if d.status not in (Delivery.Status.DONE,Delivery.Status.PROBLEM)),None) or next((d for d in deliveries if d.status!=Delivery.Status.DONE),None); return render(request,'courier/today.html',{'deliveries':deliveries,'done':done,'total':len(deliveries),'today':today,'next_delivery':next_delivery,'problem_reasons':PROBLEM_REASONS,'map_points':delivery_map_items(deliveries),'yandex_maps_api_key':settings.YANDEX_MAPS_JS_API_KEY})
 
 @login_required
 @require_POST
