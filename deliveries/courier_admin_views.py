@@ -16,15 +16,19 @@ def dispatcher_required(view):
     return wrapped
 
 
+def _courier_users():
+    return User.objects.filter(role=User.Role.COURIER, is_superuser=False)
+
+
 @dispatcher_required
 def courier_list(request):
-    couriers=User.objects.filter(role=User.Role.COURIER).annotate(route_count=Count('default_routes',filter=Q(default_routes__is_active=True))).order_by('-is_active','-is_reserve_courier','first_name','username')
+    couriers=_courier_users().annotate(route_count=Count('default_routes',filter=Q(default_routes__is_active=True))).order_by('-is_active','-is_reserve_courier','first_name','username')
     return render(request,'dispatcher/couriers/list.html',{'couriers':couriers})
 
 
 @dispatcher_required
 def courier_edit(request,pk=None):
-    courier=get_object_or_404(User,pk=pk,role=User.Role.COURIER) if pk else None
+    courier=get_object_or_404(_courier_users(),pk=pk) if pk else None
     if request.method=='POST':
         username=request.POST.get('username','').strip()
         first_name=request.POST.get('first_name','').strip()[:150]
@@ -53,7 +57,7 @@ def courier_edit(request,pk=None):
 @dispatcher_required
 @require_POST
 def courier_toggle(request,pk):
-    courier=get_object_or_404(User,pk=pk,role=User.Role.COURIER)
+    courier=get_object_or_404(_courier_users(),pk=pk)
     courier.is_active=not courier.is_active; courier.save(update_fields=['is_active'])
     messages.success(request,'Курьер активирован' if courier.is_active else 'Курьер отключён. История маршрутов сохранена.')
     return redirect('courier_manage_list')
