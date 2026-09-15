@@ -16,8 +16,8 @@ Roadmap отражает порядок разработки, а не обеща
 - [x] Canonical address/phone/type reuse + corrected mappings reuse
 - [x] Header detection / duplicate-safe re-import / legitimate repeats
 - [x] Import result + non-writing preview
-- [x] Basic upload validation
-- [ ] Theme/indexed fills where practical
+- [x] Upload/staging/archive hardening and tests
+- [ ] Theme/indexed fills where practical; validate need against real management XLSX
 
 ## Phase 2.5 — Persistent courier route memory
 - [x] Route independent from courier + default courier
@@ -49,6 +49,7 @@ Roadmap отражает порядок разработки, а не обеща
 - [x] Core role/workflow/import/route tests
 - [x] Health/PWA tests
 - [x] Map data/geocoding foundation tests
+- [x] Import staging expiry/one-time/archive-expansion tests
 - [ ] Further refactor dense views
 - [ ] Broader security review auth/forms/uploads
 
@@ -58,8 +59,10 @@ Roadmap отражает порядок разработки, а не обеща
 - [x] SQLite online backup + restore docs
 - [x] PWA shell
 - [x] Excel confirmation via expiring user-bound server-side staging token
-- [ ] Actual VPS/domain/HTTPS deployment
-- [ ] Pilot accounts / first real management Excel / feedback fixes
+- [x] Explicit PILOT_ACCEPTANCE.md gate/checklist
+- [ ] Actual VPS/domain/HTTPS deployment + restore drill
+- [ ] Yandex credentials/domain restrictions + real coordinate acceptance
+- [ ] Pilot accounts / first real management Excel / one real test day / feedback fixes
 
 ## Phase 6 — Management pitch MVP
 - [x] Daily/weekly/custom-range courier statistics
