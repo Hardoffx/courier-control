@@ -1,6 +1,7 @@
 from io import BytesIO
 from datetime import timedelta
 from openpyxl import Workbook
+from django.core.management import call_command
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
@@ -15,6 +16,19 @@ class PilotShellTests(TestCase):
     def test_health_checks_database(self): response=self.client.get('/healthz/'); self.assertEqual(response.status_code,200); self.assertEqual(response.json()['database'],'ok')
     def test_manifest_is_available(self): response=self.client.get('/manifest.webmanifest'); self.assertEqual(response.status_code,200); self.assertEqual(response.json()['display'],'standalone')
     def test_service_worker_is_available(self): response=self.client.get('/service-worker.js'); self.assertEqual(response.status_code,200); self.assertIn('javascript',response['Content-Type'])
+
+class ManagementReportTests(TestCase):
+    def setUp(self):
+        self.dispatcher=User.objects.create_user(username='report-boss',password='pass',role=User.Role.DISPATCHER); self.courier=User.objects.create_user(username='report-driver',password='pass',role=User.Role.COURIER); day=timezone.localdate()
+        Delivery.objects.create(delivery_date=day,address='A',courier=self.courier,status=Delivery.Status.DONE)
+        Delivery.objects.create(delivery_date=day,address='B',courier=self.courier,status=Delivery.Status.PROBLEM,problem_reason='Нет доступа')
+    def test_stats_are_dispatcher_only_and_calculated(self):
+        self.client.login(username='report-boss',password='pass'); response=self.client.get(reverse('management_stats'),{'period':'1'}); self.assertEqual(response.status_code,200); self.assertEqual(response.context['total'],2); self.assertEqual(response.context['done'],1); self.assertEqual(response.context['problem'],1); self.assertEqual(response.context['rate'],50)
+        self.client.login(username='report-driver',password='pass'); self.assertEqual(self.client.get(reverse('management_stats')).status_code,403)
+    def test_csv_export_has_excel_bom_and_metrics(self):
+        self.client.login(username='report-boss',password='pass'); response=self.client.get(reverse('management_export'),{'period':'1'}); self.assertEqual(response.status_code,200); self.assertTrue(response.content.startswith(b'\xef\xbb\xbf')); text=response.content.decode('utf-8-sig'); self.assertIn('report-driver',text); self.assertIn('Выполнение %',text)
+    def test_demo_seed_is_repeatable(self):
+        call_command('seed_demo',verbosity=0); first=(User.objects.filter(username__startswith='demo-').count(),Route.objects.filter(name__startswith='DEMO ').count(),Delivery.objects.filter(route_run__route__name__startswith='DEMO ').count()); call_command('seed_demo',verbosity=0); second=(User.objects.filter(username__startswith='demo-').count(),Route.objects.filter(name__startswith='DEMO ').count(),Delivery.objects.filter(route_run__route__name__startswith='DEMO ').count()); self.assertEqual(first,second); self.assertEqual(first,(4,2,70))
 
 class DeliveryWorkflowTests(TestCase):
     def setUp(self): self.dispatcher=User.objects.create_user(username='dispatcher',password='pass',role=User.Role.DISPATCHER); self.courier=User.objects.create_user(username='courier',password='pass',role=User.Role.COURIER); self.other=User.objects.create_user(username='other',password='pass',role=User.Role.COURIER); self.delivery=Delivery.objects.create(delivery_date=timezone.localdate(),address='Москва, Тестовая 1',route_order=1)
