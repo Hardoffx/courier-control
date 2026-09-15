@@ -14,6 +14,8 @@ from .models import Delivery, DeliveryEvent, DeliveryPoint, RouteRun
 from .import_services import import_workbook
 from .point_matching import canonical_delivery_values, resolve_point
 
+PROBLEM_REASONS=('Нет доступа','Не принимают','Получатель недоступен','Неверный адрес','Нужно вернуться позже','Другая проблема')
+
 def dispatcher_required(view):
     @wraps(view)
     @login_required
@@ -41,14 +43,12 @@ def dispatcher_dashboard(request):
     if status: deliveries=deliveries.filter(status=status)
     if courier_filter=='unassigned': deliveries=deliveries.filter(courier__isnull=True)
     elif courier_filter.isdigit(): deliveries=deliveries.filter(courier_id=int(courier_filter))
-    deliveries=deliveries.order_by('route_run__route__name','courier_id','route_order','id')
-    couriers=User.objects.filter(role=User.Role.COURIER,is_active=True).order_by('first_name','username'); counts={key:base.filter(status=key).count() for key,_ in Delivery.Status.choices}; courier_stats=[]
+    deliveries=deliveries.order_by('route_run__route__name','courier_id','route_order','id'); couriers=User.objects.filter(role=User.Role.COURIER,is_active=True).order_by('first_name','username'); counts={key:base.filter(status=key).count() for key,_ in Delivery.Status.choices}; courier_stats=[]
     for courier in couriers:
         qs=base.filter(courier=courier); courier_stats.append({'courier':courier,'total':qs.count(),'done':qs.filter(status=Delivery.Status.DONE).count(),'problem':qs.filter(status=Delivery.Status.PROBLEM).count()})
     runs=[]
     for run in RouteRun.objects.filter(run_date=selected_date).select_related('route','template','assigned_courier').prefetch_related('deliveries').order_by('route__name'):
-        rows=list(run.deliveries.all()); total=len(rows); done=sum(d.status==Delivery.Status.DONE for d in rows); problem=sum(d.status==Delivery.Status.PROBLEM for d in rows)
-        runs.append({'run':run,'total':total,'done':done,'problem':problem,'percent':round(done*100/total) if total else 0})
+        rows=list(run.deliveries.all()); total=len(rows); done=sum(d.status==Delivery.Status.DONE for d in rows); problem=sum(d.status==Delivery.Status.PROBLEM for d in rows); runs.append({'run':run,'total':total,'done':done,'problem':problem,'percent':round(done*100/total) if total else 0})
     return render(request,'dispatcher/dashboard.html',{'deliveries':deliveries,'couriers':couriers,'row_colors':Delivery.RowColor.choices,'point_kinds':DeliveryPoint.Kind.choices,'statuses':Delivery.Status.choices,'counts':counts,'courier_stats':courier_stats,'today':timezone.localdate(),'selected_date':selected_date,'prev_date':selected_date-timedelta(days=1),'next_date':selected_date+timedelta(days=1),'route_runs':runs,'filters':{'q':q,'kind':kind,'status':status,'courier':courier_filter}})
 
 def _resolve_courier(courier_id):
@@ -78,8 +78,7 @@ def dispatcher_bulk_assign(request):
 def dispatcher_quick_edit(request,pk):
     delivery=get_object_or_404(Delivery,pk=pk); changed=[]; label=request.POST.get('source_label','').strip()[:255]; address=request.POST.get('address','').strip()[:500]; phone=request.POST.get('phone','').strip()[:64]
     if not address: messages.error(request,'Адрес не может быть пустым'); return redirect('dispatcher_dashboard')
-    match=resolve_point(label,address,phone,create=True); canonical=canonical_delivery_values(match.point,label,address,phone)
-    values={'point':match.point,'source_label':canonical['source_label'],'address':canonical['address'],'time_window':request.POST.get('time_window','').strip()[:64],'phone':canonical['phone'],'row_color':request.POST.get('row_color','')}; allowed_colors={v for v,_ in Delivery.RowColor.choices}
+    match=resolve_point(label,address,phone,create=True); canonical=canonical_delivery_values(match.point,label,address,phone); values={'point':match.point,'source_label':canonical['source_label'],'address':canonical['address'],'time_window':request.POST.get('time_window','').strip()[:64],'phone':canonical['phone'],'row_color':request.POST.get('row_color','')}; allowed_colors={v for v,_ in Delivery.RowColor.choices}
     if values['row_color'] not in allowed_colors: values['row_color']=''
     for field,value in values.items():
         if getattr(delivery,field)!=value: setattr(delivery,field,value); changed.append(field)
@@ -99,29 +98,32 @@ def delivery_edit(request,pk):
     return render(request,'dispatcher/delivery_form.html',{'form':form,'title':'Редактирование заявки'})
 
 @dispatcher_required
+def delivery_history(request,pk):
+    delivery=get_object_or_404(Delivery.objects.select_related('courier','point','route_run__route'),pk=pk); events=delivery.events.select_related('actor').order_by('-created_at'); return render(request,'dispatcher/delivery_history.html',{'delivery':delivery,'events':events})
+
+@dispatcher_required
 def import_excel(request):
     summary=None
     if request.method=='POST' and request.FILES.get('file'):
-        try:
-            summary=import_workbook(request.FILES['file'].read(),request.user)
-            messages.success(request,f'Импорт: создано {summary.created}; распознано {summary.matched}; новых точек {summary.new_points}; пропущено {summary.skipped}')
+        try: summary=import_workbook(request.FILES['file'].read(),request.user); messages.success(request,f'Импорт: создано {summary.created}; распознано {summary.matched}; новых точек {summary.new_points}; пропущено {summary.skipped}')
         except Exception as exc: messages.error(request,f'Не удалось импортировать файл: {exc}')
     return render(request,'dispatcher/import_excel.html',{'summary':summary})
 
 @login_required
 def courier_today(request):
     if request.user.is_dispatcher: return redirect('dispatcher_dashboard')
-    today=timezone.localdate(); deliveries=Delivery.objects.filter(delivery_date=today,courier=request.user).order_by('route_order','id'); done=deliveries.filter(status=Delivery.Status.DONE).count(); return render(request,'courier/today.html',{'deliveries':deliveries,'done':done,'total':deliveries.count(),'today':today})
+    today=timezone.localdate(); deliveries=Delivery.objects.filter(delivery_date=today,courier=request.user).select_related('point','route_run__route').order_by('route_order','id'); done=deliveries.filter(status=Delivery.Status.DONE).count(); next_delivery=deliveries.exclude(status=Delivery.Status.DONE).exclude(status=Delivery.Status.PROBLEM).first() or deliveries.exclude(status=Delivery.Status.DONE).first(); return render(request,'courier/today.html',{'deliveries':deliveries,'done':done,'total':deliveries.count(),'today':today,'next_delivery':next_delivery,'problem_reasons':PROBLEM_REASONS})
 
 @login_required
 @require_POST
 def courier_update(request,pk):
     delivery=get_object_or_404(Delivery,pk=pk,courier=request.user); action=request.POST.get('action')
-    if action=='done': delivery.status=Delivery.Status.DONE; delivery.completed_at=timezone.now(); delivery.completed_latitude=request.POST.get('latitude') or None; delivery.completed_longitude=request.POST.get('longitude') or None
-    elif action=='problem': delivery.status=Delivery.Status.PROBLEM; delivery.problem_reason=request.POST.get('problem_reason','Другая проблема')[:255]
-    elif action=='phone': delivery.phone=request.POST.get('phone','')[:64]
+    if action=='done': delivery.status=Delivery.Status.DONE; delivery.completed_at=timezone.now(); delivery.completed_latitude=request.POST.get('latitude') or None; delivery.completed_longitude=request.POST.get('longitude') or None; delivery.problem_reason=''; note='Выполнено' + (' · GPS получен' if delivery.completed_latitude and delivery.completed_longitude else ' · без GPS')
+    elif action=='problem':
+        reason=request.POST.get('problem_reason','').strip(); comment=request.POST.get('problem_comment','').strip()[:255]; reason=reason if reason in PROBLEM_REASONS else 'Другая проблема'; delivery.status=Delivery.Status.PROBLEM; delivery.problem_reason=(f'{reason}: {comment}' if comment else reason)[:255]; note=delivery.problem_reason
+    elif action=='phone': delivery.phone=request.POST.get('phone','').strip()[:64]; note=f'Телефон: {delivery.phone}'
     else: raise PermissionDenied
-    delivery.save(); DeliveryEvent.objects.create(delivery=delivery,actor=request.user,action=action); return redirect('courier_today')
+    delivery.save(); DeliveryEvent.objects.create(delivery=delivery,actor=request.user,action=action,note=note); return redirect('courier_today')
 
 @login_required
 @require_POST
