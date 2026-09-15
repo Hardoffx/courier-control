@@ -6,7 +6,7 @@ from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 from accounts.models import User
-from .models import Delivery, DeliveryPoint, Route, RouteRun, RouteTemplate, RouteTemplateItem
+from .models import Delivery, DeliveryEvent, DeliveryPoint, Route, RouteRun, RouteTemplate, RouteTemplateItem
 from .route_services import generate_route_run, reassign_route_run
 
 def dispatcher_required(view):
@@ -18,8 +18,7 @@ def dispatcher_required(view):
 
 @dispatcher_required
 def route_list(request):
-    routes=Route.objects.filter(is_active=True).select_related('default_courier').prefetch_related('templates')
-    return render(request,'dispatcher/routes/list.html',{'routes':routes})
+    routes=Route.objects.filter(is_active=True).select_related('default_courier').prefetch_related('templates'); return render(request,'dispatcher/routes/list.html',{'routes':routes})
 
 @dispatcher_required
 def route_edit(request,pk=None):
@@ -35,8 +34,7 @@ def route_edit(request,pk=None):
 
 @dispatcher_required
 def route_detail(request,pk):
-    route=get_object_or_404(Route,pk=pk); templates=route.templates.filter(is_active=True); template_id=request.GET.get('template'); template=templates.filter(pk=template_id).first() if template_id else templates.order_by('kind','id').first(); points=DeliveryPoint.objects.filter(is_active=True).order_by('kind','name'); couriers=User.objects.filter(role=User.Role.COURIER,is_active=True).order_by('first_name','username')
-    return render(request,'dispatcher/routes/detail.html',{'route':route,'templates':templates,'template':template,'points':points,'couriers':couriers})
+    route=get_object_or_404(Route,pk=pk); templates=route.templates.filter(is_active=True); template_id=request.GET.get('template'); template=templates.filter(pk=template_id).first() if template_id else templates.order_by('kind','id').first(); points=DeliveryPoint.objects.filter(is_active=True).order_by('kind','name'); couriers=User.objects.filter(role=User.Role.COURIER,is_active=True).order_by('first_name','username'); return render(request,'dispatcher/routes/detail.html',{'route':route,'templates':templates,'template':template,'points':points,'couriers':couriers})
 
 @dispatcher_required
 @require_POST
@@ -67,19 +65,23 @@ def route_generate(request,pk):
     route=get_object_or_404(Route,pk=pk); template=get_object_or_404(RouteTemplate,pk=request.POST.get('template_id'),route=route)
     try: run_date=date.fromisoformat(request.POST.get('run_date',''))
     except ValueError: messages.error(request,'Некорректная дата'); return redirect('route_detail',pk=pk)
-    courier_id=request.POST.get('courier_id',''); courier=User.objects.filter(pk=courier_id,role=User.Role.COURIER,is_active=True).first() if courier_id else route.default_courier; enabled=request.POST.getlist('enabled_items'); run=generate_route_run(template,run_date,courier=courier,enabled_item_ids=enabled); messages.success(request,f'{route.name}: сформировано {run.deliveries.count()} точек на {run_date:%d.%m.%Y}')
-    return redirect(f'/dispatcher/?date={run_date.isoformat()}')
+    courier_id=request.POST.get('courier_id',''); courier=User.objects.filter(pk=courier_id,role=User.Role.COURIER,is_active=True).first() if courier_id else route.default_courier; enabled=request.POST.getlist('enabled_items'); run=generate_route_run(template,run_date,courier=courier,enabled_item_ids=enabled); messages.success(request,f'{route.name}: сформировано {run.deliveries.count()} точек на {run_date:%d.%m.%Y}'); return redirect(f'/dispatcher/?date={run_date.isoformat()}')
 
 @dispatcher_required
 def run_detail(request,pk):
-    run=get_object_or_404(RouteRun.objects.select_related('route','template','assigned_courier'),pk=pk); deliveries=run.deliveries.select_related('point').order_by('route_order','id'); couriers=User.objects.filter(role=User.Role.COURIER,is_active=True).order_by('first_name','username')
-    return render(request,'dispatcher/route_run_detail.html',{'run':run,'deliveries':deliveries,'couriers':couriers})
+    run=get_object_or_404(RouteRun.objects.select_related('route','template','assigned_courier'),pk=pk); deliveries=run.deliveries.select_related('point').order_by('route_order','id'); couriers=User.objects.filter(role=User.Role.COURIER,is_active=True).order_by('first_name','username'); points=DeliveryPoint.objects.filter(is_active=True).order_by('kind','name'); return render(request,'dispatcher/route_run_detail.html',{'run':run,'deliveries':deliveries,'couriers':couriers,'points':points})
+
+@dispatcher_required
+@require_POST
+def run_add_point(request,pk):
+    run=get_object_or_404(RouteRun,pk=pk); point=get_object_or_404(DeliveryPoint,pk=request.POST.get('point_id'),is_active=True); last=run.deliveries.order_by('-route_order').first(); order=(last.route_order+1 if last else 1); time_window=request.POST.get('time_window','').strip()[:64]
+    delivery=Delivery.objects.create(delivery_date=run.run_date,route_run=run,point=point,source_label=point.code or point.name,address=point.address,phone=point.phone,time_window=time_window,courier=run.assigned_courier,route_order=order,status=Delivery.Status.IN_PROGRESS if run.assigned_courier else Delivery.Status.NEW)
+    DeliveryEvent.objects.create(delivery=delivery,actor=request.user,action='run_point_added',note=f'Добавлено вручную в {run.route.name} только на {run.run_date:%d.%m.%Y}'); messages.success(request,f'Добавлено: {point.name}'); return redirect('run_detail',pk=pk)
 
 @dispatcher_required
 @require_POST
 def run_reassign(request,pk):
-    run=get_object_or_404(RouteRun,pk=pk); courier_id=request.POST.get('courier_id',''); courier=User.objects.filter(pk=courier_id,role=User.Role.COURIER,is_active=True).first() if courier_id else None; reassign_route_run(run,courier); messages.success(request,f'{run.route.name}: курьер изменён')
-    return redirect(request.POST.get('next') or f'/dispatcher/?date={run.run_date.isoformat()}')
+    run=get_object_or_404(RouteRun,pk=pk); courier_id=request.POST.get('courier_id',''); courier=User.objects.filter(pk=courier_id,role=User.Role.COURIER,is_active=True).first() if courier_id else None; reassign_route_run(run,courier); messages.success(request,f'{run.route.name}: курьер изменён'); return redirect(request.POST.get('next') or f'/dispatcher/?date={run.run_date.isoformat()}')
 
 @dispatcher_required
 @require_POST
