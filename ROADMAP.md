@@ -34,6 +34,7 @@ Roadmap отражает порядок разработки, а не обеща
 - [x] Mobile next-stop workflow + problem presets
 - [x] Full delivery history
 - [x] Initial PWA/iPhone shell
+- [x] Narrow-phone courier controls and route-template editing hardening
 
 ## Phase 3.5 — Approved Design V1
 - [x] Shared responsive shell + official visual reference/spec
@@ -44,18 +45,22 @@ Roadmap отражает порядок разработки, а не обеща
 - [x] Retryable transient geocoding + address-change coordinate invalidation
 - [x] Courier operational Yandex route map with real coordinates only
 - [x] Dispatcher List / Map / Split using the same operational Yandex map component
-- [x] Marker → delivery focus and status-aware markers
-- [ ] Final lazy/secondary embedded-map behavior and live API acceptance
-- [ ] Final visual/device QA at 375/390/430, tablet, laptop, wide desktop
+- [x] Marker ↔ delivery visual focus and status-aware markers
+- [x] Lazy/secondary embedded-map loading; configured map language; one API loader per page
+- [x] Code-level responsive QA/hardening of critical 375–430 px courier/dispatcher route workflows
+- [ ] Live visual/device QA at 375/390/430, tablet, laptop, wide desktop
 - [ ] Real API key/domain-restriction acceptance on deployed host
 
 ## Phase 4 — Quality gate
 - [x] Core role/workflow/import/route tests
 - [x] Health/PWA tests
 - [x] Map data/geocoding foundation tests
+- [x] Lazy map render/secondary behavior tests
 - [x] Geocoder success/transient/no-result/address-invalidation tests
 - [x] Import staging expiry/one-time/archive-expansion/private-permission tests
 - [x] Import preview render/contract tests
+- [x] PWA service worker avoids caching login/authenticated operational HTML
+- [x] Responsive route-template render contract tests
 - [ ] Further refactor dense views
 - [ ] Broader security review auth/forms/uploads
 
@@ -63,7 +68,7 @@ Roadmap отражает порядок разработки, а не обеща
 - [x] SQLite demo decision; PostgreSQL postponed
 - [x] Env hardening, Gunicorn/systemd, nginx, WhiteNoise, health/logging
 - [x] SQLite online backup + restore docs
-- [x] PWA shell
+- [x] PWA shell with static-only runtime caching
 - [x] Excel confirmation via expiring user-bound server-side staging token
 - [x] Explicit PILOT_ACCEPTANCE.md gate/checklist
 - [x] Pilot env example includes SQLite/staging/Yandex variables
