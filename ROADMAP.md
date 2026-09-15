@@ -42,6 +42,23 @@ Roadmap отражает порядок разработки, а не обеща
 - [ ] Duplicate detection / safe repeated import
 - [ ] Import result summary: created/skipped/warnings/unmatched
 
+## Phase 2.5 — Persistent courier route memory
+Цель: ежедневный маршрут не собирать с нуля. У каждого курьера есть полный потенциальный маршрут и отдельные варианты по режиму дня.
+
+- [ ] RouteTemplate model owned by courier
+- [ ] Template kinds: weekday / weekend / custom
+- [ ] RouteTemplateItem references canonical DeliveryPoint
+- [ ] Store default order, enabled-by-default and typical time window/overrides per template item
+- [ ] Allow same point to have different order/time in weekday and weekend templates
+- [ ] Dispatcher template editor showing the courier's full possible route
+- [ ] One-click enable/disable points for a concrete day
+- [ ] Fast reorder with drag-and-drop
+- [ ] Up/down controls as non-JS/mobile fallback
+- [ ] Generate a selected day's Delivery rows from template
+- [ ] Re-generate/update day safely without duplicating completed work
+- [ ] Learn/update a template from an imported or manually corrected real route
+- [ ] Tests for weekday/weekend separation and daily generation
+
 ## Phase 3 — Courier and dispatcher usability
 - [ ] Courier management UI: create/deactivate/edit/name/phone/login/reset password
 - [ ] Dispatcher date navigation: today/tomorrow/previous day
@@ -66,6 +83,7 @@ Roadmap отражает порядок разработки, а не обеща
 - [ ] Tests: point matching
 - [ ] Tests: Excel import representative fixture
 - [ ] Tests: duplicate/re-import behavior
+- [ ] Tests: route template generation and safe refresh
 - [ ] CI green on latest `main`
 - [ ] Refactor dense views into services/helpers
 - [ ] Security review of auth/forms/uploads
