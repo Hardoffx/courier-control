@@ -33,9 +33,22 @@ Roadmap отражает порядок разработки, а не обеща
 - [x] Full delivery history
 - [x] Initial PWA/iPhone shell
 
+## Phase 3.5 — Approved Design V1
+- [x] Shared responsive shell + official visual reference/spec
+- [x] Courier list-first route screen and secondary screens
+- [x] Dispatcher desktop/mobile dashboard, statistics, import, points, routes, couriers, forms/history
+- [x] Yandex Maps-only data contract and persisted point coordinates
+- [x] Yandex geocoder service + batch management command
+- [x] Courier operational Yandex route map with real coordinates only
+- [x] Dispatcher List / Map / Split using the same operational Yandex map component
+- [x] Marker → delivery focus and status-aware markers
+- [ ] Final visual/device QA at 375/390/430, tablet, laptop, wide desktop
+- [ ] Real API key/domain-restriction acceptance on deployed host
+
 ## Phase 4 — Quality gate
 - [x] Core role/workflow/import/route tests
 - [x] Health/PWA tests
+- [x] Map data/geocoding foundation tests
 - [ ] Further refactor dense views
 - [ ] Broader security review auth/forms/uploads
 
@@ -59,4 +72,4 @@ Roadmap отражает порядок разработки, а не обеща
 - [ ] Hardened backup/restore and monitoring
 
 ## Later / not blocking MVP
-OCR in web product; automatic route optimization; continuous tracking; advanced maps/geocoding; Telegram integration; notifications; customer portal; SaaS multi-tenancy; native apps.
+OCR in web product; automatic route optimization; continuous tracking; Telegram integration; notifications; customer portal; SaaS multi-tenancy; native apps.
