@@ -1,7 +1,8 @@
 from django.urls import path
-from . import views, point_views, route_views, courier_admin_views
+from . import views, point_views, route_views, courier_admin_views, report_views
 urlpatterns = [
  path('', views.dispatcher_dashboard, name='dispatcher_dashboard'),
+ path('stats/', report_views.management_stats, name='management_stats'), path('stats/export.csv', report_views.management_export, name='management_export'),
  path('delivery/new/', views.delivery_create, name='delivery_create'), path('delivery/<int:pk>/edit/', views.delivery_edit, name='delivery_edit'), path('delivery/<int:pk>/history/', views.delivery_history, name='delivery_history'), path('delivery/<int:pk>/quick-edit/', views.dispatcher_quick_edit, name='dispatcher_quick_edit'), path('delivery/<int:pk>/assign/', views.dispatcher_assign, name='dispatcher_assign'), path('deliveries/bulk-assign/', views.dispatcher_bulk_assign, name='dispatcher_bulk_assign'),
  path('points/', point_views.point_list, name='point_list'), path('points/new/', point_views.point_create, name='point_create'), path('points/<int:pk>/edit/', point_views.point_edit, name='point_edit'), path('points/<int:pk>/toggle/', point_views.point_toggle, name='point_toggle'),
  path('couriers/', courier_admin_views.courier_list, name='courier_manage_list'), path('couriers/new/', courier_admin_views.courier_edit, name='courier_manage_create'), path('couriers/<int:pk>/edit/', courier_admin_views.courier_edit, name='courier_manage_edit'), path('couriers/<int:pk>/toggle/', courier_admin_views.courier_toggle, name='courier_manage_toggle'),
