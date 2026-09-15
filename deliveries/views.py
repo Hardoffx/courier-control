@@ -29,7 +29,7 @@ def dispatcher_dashboard(request):
     today=timezone.localdate(); deliveries=Delivery.objects.filter(delivery_date=today).select_related('courier','point'); couriers=User.objects.filter(role=User.Role.COURIER,is_active=True).order_by('first_name','username'); counts={key:deliveries.filter(status=key).count() for key,_ in Delivery.Status.choices}; courier_stats=[]
     for courier in couriers:
         qs=deliveries.filter(courier=courier); courier_stats.append({'courier':courier,'total':qs.count(),'done':qs.filter(status=Delivery.Status.DONE).count(),'problem':qs.filter(status=Delivery.Status.PROBLEM).count()})
-    return render(request,'dispatcher/dashboard.html',{'deliveries':deliveries,'couriers':couriers,'counts':counts,'courier_stats':courier_stats,'today':today})
+    return render(request,'dispatcher/dashboard.html',{'deliveries':deliveries,'couriers':couriers,'row_colors':Delivery.RowColor.choices,'counts':counts,'courier_stats':courier_stats,'today':today})
 
 def _resolve_courier(courier_id):
     if not courier_id: return None
@@ -49,11 +49,23 @@ def dispatcher_assign(request,pk):
 @dispatcher_required
 @require_POST
 def dispatcher_bulk_assign(request):
-    ids=request.POST.getlist('delivery_ids'); courier=_resolve_courier(request.POST.get('courier_id',''))
-    deliveries=Delivery.objects.filter(pk__in=ids,delivery_date=timezone.localdate()).exclude(status=Delivery.Status.DONE)
+    ids=request.POST.getlist('delivery_ids'); courier=_resolve_courier(request.POST.get('courier_id','')); deliveries=Delivery.objects.filter(pk__in=ids,delivery_date=timezone.localdate()).exclude(status=Delivery.Status.DONE)
     with transaction.atomic():
         for delivery in deliveries: _assign(delivery,courier,request.user,'bulk_assigned')
-    messages.success(request,f'Обновлено точек: {deliveries.count()}') if ids else messages.warning(request,'Сначала отметьте точки')
+    messages.success(request,f'Обновлено точек: {deliveries.count()}') if ids else messages.warning(request,'Сначала отметьте точки'); return redirect('dispatcher_dashboard')
+
+@dispatcher_required
+@require_POST
+def dispatcher_quick_edit(request,pk):
+    delivery=get_object_or_404(Delivery,pk=pk,delivery_date=timezone.localdate()); changed=[]
+    values={'source_label':request.POST.get('source_label','').strip()[:255],'address':request.POST.get('address','').strip()[:500],'time_window':request.POST.get('time_window','').strip()[:64],'phone':request.POST.get('phone','').strip()[:64],'row_color':request.POST.get('row_color','')}
+    allowed_colors={v for v,_ in Delivery.RowColor.choices}
+    if values['row_color'] not in allowed_colors: values['row_color']=''
+    if not values['address']: messages.error(request,'Адрес не может быть пустым'); return redirect('dispatcher_dashboard')
+    for field,value in values.items():
+        if getattr(delivery,field)!=value: setattr(delivery,field,value); changed.append(field)
+    if changed:
+        delivery.save(update_fields=changed+['updated_at']); DeliveryEvent.objects.create(delivery=delivery,actor=request.user,action='quick_edited',note=', '.join(changed))
     return redirect('dispatcher_dashboard')
 
 @dispatcher_required
