@@ -74,11 +74,23 @@ def _rows(content,create_points=False):
         rows.append({'excel_row':excel_row,'delivery_date':_date(values.get('delivery_date')),'address':canonical['address'],'source_label':canonical['source_label'],'organization':organization,'recipient':recipient,'phone':canonical['phone'],'comment':comment,'courier':courier,'courier_name':courier_name,'route_order':route_order,'time_window':time_window,'row_color':color,'point':point,'point_created':created})
     return rows
 
+def _duplicate_key(row):
+    return (row['delivery_date'],row['address'],row['source_label'],row['route_order'])
+
+def _point_key(row):
+    return ((row['source_label'] or '').strip().casefold(),(row['address'] or '').strip().casefold())
+
 def preview_workbook(content):
-    validate_upload('preview.xlsx',content); rows=_rows(content,create_points=False); summary=ImportSummary(total_rows=len(rows)); summary.preview=rows[:100]
+    validate_upload('preview.xlsx',content); rows=_rows(content,create_points=False); summary=ImportSummary(total_rows=len(rows)); seen_delivery_keys=set(); new_point_keys=set()
     for row in rows:
         if row['point']: summary.matched+=1
+        else: new_point_keys.add(_point_key(row))
+        key=_duplicate_key(row); duplicate=key in seen_delivery_keys or Delivery.objects.filter(delivery_date=row['delivery_date'],address=row['address'],source_label=row['source_label'],route_order=row['route_order']).exists(); seen_delivery_keys.add(key)
+        if duplicate: summary.skipped+=1
+        if len(summary.preview)<100:
+            summary.preview.append({'row':row['excel_row'],'label':row['source_label'],'address':row['address'],'date':row['delivery_date'],'time_window':row['time_window'],'duplicate':duplicate,'new_point':row['point'] is None,'match':str(row['point']) if row['point'] else '','courier':row['courier']})
         if row['courier_name'] and not row['courier']: summary.warnings.append(f"Строка {row['excel_row']}: курьер «{row['courier_name']}» не найден")
+    summary.new_points=len(new_point_keys)
     return summary
 
 def import_workbook(content,actor=None):
