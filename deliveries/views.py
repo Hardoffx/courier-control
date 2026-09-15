@@ -52,7 +52,7 @@ def dispatcher_dashboard(request):
     runs=[]
     for run in RouteRun.objects.filter(run_date=selected_date).select_related('route','template','assigned_courier').prefetch_related('deliveries').order_by('route__name'):
         rows=list(run.deliveries.all()); total=len(rows); done=sum(d.status==Delivery.Status.DONE for d in rows); problem=sum(d.status==Delivery.Status.PROBLEM for d in rows); runs.append({'run':run,'total':total,'done':done,'problem':problem,'percent':round(done*100/total) if total else 0})
-    return render(request,'dispatcher/dashboard.html',{'deliveries':deliveries,'total_count':base.count(),'couriers':couriers,'row_colors':Delivery.RowColor.choices,'point_kinds':DeliveryPoint.Kind.choices,'statuses':Delivery.Status.choices,'counts':counts,'courier_stats':courier_stats,'today':timezone.localdate(),'selected_date':selected_date,'prev_date':selected_date-timedelta(days=1),'next_date':selected_date+timedelta(days=1),'route_runs':runs,'filters':{'q':q,'kind':kind,'status':status,'courier':courier_filter},'map_points':delivery_map_items(deliveries),'yandex_maps_api_key':settings.YANDEX_MAPS_JS_API_KEY})
+    return render(request,'dispatcher/dashboard.html',{'deliveries':deliveries,'total_count':base.count(),'couriers':couriers,'row_colors':Delivery.RowColor.choices,'point_kinds':DeliveryPoint.Kind.choices,'statuses':Delivery.Status.choices,'counts':counts,'courier_stats':courier_stats,'today':timezone.localdate(),'selected_date':selected_date,'prev_date':selected_date-timedelta(days=1),'next_date':selected_date+timedelta(days=1),'route_runs':runs,'filters':{'q':q,'kind':kind,'status':status,'courier':courier_filter},'map_points':delivery_map_items(deliveries),'yandex_maps_api_key':settings.YANDEX_MAPS_JS_API_KEY,'yandex_maps_lang':settings.YANDEX_MAPS_LANG})
 
 def _resolve_courier(courier_id):
     if not courier_id: return None
@@ -119,7 +119,7 @@ def import_excel(request):
 @login_required
 def courier_today(request):
     if request.user.is_dispatcher: return redirect('dispatcher_dashboard')
-    today=timezone.localdate(); deliveries=list(Delivery.objects.filter(delivery_date=today,courier=request.user).select_related('point','route_run__route').order_by('route_order','id')); done=sum(d.status==Delivery.Status.DONE for d in deliveries); next_delivery=next((d for d in deliveries if d.status not in (Delivery.Status.DONE,Delivery.Status.PROBLEM)),None) or next((d for d in deliveries if d.status!=Delivery.Status.DONE),None); return render(request,'courier/today.html',{'deliveries':deliveries,'done':done,'total':len(deliveries),'today':today,'next_delivery':next_delivery,'problem_reasons':PROBLEM_REASONS,'map_points':delivery_map_items(deliveries),'yandex_maps_api_key':settings.YANDEX_MAPS_JS_API_KEY})
+    today=timezone.localdate(); deliveries=list(Delivery.objects.filter(delivery_date=today,courier=request.user).select_related('point','route_run__route').order_by('route_order','id')); done=sum(d.status==Delivery.Status.DONE for d in deliveries); next_delivery=next((d for d in deliveries if d.status not in (Delivery.Status.DONE,Delivery.Status.PROBLEM)),None) or next((d for d in deliveries if d.status!=Delivery.Status.DONE),None); return render(request,'courier/today.html',{'deliveries':deliveries,'done':done,'total':len(deliveries),'today':today,'next_delivery':next_delivery,'problem_reasons':PROBLEM_REASONS,'map_points':delivery_map_items(deliveries),'yandex_maps_api_key':settings.YANDEX_MAPS_JS_API_KEY,'yandex_maps_lang':settings.YANDEX_MAPS_LANG})
 
 @login_required
 @require_POST
