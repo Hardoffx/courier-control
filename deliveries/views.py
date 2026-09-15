@@ -1,5 +1,6 @@
 from functools import wraps
 from datetime import date, timedelta
+import base64
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
@@ -11,7 +12,7 @@ from django.views.decorators.http import require_POST
 from accounts.models import User
 from .forms import DeliveryForm
 from .models import Delivery, DeliveryEvent, DeliveryPoint, RouteRun
-from .import_services import import_workbook
+from .import_services import import_workbook, preview_workbook, validate_upload
 from .point_matching import canonical_delivery_values, resolve_point
 
 PROBLEM_REASONS=('Нет доступа','Не принимают','Получатель недоступен','Неверный адрес','Нужно вернуться позже','Другая проблема')
@@ -98,16 +99,20 @@ def delivery_edit(request,pk):
     return render(request,'dispatcher/delivery_form.html',{'form':form,'title':'Редактирование заявки'})
 
 @dispatcher_required
-def delivery_history(request,pk):
-    delivery=get_object_or_404(Delivery.objects.select_related('courier','point','route_run__route'),pk=pk); events=delivery.events.select_related('actor').order_by('-created_at'); return render(request,'dispatcher/delivery_history.html',{'delivery':delivery,'events':events})
+def delivery_history(request,pk): delivery=get_object_or_404(Delivery.objects.select_related('courier','point','route_run__route'),pk=pk); events=delivery.events.select_related('actor').order_by('-created_at'); return render(request,'dispatcher/delivery_history.html',{'delivery':delivery,'events':events})
 
 @dispatcher_required
 def import_excel(request):
-    summary=None
-    if request.method=='POST' and request.FILES.get('file'):
-        try: summary=import_workbook(request.FILES['file'].read(),request.user); messages.success(request,f'Импорт: создано {summary.created}; распознано {summary.matched}; новых точек {summary.new_points}; пропущено {summary.skipped}')
-        except Exception as exc: messages.error(request,f'Не удалось импортировать файл: {exc}')
-    return render(request,'dispatcher/import_excel.html',{'summary':summary})
+    summary=None; preview_token=''; filename=''
+    if request.method=='POST':
+        try:
+            if request.POST.get('action')=='commit':
+                content=base64.b64decode(request.POST.get('payload',''),validate=True); filename=request.POST.get('filename','route.xlsx'); validate_upload(filename,content); summary=import_workbook(content,request.user); messages.success(request,f'Импорт завершён: создано {summary.created}; распознано {summary.matched}; новых точек {summary.new_points}; пропущено {summary.skipped}')
+            elif request.FILES.get('file'):
+                uploaded=request.FILES['file']; content=uploaded.read(); filename=uploaded.name; validate_upload(filename,content); summary=preview_workbook(content); preview_token=base64.b64encode(content).decode('ascii')
+            else: messages.error(request,'Выберите XLSX-файл')
+        except Exception as exc: messages.error(request,f'Не удалось обработать файл: {exc}')
+    return render(request,'dispatcher/import_excel.html',{'summary':summary,'preview_token':preview_token,'filename':filename})
 
 @login_required
 def courier_today(request):
@@ -119,8 +124,7 @@ def courier_today(request):
 def courier_update(request,pk):
     delivery=get_object_or_404(Delivery,pk=pk,courier=request.user); action=request.POST.get('action')
     if action=='done': delivery.status=Delivery.Status.DONE; delivery.completed_at=timezone.now(); delivery.completed_latitude=request.POST.get('latitude') or None; delivery.completed_longitude=request.POST.get('longitude') or None; delivery.problem_reason=''; note='Выполнено' + (' · GPS получен' if delivery.completed_latitude and delivery.completed_longitude else ' · без GPS')
-    elif action=='problem':
-        reason=request.POST.get('problem_reason','').strip(); comment=request.POST.get('problem_comment','').strip()[:255]; reason=reason if reason in PROBLEM_REASONS else 'Другая проблема'; delivery.status=Delivery.Status.PROBLEM; delivery.problem_reason=(f'{reason}: {comment}' if comment else reason)[:255]; note=delivery.problem_reason
+    elif action=='problem': reason=request.POST.get('problem_reason','').strip(); comment=request.POST.get('problem_comment','').strip()[:255]; reason=reason if reason in PROBLEM_REASONS else 'Другая проблема'; delivery.status=Delivery.Status.PROBLEM; delivery.problem_reason=(f'{reason}: {comment}' if comment else reason)[:255]; note=delivery.problem_reason
     elif action=='phone': delivery.phone=request.POST.get('phone','').strip()[:64]; note=f'Телефон: {delivery.phone}'
     else: raise PermissionDenied
     delivery.save(); DeliveryEvent.objects.create(delivery=delivery,actor=request.user,action=action,note=note); return redirect('courier_today')
