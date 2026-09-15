@@ -1,0 +1,16 @@
+[Unit]
+Description=Courier Control demo
+After=network.target
+
+[Service]
+Type=simple
+User=courier
+Group=courier
+WorkingDirectory=/opt/courier-control
+EnvironmentFile=/opt/courier-control/.env
+ExecStart=/opt/courier-control/.venv/bin/gunicorn config.wsgi:application --bind 127.0.0.1:8000 --workers 2 --timeout 60 --access-logfile - --error-logfile -
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
