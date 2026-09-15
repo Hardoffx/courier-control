@@ -9,7 +9,7 @@ MAX_AGE_SECONDS=30*60
 TOKEN_SALT='courier-control.import-stage.v1'
 
 def _root():
-    configured=getattr(settings,'IMPORT_STAGING_DIR',None)
+    configured=os.getenv('IMPORT_STAGING_DIR') or getattr(settings,'IMPORT_STAGING_DIR',None)
     root=Path(configured) if configured else Path(settings.BASE_DIR)/'var'/'import-staging'
     root.mkdir(parents=True,exist_ok=True)
     try: root.chmod(0o700)
