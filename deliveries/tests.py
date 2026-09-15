@@ -10,6 +10,14 @@ from .route_services import generate_route_run, reassign_route_run, learn_templa
 from .point_matching import match_point
 from .import_services import import_workbook, preview_workbook
 
+class PilotShellTests(TestCase):
+    def test_health_checks_database(self):
+        response=self.client.get('/healthz/'); self.assertEqual(response.status_code,200); self.assertEqual(response.json()['database'],'ok')
+    def test_manifest_is_available(self):
+        response=self.client.get('/manifest.webmanifest'); self.assertEqual(response.status_code,200); self.assertEqual(response.json()['display'],'standalone')
+    def test_service_worker_is_available(self):
+        response=self.client.get('/service-worker.js'); self.assertEqual(response.status_code,200); self.assertIn('javascript',response['Content-Type'])
+
 class DeliveryWorkflowTests(TestCase):
     def setUp(self): self.dispatcher=User.objects.create_user(username='dispatcher',password='pass',role=User.Role.DISPATCHER); self.courier=User.objects.create_user(username='courier',password='pass',role=User.Role.COURIER); self.other=User.objects.create_user(username='other',password='pass',role=User.Role.COURIER); self.delivery=Delivery.objects.create(delivery_date=timezone.localdate(),address='Москва, Тестовая 1',route_order=1)
     def test_point_kind_fallback(self): self.assertEqual(Delivery.infer_point_kind('458'),DeliveryPoint.Kind.CMD); self.assertEqual(Delivery.infer_point_kind('ИНВИТРО Митино'),DeliveryPoint.Kind.INVITRO); self.assertEqual(Delivery.infer_point_kind('Склад'),DeliveryPoint.Kind.SERVICE); self.assertEqual(Delivery.infer_point_kind('ЛИТЕХ'),DeliveryPoint.Kind.EXTERNAL)
