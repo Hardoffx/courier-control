@@ -11,47 +11,47 @@
 Django-система для ежедневной курьерской работы. Excel-подобный интерфейс диспетчера + мобильный интерфейс курьера. Цвет строки — только оформление. GPS optional. Excel основной вход MVP. `courier-route-bot` отдельный проект.
 
 ### Маршруты и курьеры — разные сущности
-Маршрут существует независимо от курьера. `Route.default_courier` — обычный исполнитель, но на конкретный день `RouteRun.assigned_courier` может быть любым активным курьером, включая резервного. Подмена на день не меняет шаблон и default courier. Будний/выходной — независимые варианты маршрута с разным составом, порядком и временем.
+Route существует независимо от курьера. `default_courier` — обычный исполнитель; `RouteRun.assigned_courier` — кто реально едет в конкретную дату. Будни/выходные — независимые шаблоны. Подмена и правки RouteRun не должны менять постоянный шаблон.
 
 ## Реализовано
 - User dispatcher/courier, DeliveryPoint, Delivery, DeliveryEvent и migrations.
-- Dashboard, поиск/фильтры, quick edit, массовое назначение.
 - Мобильный маршрут: maps/call/done/problem/phone/GPS/reorder.
 - Excel import foundation и UI справочника точек.
-- CI + базовые workflow tests.
-- Persistent route foundation: Route, RouteTemplate weekday/weekend/custom, RouteTemplateItem, RouteRun, Delivery.route_run, migration 0002.
-- `generate_route_run()` безопасно создаёт/обновляет день, не дублирует и сохраняет DONE.
-- `reassign_route_run()` меняет исполнителя незавершённых точек без изменения постоянного маршрута.
-- Tests на weekday/weekend, default/substitute courier, safe regeneration/completed delivery.
-- **Основной UI постоянных маршрутов:**
-  - верхняя навигация «Сегодня / Маршруты / Точки / Импорт»;
-  - список логических маршрутов с обычным курьером и вариантами;
-  - создание/настройка Route; при первом создании автоматически создаются «Будни» и «Выходные»;
-  - редактор выбранного шаблона: добавить точку из справочника, включить/выключить по умолчанию, изменить время/комментарий, удалить, поднять/опустить;
-  - экран формирования конкретного дня прямо из шаблона: дата, фактический курьер, индивидуальные галочки точек;
-  - выбор подменного курьера не меняет default courier;
-  - POST endpoint смены курьера существующего RouteRun готов для подключения к dashboard.
+- Route / RouteTemplate weekday-weekend-custom / RouteTemplateItem / RouteRun / Delivery.route_run.
+- Safe generate/reassign services + route tests.
+- UI постоянных маршрутов: создание, default courier, шаблоны, add/toggle/remove point, время/comment, up/down, формирование дня с выбранным фактическим курьером.
+- **Dashboard теперь ориентирован на рабочие маршруты дня:**
+  - навигация по датам ← / → и возврат «Сегодня»;
+  - карточка каждого RouteRun с progress done/total, проблемами, template kind;
+  - быстрая замена фактического курьера всего маршрута прямо из карточки;
+  - общая таблица ниже показывает принадлежность точки к RouteRun;
+  - отдельный экран RouteRun показывает точки конкретного дня;
+  - на RouteRun можно сменить курьера, переставить незавершённые точки вверх/вниз или убрать точку только из этого дня;
+  - DONE точки защищены от удаления/перестановки через daily editor;
+  - исправлен старый invalid nested-form dashboard: bulk form теперь отдельный, checkboxes используют HTML `form` attribute, quick-edit forms больше не вложены;
+  - dashboard filters сохраняют выбранную дату.
+- CI успешно проходил на commit с daily route editor (`c60f710...`); последующие UI commits проверяются автоматически.
 
 ## Технический долг / риски
-1. Excel import: нужен matcher + canonical autofill + duplicate protection/report.
+1. Excel import: matcher + canonical autofill + duplicate protection/report.
 2. `infer_point_kind()` fallback `МО ...` слишком широкий.
 3. Unique `(code,address)` non-CMD пересмотреть после matcher.
 4. Quick edit Delivery не синхронизирует справочник.
 5. Excel fill parser ограничен.
-6. Route editor сейчас имеет up/down, drag/drop ещё не добавлен.
-7. На dashboard нужно визуально группировать Delivery по RouteRun и подключить быструю смену курьера всего маршрута.
+6. Route template editor: добавить drag/drop + batch save.
+7. Daily RouteRun editor пока умеет remove/reorder, но не добавляет новую точку из справочника непосредственно в конкретный день.
 8. Нужен UI управления курьерами; резервный — метка, не ограничивающая роль.
-9. Нужна date navigation и просмотр/редактирование уже сформированного RouteRun.
+9. RouteRun status пока не вычисляется/синхронизируется полноценно с Delivery progress.
 10. `deliveries/views.py` требует service refactor.
 11. Deployment ещё впереди.
 
 ## Следующий крупный блок
-1. Dashboard RouteRun: группировка сегодняшних точек по маршрутам, фактический курьер, быстрая подмена всего маршрута, статус/progress.
-2. Date navigation и редактирование конкретного маршрута дня без изменения шаблона.
-3. Улучшить template editor drag/drop + сохранить порядок одним запросом.
-4. Затем point_matching + canonical Excel autofill + safe re-import/report.
-5. Управление курьерами/резервной меткой.
-6. Проверить latest CI до green и добавить UI tests.
+1. Point matching service: нормализация + code/address/name priority + canonical autofill.
+2. Переделать Excel import: match existing points first, safe re-import, duplicate protection, summary/warnings.
+3. Quick edit Delivery синхронизировать с canonical point там, где это безопасно.
+4. Добавить новую точку из справочника непосредственно в RouteRun day editor.
+5. Затем drag/drop template/day order и courier management/reserve marker.
+6. UI/integration tests + latest CI green.
 
 ## Протокол «Дальше»
-Прочитать `PROJECT_STATE.md` + `ROADMAP.md` → проверить `main`/CI → взять следующий крупный блок → реализовать самостоятельно → проверить → commit → обновить state. Работать крупными блоками.
+Прочитать `PROJECT_STATE.md` + `ROADMAP.md` → проверить `main`/CI → взять следующий крупный незавершённый блок → реализовать самостоятельно → проверить → commit → обновить state. Работать крупными блоками.
