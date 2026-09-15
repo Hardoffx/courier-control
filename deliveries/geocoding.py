@@ -19,16 +19,19 @@ def geocode_point(point, *, force=False, opener=urlopen):
 
     Safe to call without a configured key: the point remains pending and no
     external request is attempted. Existing successful coordinates are kept
-    unless force=True.
+    unless force=True. Transport/payload failures remain retryable instead of
+    poisoning the point as permanently failed.
     """
-    if point.geocode_status == DeliveryPoint.GeocodeStatus.OK and point.latitude is not None and point.longitude is not None and not force:
+    has_valid_coordinates = point.geocode_status == DeliveryPoint.GeocodeStatus.OK and point.latitude is not None and point.longitude is not None
+    if has_valid_coordinates and not force:
         return True
     key = getattr(settings, 'YANDEX_GEOCODER_API_KEY', '')
     if not key:
         return False
     address = (point.address or '').strip()
     if not address:
-        _mark_failed(point)
+        if not has_valid_coordinates:
+            _mark_failed(point)
         return False
     params = urlencode({'apikey': key, 'geocode': address, 'format': 'json', 'results': 1, 'lang': 'ru_RU'})
     request = Request(f'{GEOCODER_URL}?{params}', headers={'User-Agent': 'Courier-Control/1.0'})
@@ -37,7 +40,8 @@ def geocode_point(point, *, force=False, opener=urlopen):
             payload = json.loads(response.read().decode('utf-8'))
         members = payload['response']['GeoObjectCollection']['featureMember']
         if not members:
-            _mark_failed(point)
+            if not has_valid_coordinates:
+                _mark_failed(point)
             return False
         obj = members[0]['GeoObject']
         lon_raw, lat_raw = obj['Point']['pos'].split()
@@ -54,15 +58,28 @@ def geocode_point(point, *, force=False, opener=urlopen):
         point.save(update_fields=['longitude','latitude','geocode_status','geocoded_address','geocoded_at','updated_at'])
         return True
     except (HTTPError, URLError, TimeoutError, KeyError, ValueError, InvalidOperation, json.JSONDecodeError) as exc:
-        logger.warning('Yandex geocoding failed for point %s: %s', point.pk, exc)
-        _mark_failed(point)
+        logger.warning('Yandex geocoding temporarily failed for point %s: %s', point.pk, exc)
+        if not has_valid_coordinates:
+            _mark_pending(point)
         return False
 
 
+def _mark_pending(point):
+    point.latitude = None
+    point.longitude = None
+    point.geocode_status = DeliveryPoint.GeocodeStatus.PENDING
+    point.geocoded_address = ''
+    point.geocoded_at = None
+    point.save(update_fields=['latitude','longitude','geocode_status','geocoded_address','geocoded_at','updated_at'])
+
+
 def _mark_failed(point):
+    point.latitude = None
+    point.longitude = None
     point.geocode_status = DeliveryPoint.GeocodeStatus.FAILED
+    point.geocoded_address = ''
     point.geocoded_at = timezone.now()
-    point.save(update_fields=['geocode_status','geocoded_at','updated_at'])
+    point.save(update_fields=['latitude','longitude','geocode_status','geocoded_address','geocoded_at','updated_at'])
 
 
 def geocode_pending_points(*, limit=100, force=False):
