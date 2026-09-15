@@ -1,3 +1,4 @@
+import os
 import secrets
 import time
 from pathlib import Path
@@ -8,7 +9,12 @@ MAX_AGE_SECONDS=30*60
 TOKEN_SALT='courier-control.import-stage.v1'
 
 def _root():
-    root=Path(settings.BASE_DIR)/'var'/'import-staging'; root.mkdir(parents=True,exist_ok=True); return root
+    configured=getattr(settings,'IMPORT_STAGING_DIR',None)
+    root=Path(configured) if configured else Path(settings.BASE_DIR)/'var'/'import-staging'
+    root.mkdir(parents=True,exist_ok=True)
+    try: root.chmod(0o700)
+    except OSError: pass
+    return root
 
 def cleanup_staged(now=None):
     now=now or time.time(); removed=0
@@ -19,7 +25,12 @@ def cleanup_staged(now=None):
     return removed
 
 def stage_upload(content,user_id,filename):
-    cleanup_staged(); key=secrets.token_urlsafe(24); path=_root()/f'{key}.xlsx'; path.write_bytes(content)
+    cleanup_staged(); key=secrets.token_urlsafe(24); path=_root()/f'{key}.xlsx'
+    fd=os.open(path,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
+    try:
+        with os.fdopen(fd,'wb') as handle: handle.write(content)
+    except Exception:
+        path.unlink(missing_ok=True); raise
     return signing.dumps({'key':key,'uid':int(user_id),'name':Path(filename).name[:180]},salt=TOKEN_SALT,compress=True)
 
 def consume_upload(token,user_id):
