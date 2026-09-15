@@ -5,6 +5,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
+from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
@@ -26,10 +27,17 @@ def home(request): return redirect('dispatcher_dashboard' if request.user.is_dis
 
 @dispatcher_required
 def dispatcher_dashboard(request):
-    today=timezone.localdate(); deliveries=Delivery.objects.filter(delivery_date=today).select_related('courier','point'); couriers=User.objects.filter(role=User.Role.COURIER,is_active=True).order_by('first_name','username'); counts={key:deliveries.filter(status=key).count() for key,_ in Delivery.Status.choices}; courier_stats=[]
+    today=timezone.localdate(); base=Delivery.objects.filter(delivery_date=today).select_related('courier','point'); deliveries=base
+    q=request.GET.get('q','').strip(); kind=request.GET.get('kind','').strip(); status=request.GET.get('status','').strip(); courier_filter=request.GET.get('courier','').strip()
+    if q: deliveries=deliveries.filter(Q(source_label__icontains=q)|Q(address__icontains=q)|Q(phone__icontains=q)|Q(organization__icontains=q)|Q(recipient__icontains=q))
+    if kind: deliveries=deliveries.filter(point__kind=kind)
+    if status: deliveries=deliveries.filter(status=status)
+    if courier_filter=='unassigned': deliveries=deliveries.filter(courier__isnull=True)
+    elif courier_filter.isdigit(): deliveries=deliveries.filter(courier_id=int(courier_filter))
+    couriers=User.objects.filter(role=User.Role.COURIER,is_active=True).order_by('first_name','username'); counts={key:base.filter(status=key).count() for key,_ in Delivery.Status.choices}; courier_stats=[]
     for courier in couriers:
-        qs=deliveries.filter(courier=courier); courier_stats.append({'courier':courier,'total':qs.count(),'done':qs.filter(status=Delivery.Status.DONE).count(),'problem':qs.filter(status=Delivery.Status.PROBLEM).count()})
-    return render(request,'dispatcher/dashboard.html',{'deliveries':deliveries,'couriers':couriers,'row_colors':Delivery.RowColor.choices,'counts':counts,'courier_stats':courier_stats,'today':today})
+        qs=base.filter(courier=courier); courier_stats.append({'courier':courier,'total':qs.count(),'done':qs.filter(status=Delivery.Status.DONE).count(),'problem':qs.filter(status=Delivery.Status.PROBLEM).count()})
+    return render(request,'dispatcher/dashboard.html',{'deliveries':deliveries,'couriers':couriers,'row_colors':Delivery.RowColor.choices,'point_kinds':DeliveryPoint.Kind.choices,'statuses':Delivery.Status.choices,'counts':counts,'courier_stats':courier_stats,'today':today,'filters':{'q':q,'kind':kind,'status':status,'courier':courier_filter}})
 
 def _resolve_courier(courier_id):
     if not courier_id: return None
@@ -43,8 +51,7 @@ def _assign(delivery,courier,actor,action='assigned'):
 
 @dispatcher_required
 @require_POST
-def dispatcher_assign(request,pk):
-    _assign(get_object_or_404(Delivery,pk=pk),_resolve_courier(request.POST.get('courier_id','')),request.user); return redirect('dispatcher_dashboard')
+def dispatcher_assign(request,pk): _assign(get_object_or_404(Delivery,pk=pk),_resolve_courier(request.POST.get('courier_id','')),request.user); return redirect('dispatcher_dashboard')
 
 @dispatcher_required
 @require_POST
@@ -57,22 +64,18 @@ def dispatcher_bulk_assign(request):
 @dispatcher_required
 @require_POST
 def dispatcher_quick_edit(request,pk):
-    delivery=get_object_or_404(Delivery,pk=pk,delivery_date=timezone.localdate()); changed=[]
-    values={'source_label':request.POST.get('source_label','').strip()[:255],'address':request.POST.get('address','').strip()[:500],'time_window':request.POST.get('time_window','').strip()[:64],'phone':request.POST.get('phone','').strip()[:64],'row_color':request.POST.get('row_color','')}
-    allowed_colors={v for v,_ in Delivery.RowColor.choices}
+    delivery=get_object_or_404(Delivery,pk=pk,delivery_date=timezone.localdate()); changed=[]; values={'source_label':request.POST.get('source_label','').strip()[:255],'address':request.POST.get('address','').strip()[:500],'time_window':request.POST.get('time_window','').strip()[:64],'phone':request.POST.get('phone','').strip()[:64],'row_color':request.POST.get('row_color','')}; allowed_colors={v for v,_ in Delivery.RowColor.choices}
     if values['row_color'] not in allowed_colors: values['row_color']=''
     if not values['address']: messages.error(request,'Адрес не может быть пустым'); return redirect('dispatcher_dashboard')
     for field,value in values.items():
         if getattr(delivery,field)!=value: setattr(delivery,field,value); changed.append(field)
-    if changed:
-        delivery.save(update_fields=changed+['updated_at']); DeliveryEvent.objects.create(delivery=delivery,actor=request.user,action='quick_edited',note=', '.join(changed))
+    if changed: delivery.save(update_fields=changed+['updated_at']); DeliveryEvent.objects.create(delivery=delivery,actor=request.user,action='quick_edited',note=', '.join(changed))
     return redirect('dispatcher_dashboard')
 
 @dispatcher_required
 def delivery_create(request):
     form=DeliveryForm(request.POST or None,initial={'delivery_date':timezone.localdate()})
-    if request.method=='POST' and form.is_valid():
-        delivery=form.save(); DeliveryEvent.objects.create(delivery=delivery,actor=request.user,action='created'); return redirect('dispatcher_dashboard')
+    if request.method=='POST' and form.is_valid(): delivery=form.save(); DeliveryEvent.objects.create(delivery=delivery,actor=request.user,action='created'); return redirect('dispatcher_dashboard')
     return render(request,'dispatcher/delivery_form.html',{'form':form,'title':'Новая заявка'})
 
 @dispatcher_required
@@ -133,5 +136,9 @@ def courier_reorder(request,pk):
     except ValueError: return redirect('courier_today')
     target=index-1 if direction=='up' else index+1
     if 0<=target<len(items):
-        other=items[target]; a,b=delivery.route_order,other.route_order; delivery.route_order=b if a!=b else target+1; other.route_order=a if a!=b else index+1; delivery.save(update_fields=['route_order']); other.save(update_fields=['route_order']); DeliveryEvent.objects.create(delivery=delivery,actor=request.user,action='reordered')
+        items[index],items[target]=items[target],items[index]
+        with transaction.atomic():
+            for pos,item in enumerate(items,start=1):
+                if item.route_order!=pos: item.route_order=pos; item.save(update_fields=['route_order'])
+        DeliveryEvent.objects.create(delivery=delivery,actor=request.user,action='reordered',note=f'{index+1} → {target+1}')
     return redirect('courier_today')
