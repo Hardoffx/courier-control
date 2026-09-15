@@ -3,41 +3,47 @@
 > Перед разработкой читать этот файл + `ROADMAP.md`, затем проверять актуальный `main` и CI. После крупного блока обновлять.
 
 **Последнее обновление:** 2026-09-15 · **repo:** `Hardoffx/courier-control` · **branch:** `main`
-**Стадия:** функциональный MVP, active development, приближается к deployable pilot.
+**Стадия:** функциональный MVP, demo/pilot deployment foundation готовится.
 
 ## Продолжение
 В текущем или новом чате команды **`Дальше`** и **`Курьер Бот — продолжай`** означают: прочитать этот файл + ROADMAP, проверить main/CI, самостоятельно взять следующий крупный незавершённый блок, реализовать, протестировать, исправить CI и обновить handoff. Не требовать от пользователя пересказа проекта.
 
 ## Архитектурные решения
-Django; Excel-like dispatcher UI + mobile courier UI. Цвет строки только оформление. GPS optional. Excel основной вход. Route независим от courier: `default_courier` постоянный, `RouteRun.assigned_courier` фактический. Weekday/weekend независимы. Резервный courier имеет только UX-маркер и может взять любой RouteRun.
+Django; Excel-like dispatcher UI + mobile courier UI. Цвет строки только оформление. GPS optional. Excel основной вход. Route независим от courier. Weekday/weekend независимы. Резервный courier — UX marker, не отдельная роль.
+
+**Новое решение:** demo/pilot работает на SQLite. PostgreSQL сознательно отложен до полноценного production/существенной параллельной нагрузки. Не тратить время demo-этапа на PostgreSQL.
 
 ## Реализовано
-- Accounts, DeliveryPoint, Delivery/Event, Route/Template/Item/Run.
-- Dispatcher dashboard/date/filters/stats/assignment/RouteRun; courier management + reserve marker.
-- Persistent route memory: weekday/weekend, drag/drop, safe day generation, substitutes, one-off day points, copy previous actual route.
-- **Actual route → permanent template learning:** dispatcher explicitly selects which template to update from a corrected RouteRun. Service validates same Route, copies canonical point composition/order/time/comment, enables learned points, removes points absent from that actual day, deduplicates repeated canonical point, and does not touch weekday/weekend/other variants. Nothing learns automatically.
-- Mobile courier action-first screen: explicit next stop, navigator/call, done with optional GPS, problem presets+comment, phone, reorder.
-- Full dispatcher-only delivery event history.
-- Canonical point matching + Excel importer with preamble header detection, duplicate protection, legitimate repeat visits and canonical data reuse.
-- Excel two-step preview→confirm, `.xlsx`/5 MB/corrupt-file validation; preview does not write DB.
-- CI was green through route-learning UI commit `37eef97...`; route-learning test commit `1a64b719...` was in progress when state was written.
+- Полный текущий operational MVP: accounts, directory, deliveries/events, routes/templates/runs, dispatcher/courier UI, reserve couriers, GPS/problem/history, drag/drop, previous-day copy, explicit actual-route→template learning.
+- Canonical point matching + Excel importer + safe preview→confirm.
+- CI перед pilot block был полностью green, включая route-learning tests (run #83 success).
+- **SQLite demo deployment foundation:**
+  - SQLite is explicit pilot DB with configurable persistent `SQLITE_PATH` and busy timeout;
+  - DEBUG-off requires real secret; allowed hosts/CSRF origins/env config added;
+  - secure cookies/proxy HTTPS settings for public deployment;
+  - WhiteNoise compressed manifest static files;
+  - console logging;
+  - `/healthz/` checks DB connectivity;
+  - PWA manifest + root service worker + standalone/iOS meta/safe-area/mobile input improvements;
+  - Gunicorn systemd example and nginx reverse-proxy example;
+  - SQLite Online Backup API script with 14-day local retention and restore instructions;
+  - `PILOT_DEPLOY.md` provides a short Ubuntu VPS path;
+  - tests added for health/manifest/service-worker endpoints.
 
 ## Технический долг / риски
-1. Verify latest route-learning tests CI and fix to green.
-2. Excel preview payload currently base64 round-trip in POST; replace with server-side temporary token/storage before production.
-3. Theme/indexed Excel fills pending; current RGB palette only.
-4. Need first real management XLSX validation.
-5. Dense views/services need refactor and broader security review before production.
-6. PWA/home-screen/offline shell and deployment/backup/logging/health checks pending.
-7. Management statistics/export/demo pending.
+1. Verify latest pilot-foundation CI and fix to green.
+2. Excel preview still round-trips base64 workbook in POST; replace with bounded server-side temporary storage/token before public pilot.
+3. Need actual management XLSX end-to-end validation; theme/indexed fills can be improved then from real evidence.
+4. Dense views/services need refactor/security review before production.
+5. Service worker intentionally provides only a tiny fallback shell; no offline mutation/data synchronization.
+6. SQLite is pilot-only decision; PostgreSQL migration remains required before serious concurrent production use.
+7. Management statistics/export/demo scenario pending.
 
 ## Следующий укрупнённый блок
 1. Verify/fix latest CI.
-2. Take **deployable pilot foundation** as one large block: production-safe settings/env validation, health endpoint, structured/basic logging, static/WhiteNoise, PostgreSQL/Gunicorn config, Docker/reverse-proxy-friendly files, backup/restore commands/docs, PWA manifest/service-worker/home-screen shell.
-3. During that block replace base64 Excel confirmation payload with server-side temporary upload token or another bounded server-side mechanism and add upload security tests.
-4. Improve theme/indexed Excel fills if practical without delaying pilot.
-5. After code-side pilot readiness, external dependency becomes actual VPS/domain/database credentials; ask only then.
-6. Then management statistics/report/export/demo.
+2. Finish **public demo hardening**: replace base64 Excel confirmation with server-side temporary file/token; ownership+expiry+size controls; cleanup; tests. Add basic security headers/upload tests and improve PWA install shell if CI-safe.
+3. Then implement **management pitch block** together: daily/weekly statistics, courier performance/problem counts, CSV/XLSX-style report/export if practical, and seeded/demo-data command so presentation can be populated quickly.
+4. After those code blocks, the next external dependency is actual VPS/domain/HTTPS target. Ask user only then; SQLite remains DB for this demo.
 
 ## Протокол
 `Дальше` → inspect state+roadmap+main+CI → large cohesive unfinished block → implement autonomously → verify → commit → update state. Не задавать планировочных вопросов без внешней зависимости.
