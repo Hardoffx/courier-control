@@ -16,7 +16,9 @@ Roadmap отражает порядок разработки, а не обеща
 - [x] Canonical address/phone/type reuse + corrected mappings reuse
 - [x] Header detection / duplicate-safe re-import / legitimate repeats
 - [x] Import result + non-writing preview
+- [x] Preview presentation contract, duplicate prediction and estimated new-point count
 - [x] Upload/staging/archive hardening and tests
+- [x] Configurable private staging directory via environment
 - [ ] Theme/indexed fills where practical; validate need against real management XLSX
 
 ## Phase 2.5 — Persistent courier route memory
@@ -39,9 +41,11 @@ Roadmap отражает порядок разработки, а не обеща
 - [x] Dispatcher desktop/mobile dashboard, statistics, import, points, routes, couriers, forms/history
 - [x] Yandex Maps-only data contract and persisted point coordinates
 - [x] Yandex geocoder service + batch management command
+- [x] Retryable transient geocoding + address-change coordinate invalidation
 - [x] Courier operational Yandex route map with real coordinates only
 - [x] Dispatcher List / Map / Split using the same operational Yandex map component
 - [x] Marker → delivery focus and status-aware markers
+- [ ] Final lazy/secondary embedded-map behavior and live API acceptance
 - [ ] Final visual/device QA at 375/390/430, tablet, laptop, wide desktop
 - [ ] Real API key/domain-restriction acceptance on deployed host
 
@@ -49,7 +53,9 @@ Roadmap отражает порядок разработки, а не обеща
 - [x] Core role/workflow/import/route tests
 - [x] Health/PWA tests
 - [x] Map data/geocoding foundation tests
-- [x] Import staging expiry/one-time/archive-expansion tests
+- [x] Geocoder success/transient/no-result/address-invalidation tests
+- [x] Import staging expiry/one-time/archive-expansion/private-permission tests
+- [x] Import preview render/contract tests
 - [ ] Further refactor dense views
 - [ ] Broader security review auth/forms/uploads
 
@@ -60,6 +66,7 @@ Roadmap отражает порядок разработки, а не обеща
 - [x] PWA shell
 - [x] Excel confirmation via expiring user-bound server-side staging token
 - [x] Explicit PILOT_ACCEPTANCE.md gate/checklist
+- [x] Pilot env example includes SQLite/staging/Yandex variables
 - [ ] Actual VPS/domain/HTTPS deployment + restore drill
 - [ ] Yandex credentials/domain restrictions + real coordinate acceptance
 - [ ] Pilot accounts / first real management Excel / one real test day / feedback fixes
