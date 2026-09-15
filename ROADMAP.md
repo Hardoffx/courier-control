@@ -3,7 +3,7 @@
 Roadmap отражает порядок разработки, а не обещанные календарные сроки.
 
 ## Phase 0 — Foundation
-- [x] Django project structure / custom User / Delivery / DeliveryEvent / DeliveryPoint / migrations / PostgreSQL config / CI
+- [x] Django project structure / custom User / Delivery / DeliveryEvent / DeliveryPoint / migrations / CI
 
 ## Phase 1 — Daily operational loop
 - [x] Dispatcher dashboard, create/edit, single+bulk assignment, search/filter
@@ -28,36 +28,35 @@ Roadmap отражает порядок разработки, а не обеща
 - [x] Drag-and-drop ordering + up/down fallback
 - [x] Generate day safely + actual courier override + completed-work preservation
 - [x] Add one-off canonical point to generated day
-- [x] Explicitly learn/update one selected template from corrected actual RouteRun without changing other variants
+- [x] Explicitly learn/update selected template from corrected actual RouteRun
 
 ## Phase 3 — Courier and dispatcher usability
 - [x] Courier management UI + reserve marker
 - [x] Dispatcher date navigation + drag/batch ordering
 - [x] Dispatcher completion/GPS/problem visibility
-- [x] Copy previous route composition/order into prepared day, preserving today's courier and protecting completed work
+- [x] Copy previous route composition/order into prepared day
 - [x] Mobile action-first courier screen with explicit next stop
 - [x] Problem reason presets + free comment
 - [x] Full event/history view per delivery for dispatcher
-- [ ] Further responsive/PWA polish
+- [x] Initial PWA/home-screen shell + iPhone safe-area/mobile input polish
 
 ## Phase 4 — Quality gate
-- [x] Role/cross-courier/single assignment/completion/reorder/classification baseline
-- [x] Point matching + Excel header/duplicate/repeat/preview-no-write tests
-- [x] Route generation/safe refresh/day extra-point tests
-- [x] Courier create/deactivate/reserve tests
-- [x] Batch template/day reorder tests
-- [x] Bulk assignment test
-- [x] Completion with GPS test
-- [x] Problem preset/history permissions tests
-- [x] Route learning isolation/wrong-route safety tests
+- [x] Core role/workflow/import/route tests
+- [x] Health/PWA endpoint tests
 - [ ] Further refactor dense views
 - [ ] Security review auth/forms/uploads
 
-## Phase 5 — Deployable pilot
-- [ ] PostgreSQL / Gunicorn / reverse proxy / HTTPS/domain / env+secrets
-- [ ] Static files / dispatcher+pilot courier accounts
-- [ ] Backup / error logging / health check
-- [ ] PWA/home-screen polish
+## Phase 5 — Deployable demo/pilot
+- [x] Decision: SQLite for demo/pilot; PostgreSQL postponed until production scale
+- [x] Production-style env settings while retaining persistent SQLite
+- [x] Gunicorn systemd example + nginx reverse-proxy example
+- [x] Static files / WhiteNoise
+- [x] Health check + console logging
+- [x] SQLite online backup script + restore documentation
+- [x] PWA manifest/service-worker shell
+- [ ] Replace Excel base64 confirmation with server-side temporary token/storage
+- [ ] Actual VPS/domain/HTTPS deployment
+- [ ] Dispatcher + pilot courier accounts
 - [ ] First real Excel end-to-end + pilot feedback fixes
 
 ## Phase 6 — Management pitch MVP
@@ -65,6 +64,10 @@ Roadmap отражает порядок разработки, а не обеща
 - [ ] Completion/problem performance
 - [ ] Export/report
 - [ ] Demo scenario + clean demo environment
+
+## Before full production
+- [ ] PostgreSQL migration and production concurrency validation
+- [ ] Hardened backup/restore and monitoring
 
 ## Later / not blocking MVP
 OCR in web product; automatic route optimization; continuous tracking; advanced maps/geocoding; Telegram integration; notifications; customer portal; SaaS multi-tenancy; native apps.
