@@ -10,48 +10,56 @@
 ## Цель и ключевые решения
 Django-система для ежедневной курьерской работы. Excel-подобный интерфейс диспетчера + мобильный интерфейс курьера. Цвет строки — только оформление. GPS optional. Excel основной вход MVP. `courier-route-bot` отдельный проект.
 
-### Маршруты и курьеры — разные сущности
-Route существует независимо от курьера. `default_courier` — обычный исполнитель; `RouteRun.assigned_courier` — кто реально едет в конкретную дату. Будни/выходные — независимые шаблоны. Подмена и правки RouteRun не должны менять постоянный шаблон.
+### Маршруты и курьеры
+Route существует независимо от курьера. `default_courier` — обычный исполнитель; `RouteRun.assigned_courier` — кто реально едет в дату. Будни/выходные независимы. Подмена и правки RouteRun не меняют шаблон.
 
 ## Реализовано
-- User dispatcher/courier, DeliveryPoint, Delivery, DeliveryEvent и migrations.
-- Мобильный маршрут: maps/call/done/problem/phone/GPS/reorder.
-- Excel import foundation и UI справочника точек.
-- Route / RouteTemplate weekday-weekend-custom / RouteTemplateItem / RouteRun / Delivery.route_run.
-- Safe generate/reassign services + route tests.
-- UI постоянных маршрутов: создание, default courier, шаблоны, add/toggle/remove point, время/comment, up/down, формирование дня с выбранным фактическим курьером.
-- **Dashboard теперь ориентирован на рабочие маршруты дня:**
-  - навигация по датам ← / → и возврат «Сегодня»;
-  - карточка каждого RouteRun с progress done/total, проблемами, template kind;
-  - быстрая замена фактического курьера всего маршрута прямо из карточки;
-  - общая таблица ниже показывает принадлежность точки к RouteRun;
-  - отдельный экран RouteRun показывает точки конкретного дня;
-  - на RouteRun можно сменить курьера, переставить незавершённые точки вверх/вниз или убрать точку только из этого дня;
-  - DONE точки защищены от удаления/перестановки через daily editor;
-  - исправлен старый invalid nested-form dashboard: bulk form теперь отдельный, checkboxes используют HTML `form` attribute, quick-edit forms больше не вложены;
-  - dashboard filters сохраняют выбранную дату.
-- CI успешно проходил на commit с daily route editor (`c60f710...`); последующие UI commits проверяются автоматически.
+- User dispatcher/courier, DeliveryPoint, Delivery/Event.
+- Courier mobile workflow.
+- Route/Template/Item/Run foundation + safe generation/reassignment.
+- UI постоянных маршрутов и подготовки дня.
+- Dashboard по дате и RouteRun: progress, проблемы, быстрая подмена, daily editor, remove/reorder с защитой DONE.
+- UI справочника точек.
+- **Canonical point matching:**
+  - отдельный `point_matching.py`;
+  - нормализация регистра/пробелов/пунктуации/ё;
+  - CMD сначала ищется по коду независимо от пришедшего адреса;
+  - затем exact normalized address, address+name и exact name;
+  - найденная точка даёт канонический адрес/телефон;
+  - неизвестная точка может быть добавлена в справочник с fallback classification.
+- **Safe Excel import service:**
+  - логика вынесена из плотного `views.py` в `import_services.py`;
+  - импорт сначала использует справочник;
+  - канонический адрес/телефон имеют приоритет над грязными значениями Excel;
+  - повторная активная точка на ту же дату пропускается вместо дубля;
+  - отчёт: создано доставок / распознано / новых справочных точек / пропущено;
+  - warnings показывают конкретные строки повторов/неверного порядка;
+  - empty workbook получает отдельную ошибку;
+  - quick edit теперь также пытается привязать Delivery к canonical DeliveryPoint.
+- Добавлены tests: CMD code-first match, canonical address/phone import, safe re-import.
+- CI успешно прошёл на подключении нового importer (`78a4e04...`); тестовый commit `c4777e4...` был queued на момент записи state.
 
 ## Технический долг / риски
-1. Excel import: matcher + canonical autofill + duplicate protection/report.
-2. `infer_point_kind()` fallback `МО ...` слишком широкий.
-3. Unique `(code,address)` non-CMD пересмотреть после matcher.
-4. Quick edit Delivery не синхронизирует справочник.
-5. Excel fill parser ограничен.
-6. Route template editor: добавить drag/drop + batch save.
-7. Daily RouteRun editor пока умеет remove/reorder, но не добавляет новую точку из справочника непосредственно в конкретный день.
-8. Нужен UI управления курьерами; резервный — метка, не ограничивающая роль.
-9. RouteRun status пока не вычисляется/синхронизируется полноценно с Delivery progress.
-10. `deliveries/views.py` требует service refactor.
+1. Matcher намеренно консервативный: fuzzy matching пока нет, чтобы не склеивать разные лаборатории ошибочно.
+2. Unique `(code,address)` для non-CMD всё ещё нужно пересмотреть перед более агрессивным learning.
+3. Duplicate rule сейчас `date + canonical point` для незавершённых; при реальном файле проверить случаи, когда одну точку действительно посещают дважды за день.
+4. Import preview перед записью ещё нет; сейчас отчёт показывается после безопасного импорта.
+5. Excel header detection всё ещё ожидает первую строку заголовков; реальный management XLSX может требовать поиск header row.
+6. Theme/indexed Excel colors ещё не обрабатываются полноценно.
+7. Daily RouteRun editor пока не добавляет новую точку из справочника.
+8. Route template editor: drag/drop + batch save ещё нет.
+9. Нужен UI управления курьерами; резервный — метка, не отдельная ограничивающая роль.
+10. RouteRun status sync требует доводки.
 11. Deployment ещё впереди.
 
 ## Следующий крупный блок
-1. Point matching service: нормализация + code/address/name priority + canonical autofill.
-2. Переделать Excel import: match existing points first, safe re-import, duplicate protection, summary/warnings.
-3. Quick edit Delivery синхронизировать с canonical point там, где это безопасно.
-4. Добавить новую точку из справочника непосредственно в RouteRun day editor.
-5. Затем drag/drop template/day order и courier management/reserve marker.
-6. UI/integration tests + latest CI green.
+1. Проверить новый matcher/import tests в CI и исправить до green.
+2. Import preview + более устойчивое обнаружение заголовков реального Excel.
+3. Обработать важный сценарий повторного посещения одной точки за день через более точный duplicate fingerprint (route/time/order/source context), не запрещая легитимные повторы.
+4. Добавление точки из справочника непосредственно в RouteRun day editor.
+5. Drag/drop + batch reorder для template/day.
+6. Courier management + reserve marker.
+7. Затем pilot/deploy readiness.
 
 ## Протокол «Дальше»
 Прочитать `PROJECT_STATE.md` + `ROADMAP.md` → проверить `main`/CI → взять следующий крупный незавершённый блок → реализовать самостоятельно → проверить → commit → обновить state. Работать крупными блоками.
