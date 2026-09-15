@@ -12,6 +12,14 @@ class DeliveryPoint(models.Model):
     class Meta:
         ordering=('kind','name'); constraints=[models.UniqueConstraint(fields=('code','address'),name='unique_point_code_address')]
     def __str__(self): return self.name or self.code or self.address
+    def save(self,*args,**kwargs):
+        if self.pk:
+            previous=type(self).objects.filter(pk=self.pk).values_list('address',flat=True).first()
+            if previous is not None and previous!=self.address:
+                self.latitude=None; self.longitude=None; self.geocode_status=self.GeocodeStatus.PENDING; self.geocoded_address=''; self.geocoded_at=None
+                if kwargs.get('update_fields') is not None:
+                    kwargs['update_fields']=set(kwargs['update_fields'])|{'latitude','longitude','geocode_status','geocoded_address','geocoded_at','updated_at'}
+        return super().save(*args,**kwargs)
 
 class Route(models.Model):
     name=models.CharField(max_length=120,unique=True)
