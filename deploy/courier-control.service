@@ -1,16 +1,19 @@
 [Unit]
-Description=Courier Control demo
+Description=Courier Control pilot
 After=network.target
 
 [Service]
 Type=simple
-User=courier
-Group=courier
+User=courierctl
+Group=courierctl
 WorkingDirectory=/opt/courier-control
 EnvironmentFile=/opt/courier-control/.env
-ExecStart=/opt/courier-control/.venv/bin/gunicorn config.wsgi:application --bind 127.0.0.1:8000 --workers 2 --timeout 60 --access-logfile - --error-logfile -
+ExecStart=/opt/courier-control/.venv/bin/gunicorn config.wsgi:application --bind 127.0.0.1:8010 --workers 2 --timeout 60 --access-logfile - --error-logfile -
 Restart=always
 RestartSec=3
+PrivateTmp=true
+ProtectSystem=full
+ReadWritePaths=/opt/courier-control/data /opt/courier-control/var /opt/courier-control/backups
 
 [Install]
 WantedBy=multi-user.target
