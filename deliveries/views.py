@@ -16,9 +16,9 @@ from .models import Delivery, DeliveryEvent, DeliveryPoint
 def dispatcher_required(view):
     @wraps(view)
     @login_required
-    def wrapped(request, *args, **kwargs):
+    def wrapped(request,*args,**kwargs):
         if not request.user.is_dispatcher: raise PermissionDenied
-        return view(request, *args, **kwargs)
+        return view(request,*args,**kwargs)
     return wrapped
 
 @login_required
@@ -26,12 +26,28 @@ def home(request): return redirect('dispatcher_dashboard' if request.user.is_dis
 
 @dispatcher_required
 def dispatcher_dashboard(request):
-    today = timezone.localdate(); deliveries = Delivery.objects.filter(delivery_date=today).select_related('courier','point')
-    counts = {key: deliveries.filter(status=key).count() for key, _ in Delivery.Status.choices}
-    courier_stats=[]
-    for courier in User.objects.filter(role=User.Role.COURIER,is_active=True).order_by('first_name','username'):
+    today=timezone.localdate(); deliveries=Delivery.objects.filter(delivery_date=today).select_related('courier','point')
+    couriers=User.objects.filter(role=User.Role.COURIER,is_active=True).order_by('first_name','username')
+    counts={key:deliveries.filter(status=key).count() for key,_ in Delivery.Status.choices}; courier_stats=[]
+    for courier in couriers:
         qs=deliveries.filter(courier=courier); courier_stats.append({'courier':courier,'total':qs.count(),'done':qs.filter(status=Delivery.Status.DONE).count(),'problem':qs.filter(status=Delivery.Status.PROBLEM).count()})
-    return render(request,'dispatcher/dashboard.html',{'deliveries':deliveries,'counts':counts,'courier_stats':courier_stats,'today':today})
+    return render(request,'dispatcher/dashboard.html',{'deliveries':deliveries,'couriers':couriers,'counts':counts,'courier_stats':courier_stats,'today':today})
+
+@dispatcher_required
+@require_POST
+def dispatcher_assign(request,pk):
+    delivery=get_object_or_404(Delivery,pk=pk)
+    courier_id=request.POST.get('courier_id','')
+    courier=None
+    if courier_id:
+        courier=get_object_or_404(User,pk=courier_id,role=User.Role.COURIER,is_active=True)
+    old=delivery.courier
+    delivery.courier=courier
+    if courier and delivery.status==Delivery.Status.NEW: delivery.status=Delivery.Status.IN_PROGRESS
+    elif not courier and delivery.status==Delivery.Status.IN_PROGRESS: delivery.status=Delivery.Status.NEW
+    delivery.save(update_fields=['courier','status','updated_at'])
+    DeliveryEvent.objects.create(delivery=delivery,actor=request.user,action='assigned',note=f'{old or "—"} → {courier or "—"}')
+    return redirect('dispatcher_dashboard')
 
 @dispatcher_required
 def delivery_create(request):
@@ -51,10 +67,8 @@ def delivery_edit(request,pk):
 def import_excel(request):
     if request.method=='POST' and request.FILES.get('file'):
         try:
-            wb=load_workbook(BytesIO(request.FILES['file'].read()),data_only=True); ws=wb.active
-            rows=list(ws.iter_rows(values_only=True)); headers=[str(v or '').strip().lower() for v in rows[0]] if rows else []
-            aliases={'адрес':'address','address':'address','объект':'source_label','код':'source_label','точка':'source_label','организация':'organization','получатель':'recipient','телефон':'phone','комментарий':'comment','курьер':'courier','порядок':'route_order','№':'route_order','дата':'delivery_date','время':'time_window','временное окно':'time_window'}
-            columns={aliases[h]:i for i,h in enumerate(headers) if h in aliases}
+            wb=load_workbook(BytesIO(request.FILES['file'].read()),data_only=True); ws=wb.active; rows=list(ws.iter_rows(values_only=True)); headers=[str(v or '').strip().lower() for v in rows[0]] if rows else []
+            aliases={'адрес':'address','address':'address','объект':'source_label','код':'source_label','точка':'source_label','организация':'organization','получатель':'recipient','телефон':'phone','комментарий':'comment','курьер':'courier','порядок':'route_order','№':'route_order','дата':'delivery_date','время':'time_window','временное окно':'time_window'}; columns={aliases[h]:i for i,h in enumerate(headers) if h in aliases}
             if 'address' not in columns: raise ValueError('Не найдена колонка «Адрес»')
             created=0
             with transaction.atomic():
@@ -62,29 +76,20 @@ def import_excel(request):
                     address=str(row[columns['address']] or '').strip()
                     if not address: continue
                     def value(key): return str(row[columns[key]] or '').strip() if key in columns else ''
-                    label=value('source_label'); kind=Delivery.infer_point_kind(label)
-                    point=None
-                    if label:
-                        point,_=DeliveryPoint.objects.get_or_create(code=label if kind==DeliveryPoint.Kind.CMD else '',address=address,defaults={'name':label,'kind':kind})
-                    courier=None
-                    if value('courier'): courier=User.objects.filter(role=User.Role.COURIER,username__iexact=value('courier')).first()
-                    date=timezone.localdate()
+                    label=value('source_label'); kind=Delivery.infer_point_kind(label); point=None
+                    if label: point,_=DeliveryPoint.objects.get_or_create(code=label if kind==DeliveryPoint.Kind.CMD else '',address=address,defaults={'name':label,'kind':kind})
+                    courier=User.objects.filter(role=User.Role.COURIER,username__iexact=value('courier')).first() if value('courier') else None; date=timezone.localdate()
                     if 'delivery_date' in columns and row[columns['delivery_date']]:
-                        raw=row[columns['delivery_date']]
-                        if isinstance(raw,datetime): date=raw.date()
-                        elif hasattr(raw,'year'): date=raw
+                        raw=row[columns['delivery_date']]; date=raw.date() if isinstance(raw,datetime) else raw if hasattr(raw,'year') else date
                     order=number
                     if 'route_order' in columns and row[columns['route_order']] is not None:
                         try: order=int(row[columns['route_order']])
                         except (TypeError,ValueError): pass
                     row_color=''
                     try:
-                        cell=ws.cell(row=number+1,column=columns['address']+1); rgb=getattr(cell.fill.fgColor,'rgb',None)
-                        palette={'FFFFFF00':'yellow','FFFFC000':'yellow','FF92D050':'green','FFC6E0B4':'green','FFFFC7CE':'red','FFF4CCCC':'red','FFD9EAF7':'blue','FFD9EAD3':'green','FFD9D9D9':'gray'}
-                        row_color=palette.get(rgb,'')
+                        rgb=getattr(ws.cell(row=number+1,column=columns['address']+1).fill.fgColor,'rgb',None); row_color={'FFFFFF00':'yellow','FFFFC000':'yellow','FF92D050':'green','FFC6E0B4':'green','FFFFC7CE':'red','FFF4CCCC':'red','FFD9EAF7':'blue','FFD9EAD3':'green','FFD9D9D9':'gray'}.get(rgb,'')
                     except Exception: pass
-                    d=Delivery.objects.create(delivery_date=date,point=point,source_label=label,address=address,organization=value('organization'),recipient=value('recipient'),phone=value('phone'),comment=value('comment'),time_window=value('time_window'),row_color=row_color,courier=courier,route_order=order)
-                    DeliveryEvent.objects.create(delivery=d,actor=request.user,action='imported',note=f'Тип: {kind}'); created+=1
+                    d=Delivery.objects.create(delivery_date=date,point=point,source_label=label,address=address,organization=value('organization'),recipient=value('recipient'),phone=value('phone'),comment=value('comment'),time_window=value('time_window'),row_color=row_color,courier=courier,route_order=order,status=Delivery.Status.IN_PROGRESS if courier else Delivery.Status.NEW); DeliveryEvent.objects.create(delivery=d,actor=request.user,action='imported',note=f'Тип: {kind}'); created+=1
             messages.success(request,f'Импортировано заявок: {created}'); return redirect('dispatcher_dashboard')
         except Exception as exc: messages.error(request,f'Не удалось импортировать файл: {exc}')
     return render(request,'dispatcher/import_excel.html')
@@ -92,15 +97,13 @@ def import_excel(request):
 @login_required
 def courier_today(request):
     if request.user.is_dispatcher: return redirect('dispatcher_dashboard')
-    today=timezone.localdate(); deliveries=Delivery.objects.filter(delivery_date=today,courier=request.user).order_by('route_order','id'); done=deliveries.filter(status=Delivery.Status.DONE).count()
-    return render(request,'courier/today.html',{'deliveries':deliveries,'done':done,'total':deliveries.count(),'today':today})
+    today=timezone.localdate(); deliveries=Delivery.objects.filter(delivery_date=today,courier=request.user).order_by('route_order','id'); done=deliveries.filter(status=Delivery.Status.DONE).count(); return render(request,'courier/today.html',{'deliveries':deliveries,'done':done,'total':deliveries.count(),'today':today})
 
 @login_required
 @require_POST
 def courier_update(request,pk):
     delivery=get_object_or_404(Delivery,pk=pk,courier=request.user); action=request.POST.get('action')
-    if action=='done':
-        delivery.status=Delivery.Status.DONE; delivery.completed_at=timezone.now(); delivery.completed_latitude=request.POST.get('latitude') or None; delivery.completed_longitude=request.POST.get('longitude') or None
+    if action=='done': delivery.status=Delivery.Status.DONE; delivery.completed_at=timezone.now(); delivery.completed_latitude=request.POST.get('latitude') or None; delivery.completed_longitude=request.POST.get('longitude') or None
     elif action=='problem': delivery.status=Delivery.Status.PROBLEM; delivery.problem_reason=request.POST.get('problem_reason','Другая проблема')[:255]
     elif action=='phone': delivery.phone=request.POST.get('phone','')[:64]
     else: raise PermissionDenied
@@ -109,8 +112,7 @@ def courier_update(request,pk):
 @login_required
 @require_POST
 def courier_reorder(request,pk):
-    delivery=get_object_or_404(Delivery,pk=pk,courier=request.user,delivery_date=timezone.localdate()); direction=request.POST.get('direction')
-    items=list(Delivery.objects.filter(courier=request.user,delivery_date=delivery.delivery_date).exclude(status=Delivery.Status.DONE).order_by('route_order','id'))
+    delivery=get_object_or_404(Delivery,pk=pk,courier=request.user,delivery_date=timezone.localdate()); direction=request.POST.get('direction'); items=list(Delivery.objects.filter(courier=request.user,delivery_date=delivery.delivery_date).exclude(status=Delivery.Status.DONE).order_by('route_order','id'))
     try: index=items.index(delivery)
     except ValueError: return redirect('courier_today')
     target=index-1 if direction=='up' else index+1
