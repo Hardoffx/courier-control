@@ -1,0 +1,1 @@
+{% extends 'base.html' %}{% block title %}Вход · Courier Control{% endblock %}{% block content %}<div class="card" style="max-width:420px;margin:70px auto"><h1>Вход</h1><p class="muted">Панель управления доставками</p><form method="post">{% csrf_token %}{{ form.as_p }}<button class="btn" style="width:100%">Войти</button></form></div>{% endblock %}

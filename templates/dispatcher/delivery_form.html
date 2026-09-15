@@ -1,0 +1,1 @@
+{% extends 'base.html' %}{% block content %}<a href="{% url 'dispatcher_dashboard' %}">← Назад</a><div class="card" style="max-width:700px"><h1>{{ title }}</h1><form method="post">{% csrf_token %}{{ form.as_p }}<button class="btn">Сохранить</button></form></div>{% endblock %}
