@@ -19,6 +19,7 @@ runuser -u "$APP_USER" -- "$APP_DIR/.venv/bin/pip" install -r "$APP_DIR/requirem
 cd "$APP_DIR"
 runuser -u "$APP_USER" -- .venv/bin/python manage.py check
 runuser -u "$APP_USER" -- .venv/bin/python manage.py migrate --noinput
+runuser -u "$APP_USER" -- .venv/bin/python manage.py shell -c "from accounts.models import User; User.objects.filter(is_superuser=True).update(role=User.Role.DISPATCHER, is_reserve_courier=False)"
 runuser -u "$APP_USER" -- .venv/bin/python manage.py collectstatic --noinput
 install -m 0644 deploy/courier-control.service "/etc/systemd/system/$SERVICE"
 systemctl daemon-reload
