@@ -1,6 +1,7 @@
 from dataclasses import dataclass,field
 from datetime import datetime
 from io import BytesIO
+from zipfile import BadZipFile,ZipFile
 from django.db import transaction
 from django.utils import timezone
 from openpyxl import load_workbook
@@ -11,6 +12,8 @@ from .point_matching import canonical_delivery_values, resolve_point
 ALIASES={'адрес':'address','address':'address','объект':'source_label','код':'source_label','точка':'source_label','организация':'organization','получатель':'recipient','телефон':'phone','комментарий':'comment','курьер':'courier','порядок':'route_order','№':'route_order','дата':'delivery_date','время':'time_window','временное окно':'time_window'}
 COLORS={'FFFFFF00':'yellow','FFFFC000':'yellow','FF92D050':'green','FFC6E0B4':'green','FFFFC7CE':'red','FFF4CCCC':'red','FFD9EAF7':'blue','FFD9EAD3':'green','FFD9D9D9':'gray'}
 MAX_UPLOAD_BYTES=5*1024*1024
+MAX_XLSX_EXPANDED_BYTES=50*1024*1024
+MAX_XLSX_FILES=1000
 
 @dataclass
 class ImportSummary:
@@ -20,6 +23,14 @@ def validate_upload(name,content):
     if not (name or '').lower().endswith('.xlsx'): raise ValueError('Разрешены только файлы .xlsx')
     if not content: raise ValueError('Файл пуст')
     if len(content)>MAX_UPLOAD_BYTES: raise ValueError('Файл слишком большой. Максимум 5 МБ')
+    try:
+        with ZipFile(BytesIO(content)) as archive:
+            members=archive.infolist()
+            if len(members)>MAX_XLSX_FILES: raise ValueError('XLSX содержит слишком много внутренних файлов')
+            expanded=sum(item.file_size for item in members)
+            if expanded>MAX_XLSX_EXPANDED_BYTES: raise ValueError('XLSX слишком велик после распаковки')
+            if not any(item.filename=='[Content_Types].xml' for item in members): raise ValueError('Файл не является корректным XLSX')
+    except BadZipFile as exc: raise ValueError('Файл не является корректным XLSX') from exc
 
 def _date(raw):
     if not raw: return timezone.localdate()
@@ -39,45 +50,46 @@ def _open(content):
     try: return load_workbook(BytesIO(content),data_only=True,read_only=False)
     except Exception as exc: raise ValueError('Не удалось открыть XLSX. Проверьте, что файл не повреждён') from exc
 
+def _fill(cell):
+    fill=cell.fill
+    if not fill or fill.fill_type!='solid': return ''
+    color=fill.fgColor
+    if color.type=='rgb' and color.rgb: return COLORS.get(color.rgb.upper(),'')
+    return ''
+
 def _rows(content,create_points=False):
     wb=_open(content); ws=wb.active
     if ws.max_row<1: raise ValueError('Файл пуст')
-    header_row,columns=_find_header(ws)
-    def val(row,key): return str(row[columns[key]] or '').strip() if key in columns and columns[key]<len(row) else ''
-    for excel_row,row in enumerate(ws.iter_rows(min_row=header_row+1,values_only=True),start=header_row+1):
-        address=val(row,'address')
+    header_row,columns=_find_header(ws); rows=[]
+    for excel_row,row in enumerate(ws.iter_rows(min_row=header_row+1),start=header_row+1):
+        values={field:row[index].value for field,index in columns.items() if index<len(row)}
+        address=str(values.get('address') or '').strip()
         if not address: continue
-        label=val(row,'source_label'); phone=val(row,'phone'); match=resolve_point(label,address,phone,create=create_points); point=match.point; canonical=canonical_delivery_values(point,label,address,phone); time_window=val(row,'time_window'); courier=User.objects.filter(role=User.Role.COURIER,username__iexact=val(row,'courier'),is_active=True).first() if val(row,'courier') else None; delivery_date=_date(row[columns['delivery_date']] if 'delivery_date' in columns else None); order=excel_row-header_row; warning=''
-        if 'route_order' in columns and row[columns['route_order']] is not None:
-            try: order=int(row[columns['route_order']])
-            except (TypeError,ValueError): warning=f'Строка {excel_row}: неверный порядок'
-        row_color=''
-        try: row_color=COLORS.get(getattr(ws.cell(row=excel_row,column=columns['address']+1).fill.fgColor,'rgb',None),'')
-        except Exception: pass
-        duplicate=Delivery.objects.filter(delivery_date=delivery_date,point=point,source_label=canonical['source_label'],time_window=time_window,route_order=order).exists() if point else False
-        yield {'excel_row':excel_row,'label':label,'address':address,'phone':phone,'point':point,'match':match,'canonical':canonical,'time_window':time_window,'courier':courier,'delivery_date':delivery_date,'order':order,'row_color':row_color,'organization':val(row,'organization'),'recipient':val(row,'recipient'),'comment':val(row,'comment'),'duplicate':duplicate,'warning':warning}
+        source=str(values.get('source_label') or '').strip(); phone=str(values.get('phone') or '').strip(); organization=str(values.get('organization') or '').strip(); recipient=str(values.get('recipient') or '').strip(); comment=str(values.get('comment') or '').strip(); time_window=str(values.get('time_window') or '').strip()
+        point,created=resolve_point(source,address,phone,create=create_points); canonical=canonical_delivery_values(point,source,address,phone)
+        raw_order=values.get('route_order'); route_order=int(raw_order) if isinstance(raw_order,(int,float)) else excel_row-header_row
+        courier_name=str(values.get('courier') or '').strip(); courier=None
+        if courier_name: courier=User.objects.filter(role=User.Role.COURIER,username__iexact=courier_name).first() or User.objects.filter(role=User.Role.COURIER,first_name__iexact=courier_name).first()
+        color=_fill(row[0]) if row else ''
+        rows.append({'excel_row':excel_row,'delivery_date':_date(values.get('delivery_date')),'address':canonical['address'],'source_label':canonical['source_label'],'organization':organization,'recipient':recipient,'phone':canonical['phone'],'comment':comment,'courier':courier,'courier_name':courier_name,'route_order':route_order,'time_window':time_window,'row_color':color,'point':point,'point_created':created})
+    return rows
 
-def preview_workbook(content,limit=100):
-    summary=ImportSummary()
-    for item in _rows(content,create_points=False):
-        summary.total_rows+=1
-        if item['duplicate']: summary.skipped+=1
-        elif item['point']: summary.matched+=1
-        else: summary.new_points+=1
-        if item['warning']: summary.warnings.append(item['warning'])
-        if len(summary.preview)<limit: summary.preview.append({'row':item['excel_row'],'label':item['canonical']['source_label'],'address':item['canonical']['address'],'time_window':item['time_window'],'date':item['delivery_date'],'courier':item['courier'],'match':item['match'].method,'duplicate':item['duplicate'],'new_point':not bool(item['point'])})
-    if summary.total_rows>limit: summary.warnings.append(f'Предпросмотр показывает первые {limit} из {summary.total_rows} строк')
+def preview_workbook(content):
+    validate_upload('preview.xlsx',content); rows=_rows(content,create_points=False); summary=ImportSummary(total_rows=len(rows)); summary.preview=rows[:100]
+    for row in rows:
+        if row['point']: summary.matched+=1
+        if row['courier_name'] and not row['courier']: summary.warnings.append(f"Строка {row['excel_row']}: курьер «{row['courier_name']}» не найден")
     return summary
 
-def import_workbook(content,actor):
-    summary=ImportSummary()
+def import_workbook(content,actor=None):
+    validate_upload('import.xlsx',content); rows=_rows(content,create_points=True); summary=ImportSummary(total_rows=len(rows))
     with transaction.atomic():
-        for item in _rows(content,create_points=True):
-            summary.total_rows+=1; point=item['point']; match=item['match']; canonical=item['canonical']
-            if match.created: summary.new_points+=1
-            else: summary.matched+=1
-            if item['warning']: summary.warnings.append(item['warning'])
-            duplicate=Delivery.objects.filter(delivery_date=item['delivery_date'],point=point,source_label=canonical['source_label'],time_window=item['time_window'],route_order=item['order']).first() if point else None
-            if duplicate: summary.skipped+=1; summary.warnings.append(f'Строка {item["excel_row"]}: уже импортирована — {canonical["source_label"] or canonical["address"]}, позиция {item["order"]}'); continue
-            d=Delivery.objects.create(delivery_date=item['delivery_date'],point=point,source_label=canonical['source_label'],address=canonical['address'],organization=item['organization'],recipient=item['recipient'],phone=canonical['phone'],comment=item['comment'],time_window=item['time_window'],row_color=item['row_color'],courier=item['courier'],route_order=item['order'],status=Delivery.Status.IN_PROGRESS if item['courier'] else Delivery.Status.NEW); DeliveryEvent.objects.create(delivery=d,actor=actor,action='imported',note=f'Справочник: {match.method}; Excel row: {item["excel_row"]}'); summary.created+=1
+        for row in rows:
+            if row['point']: summary.matched+=1
+            if row['point_created']: summary.new_points+=1
+            duplicate=Delivery.objects.filter(delivery_date=row['delivery_date'],address=row['address'],source_label=row['source_label'],route_order=row['route_order']).exists()
+            if duplicate: summary.skipped+=1; continue
+            delivery=Delivery.objects.create(delivery_date=row['delivery_date'],address=row['address'],source_label=row['source_label'],organization=row['organization'],recipient=row['recipient'],phone=row['phone'],comment=row['comment'],courier=row['courier'],route_order=row['route_order'],time_window=row['time_window'],row_color=row['row_color'],point=row['point']); summary.created+=1
+            DeliveryEvent.objects.create(delivery=delivery,actor=actor,event_type=DeliveryEvent.Type.CREATED,note='Импорт из Excel')
+            if row['courier_name'] and not row['courier']: summary.warnings.append(f"Строка {row['excel_row']}: курьер «{row['courier_name']}» не найден")
     return summary
