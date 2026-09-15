@@ -66,7 +66,7 @@ def _rows(content,create_points=False):
         address=str(values.get('address') or '').strip()
         if not address: continue
         source=str(values.get('source_label') or '').strip(); phone=str(values.get('phone') or '').strip(); organization=str(values.get('organization') or '').strip(); recipient=str(values.get('recipient') or '').strip(); comment=str(values.get('comment') or '').strip(); time_window=str(values.get('time_window') or '').strip()
-        point,created=resolve_point(source,address,phone,create=create_points); canonical=canonical_delivery_values(point,source,address,phone)
+        match=resolve_point(source,address,phone,create=create_points); point=match.point; created=match.created; canonical=canonical_delivery_values(point,source,address,phone)
         raw_order=values.get('route_order'); route_order=int(raw_order) if isinstance(raw_order,(int,float)) else excel_row-header_row
         courier_name=str(values.get('courier') or '').strip(); courier=None
         if courier_name: courier=User.objects.filter(role=User.Role.COURIER,username__iexact=courier_name).first() or User.objects.filter(role=User.Role.COURIER,first_name__iexact=courier_name).first()
