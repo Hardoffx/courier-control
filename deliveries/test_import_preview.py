@@ -1,7 +1,10 @@
 from io import BytesIO
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
+from django.urls import reverse
 from django.utils import timezone
 from openpyxl import Workbook
+from accounts.models import User
 from .import_services import preview_workbook
 from .models import Delivery, DeliveryPoint
 
@@ -35,3 +38,11 @@ class ImportPreviewContractTests(TestCase):
         self.assertEqual(summary.skipped,2)
         self.assertTrue(summary.preview[0]['duplicate']); self.assertFalse(summary.preview[1]['duplicate']); self.assertTrue(summary.preview[2]['duplicate'])
         self.assertEqual(summary.would_create_points,2)
+
+    def test_import_screen_renders_preview_contract(self):
+        User.objects.create_user(username='preview-boss',password='pass',role=User.Role.DISPATCHER)
+        self.client.login(username='preview-boss',password='pass')
+        upload=SimpleUploadedFile('route.xlsx',self.workbook([['999','Москва, Новая 1','10:00',1]]),content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response=self.client.post(reverse('import_excel'),{'file':upload})
+        self.assertEqual(response.status_code,200)
+        self.assertContains(response,'Москва, Новая 1'); self.assertContains(response,'Новая точка'); self.assertContains(response,'Подтвердить импорт')
