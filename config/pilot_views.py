@@ -2,15 +2,21 @@ from django.db import connection
 from django.http import HttpResponse, JsonResponse
 from django.views.decorators.cache import never_cache
 
+
 @never_cache
 def health(request):
     try:
         with connection.cursor() as cursor:
             cursor.execute('SELECT 1')
             cursor.fetchone()
-        return JsonResponse({'status':'ok','database':'ok'})
+        tables = set(connection.introspection.table_names())
+        required = {'django_migrations', 'accounts_user', 'deliveries_delivery'}
+        if not required.issubset(tables):
+            return JsonResponse({'status':'error','database':'ok','schema':'error'}, status=503)
+        return JsonResponse({'status':'ok','database':'ok','schema':'ok'})
     except Exception:
-        return JsonResponse({'status':'error','database':'error'}, status=503)
+        return JsonResponse({'status':'error','database':'error','schema':'unknown'}, status=503)
+
 
 def manifest(request):
     return JsonResponse({
@@ -18,6 +24,7 @@ def manifest(request):
         'display':'standalone', 'background_color':'#f4f6f8', 'theme_color':'#111827',
         'description':'Маршруты и рабочий экран курьера'
     }, content_type='application/manifest+json')
+
 
 @never_cache
 def service_worker(request):
