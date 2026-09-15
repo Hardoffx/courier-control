@@ -3,6 +3,8 @@
 Status: **APPROVED / source of truth for frontend V1**
 Approved: 2026-09-15
 
+Official visual reference: [`design/v1/courier-control-v1-reference.png`](design/v1/courier-control-v1-reference.png). Future frontend work must inspect both this specification and the official image; `design/v1/README.md` records the continuity rule. This specification has priority for behavior/responsive refinements where a generated visual artifact is ambiguous.
+
 ## Product principle
 The primary working surface is deliberately minimal and list-first. The route map is a powerful secondary view, never visual noise. Real frontend must preserve the approved mockup's hierarchy, spacing, status language and interaction model; adapt only where real data/responsive constraints require it.
 
