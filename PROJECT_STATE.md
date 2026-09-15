@@ -1,9 +1,9 @@
 # Courier Control — Project State
 
-Перед разработкой читать этот файл, ROADMAP.md и DESIGN_SPEC.md; затем проверять main и CI. После крупного блока обновлять.
+Перед разработкой читать этот файл, ROADMAP.md, DESIGN_SPEC.md и PILOT_ACCEPTANCE.md; затем проверять main и CI. После крупного блока обновлять.
 
 Последнее обновление: 2026-09-15. Repo: Hardoffx/courier-control. Branch: main.
-Стадия: functional demo MVP complete; Design V1 nearing pilot acceptance.
+Стадия: functional demo MVP complete; Design V1 at pilot acceptance gate.
 
 ## Continuation
 Дальше / Курьер Бот — продолжай: проверить state, roadmap, design spec, main и CI; автономно реализовать следующий крупный блок; исправить CI; обновить handoff. Не менять утвержденное визуальное направление.
@@ -21,17 +21,20 @@ DESIGN_SPEC.md и design/v1/courier-control-v1-reference.png. Основной �
 - Маркеры учитывают статус, клик по маркеру фокусирует соответствующую доставку.
 - Dashboard KPI и bulk-selection исправлены.
 - Excel staging хранит временные файлы с private permissions и one-time signed token.
-- XLSX validation ограничивает исходный файл 5 MB, число ZIP entries и суммарный размер после распаковки для защиты от archive expansion.
+- XLSX validation ограничивает исходный файл 5 MB, число ZIP entries и суммарный размер после распаковки.
+- Hardening tests покрывают expiry/one-time staging и archive expansion guard.
+- Исправлены регрессии point matching и audit event в XLSX import.
+- Добавлен PILOT_ACCEPTANCE.md с единым acceptance gate для приложения, карт, реального Excel, устройств, backup/restore и ролей.
 
 ## CI
-CI 144 и 145 прошли после dispatcher Yandex map и roadmap. CI 146 прошел после hardening staging storage. Текущий XLSX archive guard commit должен быть проверен следующим continuation и исправлен первым при регрессии.
+CI #151 успешно прошёл на commit 7f9cee2 после исправления XLSX import audit event. Это текущая подтвержденная зелёная функциональная база перед acceptance-document commit.
 
 ## Осталось до pilot acceptance
-1. Проверить последний CI.
-2. Финальная visual/device QA на 375/390/430, tablet, laptop, wide desktop и точечная UX-полировка.
-3. Добавить/расширить тесты hardening импорта, включая expiry/one-time/archive limits.
-4. Подготовить pilot acceptance/deploy checklist.
-5. Реальный VPS/domain/HTTPS, Yandex API credentials с domain/referrer restrictions и первый настоящий management XLSX — внешние acceptance dependencies.
+1. Финальная visual/device QA на 375/390/430, tablet, laptop, wide desktop и точечная UX-полировка.
+2. Реальный VPS/domain/HTTPS и проверка backup/restore по PILOT_ACCEPTANCE.md.
+3. Yandex API credentials с domain/referrer restrictions, геокодирование и выборочная проверка реальных адресов.
+4. Первый настоящий management XLSX и end-to-end проверка импорта.
+5. Реальные pilot accounts и один тестовый рабочий день с фиксацией feedback.
 
 ## Архитектурные ограничения
 SQLite остается намеренным выбором для single-server pilot; PostgreSQL нужен перед серьезной concurrency/production стадией. Цвет Excel строки остается только представлением и никогда не определяет CMD/INVITRO/статус/бизнес-логику.
