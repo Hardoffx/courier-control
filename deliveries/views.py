@@ -1,18 +1,18 @@
 from functools import wraps
-from datetime import datetime, date, timedelta
-from io import BytesIO
+from datetime import date, timedelta
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
-from django.db.models import Q, Count
+from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
-from openpyxl import load_workbook
 from accounts.models import User
 from .forms import DeliveryForm
 from .models import Delivery, DeliveryEvent, DeliveryPoint, RouteRun
+from .import_services import import_workbook
+from .point_matching import canonical_delivery_values, resolve_point
 
 def dispatcher_required(view):
     @wraps(view)
@@ -76,9 +76,11 @@ def dispatcher_bulk_assign(request):
 @dispatcher_required
 @require_POST
 def dispatcher_quick_edit(request,pk):
-    delivery=get_object_or_404(Delivery,pk=pk); changed=[]; values={'source_label':request.POST.get('source_label','').strip()[:255],'address':request.POST.get('address','').strip()[:500],'time_window':request.POST.get('time_window','').strip()[:64],'phone':request.POST.get('phone','').strip()[:64],'row_color':request.POST.get('row_color','')}; allowed_colors={v for v,_ in Delivery.RowColor.choices}
+    delivery=get_object_or_404(Delivery,pk=pk); changed=[]; label=request.POST.get('source_label','').strip()[:255]; address=request.POST.get('address','').strip()[:500]; phone=request.POST.get('phone','').strip()[:64]
+    if not address: messages.error(request,'Адрес не может быть пустым'); return redirect('dispatcher_dashboard')
+    match=resolve_point(label,address,phone,create=True); canonical=canonical_delivery_values(match.point,label,address,phone)
+    values={'point':match.point,'source_label':canonical['source_label'],'address':canonical['address'],'time_window':request.POST.get('time_window','').strip()[:64],'phone':canonical['phone'],'row_color':request.POST.get('row_color','')}; allowed_colors={v for v,_ in Delivery.RowColor.choices}
     if values['row_color'] not in allowed_colors: values['row_color']=''
-    if not values['address']: messages.error(request,'Адрес не может быть пустым'); return redirect('dispatcher_dashboard')
     for field,value in values.items():
         if getattr(delivery,field)!=value: setattr(delivery,field,value); changed.append(field)
     if changed: delivery.save(update_fields=changed+['updated_at']); DeliveryEvent.objects.create(delivery=delivery,actor=request.user,action='quick_edited',note=', '.join(changed))
@@ -98,32 +100,13 @@ def delivery_edit(request,pk):
 
 @dispatcher_required
 def import_excel(request):
+    summary=None
     if request.method=='POST' and request.FILES.get('file'):
         try:
-            wb=load_workbook(BytesIO(request.FILES['file'].read()),data_only=True); ws=wb.active; rows=list(ws.iter_rows(values_only=True)); headers=[str(v or '').strip().lower() for v in rows[0]] if rows else []; aliases={'адрес':'address','address':'address','объект':'source_label','код':'source_label','точка':'source_label','организация':'organization','получатель':'recipient','телефон':'phone','комментарий':'comment','курьер':'courier','порядок':'route_order','№':'route_order','дата':'delivery_date','время':'time_window','временное окно':'time_window'}; columns={aliases[h]:i for i,h in enumerate(headers) if h in aliases}
-            if 'address' not in columns: raise ValueError('Не найдена колонка «Адрес»')
-            created=0
-            with transaction.atomic():
-                for number,row in enumerate(rows[1:],start=1):
-                    address=str(row[columns['address']] or '').strip()
-                    if not address: continue
-                    def value(key): return str(row[columns[key]] or '').strip() if key in columns else ''
-                    label=value('source_label'); kind=Delivery.infer_point_kind(label); point=None
-                    if label: point,_=DeliveryPoint.objects.get_or_create(code=label if kind==DeliveryPoint.Kind.CMD else '',address=address,defaults={'name':label,'kind':kind})
-                    courier=User.objects.filter(role=User.Role.COURIER,username__iexact=value('courier')).first() if value('courier') else None; delivery_date=timezone.localdate()
-                    if 'delivery_date' in columns and row[columns['delivery_date']]:
-                        raw=row[columns['delivery_date']]; delivery_date=raw.date() if isinstance(raw,datetime) else raw if hasattr(raw,'year') else delivery_date
-                    order=number
-                    if 'route_order' in columns and row[columns['route_order']] is not None:
-                        try: order=int(row[columns['route_order']])
-                        except (TypeError,ValueError): pass
-                    row_color=''
-                    try: row_color={'FFFFFF00':'yellow','FFFFC000':'yellow','FF92D050':'green','FFC6E0B4':'green','FFFFC7CE':'red','FFF4CCCC':'red','FFD9EAF7':'blue','FFD9EAD3':'green','FFD9D9D9':'gray'}.get(getattr(ws.cell(row=number+1,column=columns['address']+1).fill.fgColor,'rgb',None),'')
-                    except Exception: pass
-                    d=Delivery.objects.create(delivery_date=delivery_date,point=point,source_label=label,address=address,organization=value('organization'),recipient=value('recipient'),phone=value('phone'),comment=value('comment'),time_window=value('time_window'),row_color=row_color,courier=courier,route_order=order,status=Delivery.Status.IN_PROGRESS if courier else Delivery.Status.NEW); DeliveryEvent.objects.create(delivery=d,actor=request.user,action='imported',note=f'Тип: {kind}'); created+=1
-            messages.success(request,f'Импортировано заявок: {created}'); return redirect('dispatcher_dashboard')
+            summary=import_workbook(request.FILES['file'].read(),request.user)
+            messages.success(request,f'Импорт: создано {summary.created}; распознано {summary.matched}; новых точек {summary.new_points}; пропущено {summary.skipped}')
         except Exception as exc: messages.error(request,f'Не удалось импортировать файл: {exc}')
-    return render(request,'dispatcher/import_excel.html')
+    return render(request,'dispatcher/import_excel.html',{'summary':summary})
 
 @login_required
 def courier_today(request):
