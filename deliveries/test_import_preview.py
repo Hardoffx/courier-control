@@ -15,7 +15,7 @@ class ImportPreviewContractTests(TestCase):
     def test_preview_reports_new_point_without_writing(self):
         content=self.workbook([['999','Москва, Новая 1','10:00',1]])
         summary=preview_workbook(content)
-        self.assertEqual(summary.total_rows,1); self.assertEqual(summary.new_points,1); self.assertEqual(summary.matched,0)
+        self.assertEqual(summary.total_rows,1); self.assertEqual(summary.new_points,0); self.assertEqual(summary.would_create_points,1); self.assertEqual(summary.matched,0)
         self.assertEqual(DeliveryPoint.objects.count(),0); self.assertEqual(Delivery.objects.count(),0)
         row=summary.preview[0]
         self.assertEqual(row['row'],2); self.assertEqual(row['label'],'999'); self.assertEqual(row['address'],'Москва, Новая 1'); self.assertTrue(row['new_point']); self.assertFalse(row['duplicate'])
@@ -23,7 +23,7 @@ class ImportPreviewContractTests(TestCase):
     def test_preview_uses_canonical_point_data_and_match_label(self):
         point=DeliveryPoint.objects.create(name='CMD 458',code='458',address='Москва, Каноническая 10',phone='+79990000000',kind=DeliveryPoint.Kind.CMD)
         summary=preview_workbook(self.workbook([['458','Старый адрес','09:30',1]]))
-        self.assertEqual(summary.matched,1); self.assertEqual(summary.new_points,0)
+        self.assertEqual(summary.matched,1); self.assertEqual(summary.would_create_points,0)
         row=summary.preview[0]
         self.assertEqual(row['address'],point.address); self.assertEqual(row['match'],str(point)); self.assertFalse(row['new_point'])
 
@@ -34,4 +34,4 @@ class ImportPreviewContractTests(TestCase):
         summary=preview_workbook(content)
         self.assertEqual(summary.skipped,2)
         self.assertTrue(summary.preview[0]['duplicate']); self.assertFalse(summary.preview[1]['duplicate']); self.assertTrue(summary.preview[2]['duplicate'])
-        self.assertEqual(summary.new_points,2)
+        self.assertEqual(summary.would_create_points,2)
