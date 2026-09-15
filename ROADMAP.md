@@ -17,8 +17,9 @@ Roadmap отражает порядок разработки, а не обеща
 - [x] Header detection scans first 20 rows
 - [x] Duplicate detection/safe re-import + legitimate repeat visits
 - [x] Import result summary
+- [x] Import preview before final commit; preview performs no DB writes
+- [x] Basic upload validation (.xlsx, size, corrupt workbook)
 - [ ] Theme/indexed fills where practical
-- [ ] Import preview before final commit
 
 ## Phase 2.5 — Persistent courier route memory
 - [x] Route independent from courier + default courier
@@ -27,7 +28,7 @@ Roadmap отражает порядок разработки, а не обеща
 - [x] Drag-and-drop ordering + up/down fallback
 - [x] Generate day safely + actual courier override + completed-work preservation
 - [x] Add one-off canonical point to generated day
-- [ ] Learn/update template from imported/corrected real route
+- [x] Explicitly learn/update one selected template from corrected actual RouteRun without changing other variants
 
 ## Phase 3 — Courier and dispatcher usability
 - [x] Courier management UI + reserve marker
@@ -41,14 +42,14 @@ Roadmap отражает порядок разработки, а не обеща
 
 ## Phase 4 — Quality gate
 - [x] Role/cross-courier/single assignment/completion/reorder/classification baseline
-- [x] Point matching + Excel header/duplicate/repeat tests
+- [x] Point matching + Excel header/duplicate/repeat/preview-no-write tests
 - [x] Route generation/safe refresh/day extra-point tests
 - [x] Courier create/deactivate/reserve tests
 - [x] Batch template/day reorder tests
 - [x] Bulk assignment test
 - [x] Completion with GPS test
 - [x] Problem preset/history permissions tests
-- [x] CI green through operational implementation; newest expanded tests pending final CI result
+- [x] Route learning isolation/wrong-route safety tests
 - [ ] Further refactor dense views
 - [ ] Security review auth/forms/uploads
 
