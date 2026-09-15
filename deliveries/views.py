@@ -1,6 +1,5 @@
 from functools import wraps
 from datetime import date, timedelta
-import base64
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
@@ -13,6 +12,7 @@ from accounts.models import User
 from .forms import DeliveryForm
 from .models import Delivery, DeliveryEvent, DeliveryPoint, RouteRun
 from .import_services import import_workbook, preview_workbook, validate_upload
+from .import_staging import stage_upload, consume_upload
 from .point_matching import canonical_delivery_values, resolve_point
 
 PROBLEM_REASONS=('Нет доступа','Не принимают','Получатель недоступен','Неверный адрес','Нужно вернуться позже','Другая проблема')
@@ -107,9 +107,9 @@ def import_excel(request):
     if request.method=='POST':
         try:
             if request.POST.get('action')=='commit':
-                content=base64.b64decode(request.POST.get('payload',''),validate=True); filename=request.POST.get('filename','route.xlsx'); validate_upload(filename,content); summary=import_workbook(content,request.user); messages.success(request,f'Импорт завершён: создано {summary.created}; распознано {summary.matched}; новых точек {summary.new_points}; пропущено {summary.skipped}')
+                filename,content=consume_upload(request.POST.get('token',''),request.user.pk); validate_upload(filename,content); summary=import_workbook(content,request.user); messages.success(request,f'Импорт завершён: создано {summary.created}; распознано {summary.matched}; новых точек {summary.new_points}; пропущено {summary.skipped}')
             elif request.FILES.get('file'):
-                uploaded=request.FILES['file']; content=uploaded.read(); filename=uploaded.name; validate_upload(filename,content); summary=preview_workbook(content); preview_token=base64.b64encode(content).decode('ascii')
+                uploaded=request.FILES['file']; content=uploaded.read(); filename=uploaded.name; validate_upload(filename,content); summary=preview_workbook(content); preview_token=stage_upload(content,request.user.pk,filename)
             else: messages.error(request,'Выберите XLSX-файл')
         except Exception as exc: messages.error(request,f'Не удалось обработать файл: {exc}')
     return render(request,'dispatcher/import_excel.html',{'summary':summary,'preview_token':preview_token,'filename':filename})
