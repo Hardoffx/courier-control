@@ -32,8 +32,11 @@ export DEBIAN_FRONTEND=noninteractive
 apt-get update
 apt-get install -y python3-venv git nginx curl
 
+if ! getent group "$APP_GROUP" >/dev/null 2>&1; then
+  groupadd --system "$APP_GROUP"
+fi
 if ! id "$APP_USER" >/dev/null 2>&1; then
-  useradd --system --home-dir "$APP_DIR" --shell /usr/sbin/nologin "$APP_USER"
+  useradd --system --gid "$APP_GROUP" --home-dir "$APP_DIR" --shell /usr/sbin/nologin "$APP_USER"
 fi
 
 log "Preparing application checkout"
@@ -42,9 +45,10 @@ if [[ -e "$APP_DIR" && ! -d "$APP_DIR/.git" ]]; then
 fi
 if [[ ! -d "$APP_DIR/.git" ]]; then
   git clone --depth 1 --branch main "$REPO" "$APP_DIR"
+  chown -R "$APP_USER:$APP_GROUP" "$APP_DIR"
 else
-  git -C "$APP_DIR" fetch --depth 1 origin main
-  git -C "$APP_DIR" reset --hard origin/main
+  runuser -u "$APP_USER" -- git -C "$APP_DIR" fetch --depth 1 origin main
+  runuser -u "$APP_USER" -- git -C "$APP_DIR" reset --hard origin/main
 fi
 
 mkdir -p "$APP_DIR/data" "$APP_DIR/backups" "$APP_DIR/var/import-staging"
@@ -59,7 +63,8 @@ runuser -u "$APP_USER" -- "$APP_DIR/.venv/bin/pip" install --upgrade pip
 runuser -u "$APP_USER" -- "$APP_DIR/.venv/bin/pip" install -r "$APP_DIR/requirements.txt"
 
 if [[ ! -f "$APP_DIR/.env" ]]; then
-  SERVER_IP="$(hostname -I 2>/dev/null | awk '{print $1}')"
+  SERVER_IP="${COURIER_CONTROL_HOST:-$(curl -4 -fsS --max-time 5 https://api.ipify.org 2>/dev/null || true)}"
+  [[ -n "$SERVER_IP" ]] || SERVER_IP="$(hostname -I 2>/dev/null | awk '{print $1}')"
   [[ -n "$SERVER_IP" ]] || SERVER_IP=127.0.0.1
   SECRET="$(python3 - <<'PY'
 import secrets
@@ -119,7 +124,8 @@ else
   echo "Existing courier bot service was not modified."
 fi
 
-SERVER_IP="$(hostname -I 2>/dev/null | awk '{print $1}')"
+SERVER_IP="${COURIER_CONTROL_HOST:-$(curl -4 -fsS --max-time 5 https://api.ipify.org 2>/dev/null || true)}"
+[[ -n "$SERVER_IP" ]] || SERVER_IP="$(hostname -I 2>/dev/null | awk '{print $1}')"
 echo
 echo "Courier Control pilot is running."
 echo "Health: http://${SERVER_IP:-SERVER_IP}:${PUBLIC_PORT}/healthz/"
