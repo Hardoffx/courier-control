@@ -1,5 +1,12 @@
 from django.db import transaction
-from .models import Delivery, RouteRun, RouteTemplateItem
+from django.utils import timezone
+from .models import (
+    CourierRouteOrderPreference,
+    Delivery,
+    RouteOrderSuggestion,
+    RouteRun,
+    RouteTemplateItem,
+)
 
 
 def _reset_detached_delivery(delivery):
@@ -9,6 +16,20 @@ def _reset_detached_delivery(delivery):
     if delivery.status == Delivery.Status.IN_PROGRESS:
         delivery.status = Delivery.Status.NEW
     delivery.save(update_fields=['route_run', 'courier', 'status', 'updated_at'])
+
+
+def _ordered_for_courier(template, items, courier):
+    """Use a courier's learned order; unfamiliar/new points stay in template order at the end."""
+    if not courier:
+        return items
+    preference = CourierRouteOrderPreference.objects.filter(template=template, courier=courier).first()
+    if not preference or not preference.point_order:
+        return items
+    by_point = {item.point_id: item for item in items}
+    ordered = [by_point[point_id] for point_id in preference.point_order if point_id in by_point]
+    used = {item.point_id for item in ordered}
+    ordered.extend(item for item in items if item.point_id not in used)
+    return ordered
 
 
 @transaction.atomic
@@ -35,11 +56,9 @@ def generate_route_run(template, run_date, courier=None, enabled_item_ids=None):
     else:
         selected_ids = {int(v) for v in enabled_item_ids}
         selected = [item for item in items if item.id in selected_ids]
-
+    selected = _ordered_for_courier(template, selected, courier)
     selected_point_ids = {item.point_id for item in selected}
 
-    # Never delete a day's delivery merely because it was removed from a route.
-    # Returning it to the unassigned pool preserves imported/manual work.
     for delivery in list(
         run.deliveries.exclude(status=Delivery.Status.DONE)
         .exclude(point_id__in=selected_point_ids)
@@ -55,8 +74,6 @@ def generate_route_run(template, run_date, courier=None, enabled_item_ids=None):
             continue
 
         if not delivery:
-            # If the same point already exists in today's imported/manual pool,
-            # attach that row to the route instead of creating a duplicate.
             delivery = (
                 Delivery.objects.filter(
                     delivery_date=run_date,
@@ -71,11 +88,7 @@ def generate_route_run(template, run_date, courier=None, enabled_item_ids=None):
                 adopted = True
                 delivery.route_run = run
             else:
-                delivery = Delivery(
-                    route_run=run,
-                    delivery_date=run_date,
-                    point=point,
-                )
+                delivery = Delivery(route_run=run, delivery_date=run_date, point=point)
 
         delivery.delivery_date = run_date
         delivery.route_run = run
@@ -83,7 +96,6 @@ def generate_route_run(template, run_date, courier=None, enabled_item_ids=None):
         delivery.route_order = order
 
         if adopted:
-            # Preserve the real day's Excel/manual snapshot; only fill blanks.
             if not delivery.source_label:
                 delivery.source_label = point.code or point.name
             if not delivery.address:
@@ -106,6 +118,24 @@ def generate_route_run(template, run_date, courier=None, enabled_item_ids=None):
     return run
 
 
+def _reorder_run_by_preference(run, courier):
+    if not courier or not run.template_id or run.deliveries.filter(status=Delivery.Status.DONE).exists():
+        return False
+    preference = CourierRouteOrderPreference.objects.filter(template=run.template, courier=courier).first()
+    if not preference or not preference.point_order:
+        return False
+    rows = list(run.deliveries.order_by('route_order', 'id'))
+    by_point = {row.point_id: row for row in rows if row.point_id}
+    ordered = [by_point[point_id] for point_id in preference.point_order if point_id in by_point]
+    used = {row.pk for row in ordered}
+    ordered.extend(row for row in rows if row.pk not in used)
+    for order, row in enumerate(ordered, start=1):
+        if row.route_order != order:
+            row.route_order = order
+            row.save(update_fields=['route_order'])
+    return True
+
+
 @transaction.atomic
 def reassign_route_run(run, courier):
     run.assigned_courier = courier
@@ -117,18 +147,87 @@ def reassign_route_run(run, courier):
         elif not courier and delivery.status == Delivery.Status.IN_PROGRESS:
             delivery.status = Delivery.Status.NEW
         delivery.save(update_fields=['courier', 'status', 'updated_at'])
+    _reorder_run_by_preference(run, courier)
     return run
 
 
 @transaction.atomic
-def dissolve_route_run(run):
-    """Remove one day's named route without losing imported/manual deliveries.
+def record_courier_order_change(run, courier, original_point_order, proposed_point_order):
+    """Keep one pending manager review per daily route, updating it as the courier keeps adjusting."""
+    original = [int(v) for v in original_point_order if v]
+    proposed = [int(v) for v in proposed_point_order if v]
+    if not run or not run.template_id or original == proposed:
+        return None
+    suggestion, created = RouteOrderSuggestion.objects.get_or_create(
+        run=run,
+        defaults={
+            'courier': courier,
+            'original_point_order': original,
+            'proposed_point_order': proposed,
+            'status': RouteOrderSuggestion.Status.PENDING,
+        },
+    )
+    if not created:
+        if suggestion.status != RouteOrderSuggestion.Status.PENDING:
+            suggestion.original_point_order = original
+        suggestion.courier = courier
+        suggestion.proposed_point_order = proposed
+        suggestion.status = RouteOrderSuggestion.Status.PENDING
+        suggestion.decided_by = None
+        suggestion.decided_at = None
+        suggestion.save(update_fields=['courier', 'original_point_order', 'proposed_point_order', 'status', 'decided_by', 'decided_at', 'updated_at'])
+    return suggestion
 
-    Legacy duplicate rows created by older route generation are removed when an
-    equivalent direct day delivery already exists. The retained direct row is
-    unassigned. Unique route rows are returned to the unassigned day pool.
-    Completed work is never modified.
-    """
+
+def suggestion_comparison(suggestion):
+    """Return point objects in before/after order for manager UI."""
+    point_ids = list(dict.fromkeys(suggestion.original_point_order + suggestion.proposed_point_order))
+    from .models import DeliveryPoint
+    points = {p.pk: p for p in DeliveryPoint.objects.filter(pk__in=point_ids)}
+    before = [points[pid] for pid in suggestion.original_point_order if pid in points]
+    after = [points[pid] for pid in suggestion.proposed_point_order if pid in points]
+    return before, after
+
+
+@transaction.atomic
+def decide_order_suggestion(suggestion, action, actor):
+    if suggestion.status != RouteOrderSuggestion.Status.PENDING:
+        return suggestion
+    run = suggestion.run
+    if action == 'template':
+        if not run.template_id:
+            raise ValueError('У маршрута дня нет шаблона')
+        items = list(run.template.items.select_related('point').order_by('route_order', 'id'))
+        by_point = {item.point_id: item for item in items}
+        ordered = [by_point[pid] for pid in suggestion.proposed_point_order if pid in by_point]
+        used = {item.pk for item in ordered}
+        ordered.extend(item for item in items if item.pk not in used)
+        for order, item in enumerate(ordered, start=1):
+            if item.route_order != order:
+                item.route_order = order
+                item.save(update_fields=['route_order'])
+        suggestion.status = RouteOrderSuggestion.Status.APPLIED_TEMPLATE
+    elif action == 'courier':
+        if not run.template_id or not suggestion.courier_id:
+            raise ValueError('Нельзя сохранить личный порядок без шаблона и курьера')
+        CourierRouteOrderPreference.objects.update_or_create(
+            template=run.template,
+            courier=suggestion.courier,
+            defaults={'point_order': suggestion.proposed_point_order},
+        )
+        suggestion.status = RouteOrderSuggestion.Status.APPLIED_COURIER
+    elif action == 'dismiss':
+        suggestion.status = RouteOrderSuggestion.Status.DISMISSED
+    else:
+        raise ValueError('Неизвестное действие')
+    suggestion.decided_by = actor
+    suggestion.decided_at = timezone.now()
+    suggestion.save(update_fields=['status', 'decided_by', 'decided_at', 'updated_at'])
+    return suggestion
+
+
+@transaction.atomic
+def dissolve_route_run(run):
     if run.deliveries.filter(status=Delivery.Status.DONE).exists():
         raise ValueError('Нельзя расформировать маршрут: в нём уже есть выполненные точки')
 
@@ -162,7 +261,6 @@ def dissolve_route_run(run):
 
 @transaction.atomic
 def learn_template_from_run(run, template):
-    """Explicitly replace one permanent template with the canonical composition/order of a real day."""
     if template.route_id != run.route_id:
         raise ValueError('Шаблон принадлежит другому маршруту')
     rows = list(
