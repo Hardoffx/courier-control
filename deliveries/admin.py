@@ -1,5 +1,15 @@
 from django.contrib import admin
-from .models import Delivery, DeliveryEvent, DeliveryPoint, Route, RouteRun, RouteTemplate, RouteTemplateItem
+from .models import (
+    CourierRouteOrderPreference,
+    Delivery,
+    DeliveryEvent,
+    DeliveryPoint,
+    Route,
+    RouteOrderSuggestion,
+    RouteRun,
+    RouteTemplate,
+    RouteTemplateItem,
+)
 
 @admin.register(DeliveryPoint)
 class DeliveryPointAdmin(admin.ModelAdmin):
@@ -19,6 +29,14 @@ class RouteAdmin(admin.ModelAdmin):
 @admin.register(RouteRun)
 class RouteRunAdmin(admin.ModelAdmin):
     list_display=('run_date','route','template','assigned_courier','status'); list_filter=('run_date','status','route'); search_fields=('route__name','assigned_courier__username')
+
+@admin.register(CourierRouteOrderPreference)
+class CourierRouteOrderPreferenceAdmin(admin.ModelAdmin):
+    list_display=('template','courier','updated_at'); list_filter=('template__route',); search_fields=('template__route__name','courier__username','courier__first_name')
+
+@admin.register(RouteOrderSuggestion)
+class RouteOrderSuggestionAdmin(admin.ModelAdmin):
+    list_display=('run','courier','status','updated_at','decided_by'); list_filter=('status','run__route'); search_fields=('run__route__name','courier__username')
 
 @admin.register(Delivery)
 class DeliveryAdmin(admin.ModelAdmin):
