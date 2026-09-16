@@ -1,11 +1,13 @@
+from datetime import date
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 from django.views.decorators.http import require_POST
 from accounts.models import User
-from .models import Route
+from .models import Delivery, Route
 
 
 def dispatcher_required(view):
@@ -52,6 +54,18 @@ def courier_edit(request,pk=None):
             messages.success(request,'Курьер сохранён')
             return redirect('courier_manage_list')
     return render(request,'dispatcher/couriers/form.html',{'courier':courier})
+
+
+@dispatcher_required
+def courier_preview(request,pk):
+    courier=get_object_or_404(_courier_users(),pk=pk)
+    raw=request.GET.get('date','').strip()
+    try: selected_date=date.fromisoformat(raw) if raw else timezone.localdate()
+    except ValueError: selected_date=timezone.localdate()
+    deliveries=list(Delivery.objects.filter(delivery_date=selected_date,courier=courier).select_related('route_run__route','point').order_by('route_run__route__name','route_order','id'))
+    done=sum(row.status==Delivery.Status.DONE for row in deliveries)
+    next_delivery=next((row for row in deliveries if row.status not in (Delivery.Status.DONE,Delivery.Status.PROBLEM)),None)
+    return render(request,'dispatcher/couriers/preview.html',{'courier':courier,'deliveries':deliveries,'done':done,'total':len(deliveries),'selected_date':selected_date,'next_delivery':next_delivery})
 
 
 @dispatcher_required
