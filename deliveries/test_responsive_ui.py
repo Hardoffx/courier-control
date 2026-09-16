@@ -28,6 +28,8 @@ class ResponsiveOperationalUiTests(TestCase):
 
     def test_route_generation_controls_remain_on_same_screen(self):
         response = self.client.get(reverse('route_detail', args=[self.route.pk]))
-        self.assertContains(response, 'Сформировать маршрут на день')
+        self.assertContains(response, 'Создать маршрут на конкретный день')
         self.assertContains(response, 'Что едет именно в этот день')
+        self.assertContains(response, 'Загрузить Excel в шаблон')
+        self.assertContains(response, 'Добавить точки вручную')
         self.assertContains(response, self.point.address)
