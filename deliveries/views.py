@@ -11,11 +11,12 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 from accounts.models import User
 from .forms import DeliveryForm
-from .models import Delivery, DeliveryEvent, DeliveryPoint, RouteRun
+from .models import Delivery, DeliveryEvent, DeliveryPoint, RouteOrderSuggestion, RouteRun
 from .import_services import import_workbook, preview_workbook, validate_upload
 from .import_staging import stage_upload, consume_upload
 from .point_matching import canonical_delivery_values, resolve_point
 from .map_data import delivery_map_items
+from .route_services import record_courier_order_change
 
 PROBLEM_REASONS=('Нет доступа','Не принимают','Получатель недоступен','Неверный адрес','Нужно вернуться позже','Другая проблема')
 
@@ -46,17 +47,20 @@ def dispatcher_dashboard(request):
     if status: deliveries=deliveries.filter(status=status)
     if courier_filter=='unassigned': deliveries=deliveries.filter(courier__isnull=True)
     elif courier_filter.isdigit(): deliveries=deliveries.filter(courier_id=int(courier_filter))
-    deliveries=list(deliveries.order_by('route_run__route__name','courier_id','route_order','id')); couriers=User.objects.filter(role=User.Role.COURIER,is_active=True).order_by('first_name','username'); counts={key:base.filter(status=key).count() for key,_ in Delivery.Status.choices}; courier_stats=[]
+    deliveries=list(deliveries.order_by('route_run__route__name','courier_id','route_order','id'))
+    couriers=User.objects.filter(role=User.Role.COURIER,is_active=True,is_superuser=False).order_by('first_name','username')
+    counts={key:base.filter(status=key).count() for key,_ in Delivery.Status.choices}; courier_stats=[]
     for courier in couriers:
         qs=base.filter(courier=courier); courier_stats.append({'courier':courier,'total':qs.count(),'done':qs.filter(status=Delivery.Status.DONE).count(),'problem':qs.filter(status=Delivery.Status.PROBLEM).count()})
+    suggestions={s.run_id:s for s in RouteOrderSuggestion.objects.filter(run__run_date=selected_date,status=RouteOrderSuggestion.Status.PENDING).select_related('courier')}
     runs=[]
     for run in RouteRun.objects.filter(run_date=selected_date).select_related('route','template','assigned_courier').prefetch_related('deliveries').order_by('route__name'):
-        rows=list(run.deliveries.all()); total=len(rows); done=sum(d.status==Delivery.Status.DONE for d in rows); problem=sum(d.status==Delivery.Status.PROBLEM for d in rows); runs.append({'run':run,'total':total,'done':done,'problem':problem,'percent':round(done*100/total) if total else 0})
+        rows=list(run.deliveries.all()); total=len(rows); done=sum(d.status==Delivery.Status.DONE for d in rows); problem=sum(d.status==Delivery.Status.PROBLEM for d in rows); runs.append({'run':run,'total':total,'done':done,'problem':problem,'percent':round(done*100/total) if total else 0,'order_suggestion':suggestions.get(run.pk)})
     return render(request,'dispatcher/dashboard.html',{'deliveries':deliveries,'total_count':base.count(),'couriers':couriers,'row_colors':Delivery.RowColor.choices,'point_kinds':DeliveryPoint.Kind.choices,'statuses':Delivery.Status.choices,'counts':counts,'courier_stats':courier_stats,'today':timezone.localdate(),'selected_date':selected_date,'prev_date':selected_date-timedelta(days=1),'next_date':selected_date+timedelta(days=1),'route_runs':runs,'filters':{'q':q,'kind':kind,'status':status,'courier':courier_filter},'map_points':delivery_map_items(deliveries),'yandex_maps_api_key':settings.YANDEX_MAPS_JS_API_KEY,'yandex_maps_lang':settings.YANDEX_MAPS_LANG})
 
 def _resolve_courier(courier_id):
     if not courier_id: return None
-    return get_object_or_404(User,pk=courier_id,role=User.Role.COURIER,is_active=True)
+    return get_object_or_404(User,pk=courier_id,role=User.Role.COURIER,is_active=True,is_superuser=False)
 
 def _assign(delivery,courier,actor,action='assigned'):
     old=delivery.courier; delivery.courier=courier
@@ -119,7 +123,7 @@ def import_excel(request):
 @login_required
 def courier_today(request):
     if request.user.is_dispatcher: return redirect('dispatcher_dashboard')
-    today=timezone.localdate(); deliveries=list(Delivery.objects.filter(delivery_date=today,courier=request.user).select_related('point','route_run__route').order_by('route_order','id')); done=sum(d.status==Delivery.Status.DONE for d in deliveries); next_delivery=next((d for d in deliveries if d.status not in (Delivery.Status.DONE,Delivery.Status.PROBLEM)),None) or next((d for d in deliveries if d.status!=Delivery.Status.DONE),None); return render(request,'courier/today.html',{'deliveries':deliveries,'done':done,'total':len(deliveries),'today':today,'next_delivery':next_delivery,'problem_reasons':PROBLEM_REASONS,'map_points':delivery_map_items(deliveries),'yandex_maps_api_key':settings.YANDEX_MAPS_JS_API_KEY,'yandex_maps_lang':settings.YANDEX_MAPS_LANG})
+    today=timezone.localdate(); deliveries=list(Delivery.objects.filter(delivery_date=today,courier=request.user).select_related('point','route_run__route','route_run__template').order_by('route_run__route__name','route_order','id')); done=sum(d.status==Delivery.Status.DONE for d in deliveries); next_delivery=next((d for d in deliveries if d.status not in (Delivery.Status.DONE,Delivery.Status.PROBLEM)),None) or next((d for d in deliveries if d.status!=Delivery.Status.DONE),None); return render(request,'courier/today.html',{'deliveries':deliveries,'done':done,'total':len(deliveries),'today':today,'next_delivery':next_delivery,'problem_reasons':PROBLEM_REASONS,'map_points':delivery_map_items(deliveries),'yandex_maps_api_key':settings.YANDEX_MAPS_JS_API_KEY,'yandex_maps_lang':settings.YANDEX_MAPS_LANG})
 
 @login_required
 @require_POST
@@ -134,14 +138,22 @@ def courier_update(request,pk):
 @login_required
 @require_POST
 def courier_reorder(request,pk):
-    delivery=get_object_or_404(Delivery,pk=pk,courier=request.user,delivery_date=timezone.localdate()); direction=request.POST.get('direction'); items=list(Delivery.objects.filter(courier=request.user,delivery_date=delivery.delivery_date).exclude(status=Delivery.Status.DONE).order_by('route_order','id'))
+    delivery=get_object_or_404(Delivery.objects.select_related('route_run__template'),pk=pk,courier=request.user,delivery_date=timezone.localdate()); direction=request.POST.get('direction')
+    if delivery.route_run_id:
+        items=list(Delivery.objects.filter(route_run_id=delivery.route_run_id,courier=request.user,delivery_date=delivery.delivery_date).exclude(status=Delivery.Status.DONE).order_by('route_order','id')); run=delivery.route_run
+    else:
+        items=list(Delivery.objects.filter(route_run__isnull=True,courier=request.user,delivery_date=delivery.delivery_date).exclude(status=Delivery.Status.DONE).order_by('route_order','id')); run=None
     try: index=items.index(delivery)
     except ValueError: return redirect('courier_today')
     target=index-1 if direction=='up' else index+1
     if 0<=target<len(items):
+        before=[item.point_id for item in items if item.point_id]
         items[index],items[target]=items[target],items[index]
         with transaction.atomic():
             for pos,item in enumerate(items,start=1):
                 if item.route_order!=pos: item.route_order=pos; item.save(update_fields=['route_order'])
+            if run:
+                after=[item.point_id for item in items if item.point_id]
+                record_courier_order_change(run,request.user,before,after)
         DeliveryEvent.objects.create(delivery=delivery,actor=request.user,action='reordered',note=f'{index+1} → {target+1}')
     return redirect('courier_today')
