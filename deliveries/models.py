@@ -53,6 +53,17 @@ class RouteTemplateItem(models.Model):
         ordering=('route_order','id'); constraints=[models.UniqueConstraint(fields=('template','point'),name='unique_point_per_route_template')]
     def __str__(self): return f'{self.template}: {self.route_order}. {self.point}'
 
+class CourierRouteOrderPreference(models.Model):
+    template=models.ForeignKey(RouteTemplate,on_delete=models.CASCADE,related_name='courier_order_preferences')
+    courier=models.ForeignKey(settings.AUTH_USER_MODEL,on_delete=models.CASCADE,related_name='route_order_preferences',limit_choices_to={'role':'courier'})
+    point_order=models.JSONField(default=list,blank=True,help_text='Приоритетный порядок точек для этого курьера в этом варианте маршрута')
+    created_at=models.DateTimeField(auto_now_add=True)
+    updated_at=models.DateTimeField(auto_now=True)
+    class Meta:
+        constraints=[models.UniqueConstraint(fields=('template','courier'),name='unique_courier_order_per_template')]
+        ordering=('template__route__name','courier__username')
+    def __str__(self): return f'{self.template} · {self.courier}'
+
 class RouteRun(models.Model):
     class Status(models.TextChoices):
         DRAFT='draft','Черновик'; READY='ready','Готов'; IN_PROGRESS='in_progress','В работе'; DONE='done','Завершён'
@@ -65,6 +76,24 @@ class RouteRun(models.Model):
     class Meta:
         ordering=('-run_date','route__name'); constraints=[models.UniqueConstraint(fields=('route','run_date'),name='unique_route_run_per_day')]
     def __str__(self): return f'{self.run_date} · {self.route}'
+
+class RouteOrderSuggestion(models.Model):
+    class Status(models.TextChoices):
+        PENDING='pending','Ожидает решения'
+        APPLIED_TEMPLATE='applied_template','Принят для маршрута'
+        APPLIED_COURIER='applied_courier','Сохранён для курьера'
+        DISMISSED='dismissed','Только на этот день'
+    run=models.OneToOneField(RouteRun,on_delete=models.CASCADE,related_name='order_suggestion')
+    courier=models.ForeignKey(settings.AUTH_USER_MODEL,null=True,blank=True,on_delete=models.SET_NULL,related_name='route_order_suggestions',limit_choices_to={'role':'courier'})
+    original_point_order=models.JSONField(default=list,blank=True)
+    proposed_point_order=models.JSONField(default=list,blank=True)
+    status=models.CharField(max_length=24,choices=Status.choices,default=Status.PENDING)
+    decided_by=models.ForeignKey(settings.AUTH_USER_MODEL,null=True,blank=True,on_delete=models.SET_NULL,related_name='route_order_decisions')
+    decided_at=models.DateTimeField(null=True,blank=True)
+    created_at=models.DateTimeField(auto_now_add=True)
+    updated_at=models.DateTimeField(auto_now=True)
+    class Meta: ordering=('-updated_at',)
+    def __str__(self): return f'{self.run} · {self.get_status_display()}'
 
 class Delivery(models.Model):
     class Status(models.TextChoices):
