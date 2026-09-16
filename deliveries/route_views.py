@@ -1,4 +1,4 @@
-from datetime import date, timedelta
+from datetime import date
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
@@ -6,8 +6,8 @@ from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 from accounts.models import User
-from .models import Delivery, DeliveryEvent, DeliveryPoint, Route, RouteRun, RouteTemplate, RouteTemplateItem
-from .route_services import generate_route_run, reassign_route_run, learn_template_from_run, dissolve_route_run
+from .models import Delivery, DeliveryEvent, DeliveryPoint, Route, RouteOrderSuggestion, RouteRun, RouteTemplate, RouteTemplateItem
+from .route_services import generate_route_run, reassign_route_run, learn_template_from_run, dissolve_route_run, suggestion_comparison
 
 
 def dispatcher_required(view):
@@ -20,11 +20,7 @@ def dispatcher_required(view):
 
 
 def _couriers():
-    return User.objects.filter(
-        role=User.Role.COURIER,
-        is_active=True,
-        is_superuser=False,
-    ).order_by('-is_reserve_courier', 'first_name', 'username')
+    return User.objects.filter(role=User.Role.COURIER, is_active=True, is_superuser=False).order_by('-is_reserve_courier', 'first_name', 'username')
 
 
 def _ids(raw):
@@ -37,6 +33,19 @@ def _ids(raw):
     return result
 
 
+def _posted_point_ids(request):
+    raw = request.POST.getlist('point_ids')
+    if not raw and request.POST.get('point_id'):
+        raw = [request.POST.get('point_id')]
+    result = []
+    for value in raw:
+        try:
+            result.append(int(value))
+        except (TypeError, ValueError):
+            pass
+    return list(dict.fromkeys(result))
+
+
 def _save_order(items):
     with transaction.atomic():
         for pos, item in enumerate(items, start=1):
@@ -47,15 +56,7 @@ def _save_order(items):
 
 @dispatcher_required
 def route_list(request):
-    return render(
-        request,
-        'dispatcher/routes/list.html',
-        {
-            'routes': Route.objects.filter(is_active=True)
-            .select_related('default_courier')
-            .prefetch_related('templates')
-        },
-    )
+    return render(request, 'dispatcher/routes/list.html', {'routes': Route.objects.filter(is_active=True).select_related('default_courier').prefetch_related('templates')})
 
 
 @dispatcher_required
@@ -89,27 +90,36 @@ def route_detail(request, pk):
     template_id = request.GET.get('template')
     template = templates.filter(pk=template_id).first() if template_id else templates.order_by('kind', 'id').first()
     points = DeliveryPoint.objects.filter(is_active=True).order_by('kind', 'name')
-    return render(
-        request,
-        'dispatcher/routes/detail.html',
-        {'route': route, 'templates': templates, 'template': template, 'points': points, 'couriers': _couriers()},
-    )
+    return render(request, 'dispatcher/routes/detail.html', {'route': route, 'templates': templates, 'template': template, 'points': points, 'couriers': _couriers()})
 
 
 @dispatcher_required
 @require_POST
 def template_add_point(request, pk):
     template = get_object_or_404(RouteTemplate, pk=pk)
-    point = get_object_or_404(DeliveryPoint, pk=request.POST.get('point_id'), is_active=True)
+    point_ids = _posted_point_ids(request)
+    if not point_ids:
+        messages.warning(request, 'Выберите хотя бы одну точку')
+        return redirect(f'/dispatcher/routes/{template.route_id}/?template={template.pk}')
+    points = {point.pk: point for point in DeliveryPoint.objects.filter(pk__in=point_ids, is_active=True)}
     last = template.items.order_by('-route_order').first()
-    item, created = RouteTemplateItem.objects.get_or_create(
-        template=template,
-        point=point,
-        defaults={'route_order': (last.route_order + 1 if last else 1)},
-    )
-    if not created:
-        item.enabled_by_default = True
-        item.save(update_fields=['enabled_by_default'])
+    next_order = last.route_order + 1 if last else 1
+    added = 0
+    enabled = 0
+    with transaction.atomic():
+        for point_id in point_ids:
+            point = points.get(point_id)
+            if not point:
+                continue
+            item, created = RouteTemplateItem.objects.get_or_create(template=template, point=point, defaults={'route_order': next_order})
+            if created:
+                next_order += 1
+                added += 1
+            elif not item.enabled_by_default:
+                item.enabled_by_default = True
+                item.save(update_fields=['enabled_by_default'])
+                enabled += 1
+    messages.success(request, f'Добавлено точек: {added}' + (f'; включено ранее добавленных: {enabled}' if enabled else ''))
     return redirect(f'/dispatcher/routes/{template.route_id}/?template={template.pk}')
 
 
@@ -164,59 +174,42 @@ def route_generate(request, pk):
         return redirect('route_detail', pk=pk)
     courier_id = request.POST.get('courier_id', '')
     courier = _couriers().filter(pk=courier_id).first() if courier_id else route.default_courier
-    run = generate_route_run(
-        template,
-        run_date,
-        courier=courier,
-        enabled_item_ids=request.POST.getlist('enabled_items'),
-    )
-    messages.success(
-        request,
-        f'{route.name}: сформировано {run.deliveries.count()} точек на {run_date:%d.%m.%Y}',
-    )
+    run = generate_route_run(template, run_date, courier=courier, enabled_item_ids=request.POST.getlist('enabled_items'))
+    messages.success(request, f'{route.name}: сформировано {run.deliveries.count()} точек на {run_date:%d.%m.%Y}')
     return redirect(f'/dispatcher/?date={run_date.isoformat()}')
 
 
 @dispatcher_required
 def run_detail(request, pk):
-    run = get_object_or_404(
-        RouteRun.objects.select_related('route', 'template', 'assigned_courier'),
-        pk=pk,
-    )
+    run = get_object_or_404(RouteRun.objects.select_related('route', 'template', 'assigned_courier'), pk=pk)
     deliveries = run.deliveries.select_related('point', 'courier').prefetch_related('events__actor').order_by('route_order', 'id')
     points = DeliveryPoint.objects.filter(is_active=True).order_by('kind', 'name')
     previous = RouteRun.objects.filter(route=run.route, run_date__lt=run.run_date).order_by('-run_date').first()
     templates = run.route.templates.filter(is_active=True).order_by('kind', 'id')
-    return render(
-        request,
-        'dispatcher/route_run_detail.html',
-        {
-            'run': run,
-            'deliveries': deliveries,
-            'couriers': _couriers(),
-            'points': points,
-            'previous_run': previous,
-            'templates': templates,
-        },
-    )
+    suggestion = RouteOrderSuggestion.objects.filter(run=run, status=RouteOrderSuggestion.Status.PENDING).select_related('courier').first()
+    before = after = []
+    moved_count = 0
+    if suggestion:
+        before, after = suggestion_comparison(suggestion)
+        before_pos = {point.pk: pos for pos, point in enumerate(before, start=1)}
+        moved_count = sum(1 for pos, point in enumerate(after, start=1) if before_pos.get(point.pk) != pos)
+    return render(request, 'dispatcher/route_run_detail.html', {
+        'run': run,
+        'deliveries': deliveries,
+        'couriers': _couriers(),
+        'points': points,
+        'previous_run': previous,
+        'templates': templates,
+        'order_suggestion': suggestion,
+        'order_before': before,
+        'order_after': after,
+        'order_moved_count': moved_count,
+    })
 
 
-@dispatcher_required
-@require_POST
-def run_add_point(request, pk):
-    run = get_object_or_404(RouteRun, pk=pk)
-    point = get_object_or_404(DeliveryPoint, pk=request.POST.get('point_id'), is_active=True)
-    last = run.deliveries.order_by('-route_order').first()
-    order = last.route_order + 1 if last else 1
-    requested_time = request.POST.get('time_window', '').strip()[:64]
-
-    # Reuse the same day's direct/imported row instead of duplicating it.
+def _add_point_to_run(run, point, requested_time, actor, order):
     delivery = (
-        Delivery.objects.filter(
-            delivery_date=run.run_date,
-            point=point,
-            route_run__isnull=True,
-        )
+        Delivery.objects.filter(delivery_date=run.run_date, point=point, route_run__isnull=True)
         .exclude(status=Delivery.Status.DONE)
         .order_by('id')
         .first()
@@ -247,8 +240,34 @@ def run_add_point(request, pk):
             status=Delivery.Status.IN_PROGRESS if run.assigned_courier else Delivery.Status.NEW,
         )
         note = f'Добавлено вручную в {run.route.name} только на {run.run_date:%d.%m.%Y}'
-    DeliveryEvent.objects.create(delivery=delivery, actor=request.user, action='run_point_added', note=note)
-    messages.success(request, f'Добавлено: {point.name}')
+    DeliveryEvent.objects.create(delivery=delivery, actor=actor, action='run_point_added', note=note)
+    return delivery
+
+
+@dispatcher_required
+@require_POST
+def run_add_point(request, pk):
+    run = get_object_or_404(RouteRun, pk=pk)
+    point_ids = _posted_point_ids(request)
+    if not point_ids:
+        messages.warning(request, 'Выберите хотя бы одну точку')
+        return redirect('run_detail', pk=pk)
+    points = {point.pk: point for point in DeliveryPoint.objects.filter(pk__in=point_ids, is_active=True)}
+    existing_ids = set(run.deliveries.values_list('point_id', flat=True))
+    last = run.deliveries.order_by('-route_order').first()
+    order = last.route_order + 1 if last else 1
+    requested_time = request.POST.get('time_window', '').strip()[:64]
+    added = 0
+    with transaction.atomic():
+        for point_id in point_ids:
+            point = points.get(point_id)
+            if not point or point_id in existing_ids:
+                continue
+            _add_point_to_run(run, point, requested_time, request.user, order)
+            existing_ids.add(point_id)
+            order += 1
+            added += 1
+    messages.success(request, f'Добавлено точек на сегодня: {added}')
     return redirect('run_detail', pk=pk)
 
 
@@ -268,27 +287,12 @@ def run_copy_previous(request, pk):
         run.deliveries.all().delete()
         for order, old in enumerate(source, start=1):
             d = Delivery.objects.create(
-                delivery_date=run.run_date,
-                route_run=run,
-                point=old.point,
-                source_label=old.source_label,
-                address=old.address,
-                organization=old.organization,
-                recipient=old.recipient,
-                phone=old.phone,
-                comment=old.comment,
-                time_window=old.time_window,
-                row_color=old.row_color,
-                courier=run.assigned_courier,
-                route_order=order,
-                status=Delivery.Status.IN_PROGRESS if run.assigned_courier else Delivery.Status.NEW,
+                delivery_date=run.run_date, route_run=run, point=old.point, source_label=old.source_label,
+                address=old.address, organization=old.organization, recipient=old.recipient, phone=old.phone,
+                comment=old.comment, time_window=old.time_window, row_color=old.row_color, courier=run.assigned_courier,
+                route_order=order, status=Delivery.Status.IN_PROGRESS if run.assigned_courier else Delivery.Status.NEW,
             )
-            DeliveryEvent.objects.create(
-                delivery=d,
-                actor=request.user,
-                action='copied_previous',
-                note=f'Скопировано из маршрута {previous.run_date:%d.%m.%Y}',
-            )
+            DeliveryEvent.objects.create(delivery=d, actor=request.user, action='copied_previous', note=f'Скопировано из маршрута {previous.run_date:%d.%m.%Y}')
     messages.success(request, f'Состав скопирован с {previous.run_date:%d.%m.%Y}: {len(source)} точек')
     return redirect('run_detail', pk=pk)
 
@@ -297,21 +301,13 @@ def run_copy_previous(request, pk):
 @require_POST
 def run_learn_template(request, pk):
     run = get_object_or_404(RouteRun, pk=pk)
-    template = get_object_or_404(
-        RouteTemplate,
-        pk=request.POST.get('template_id'),
-        route=run.route,
-        is_active=True,
-    )
+    template = get_object_or_404(RouteTemplate, pk=request.POST.get('template_id'), route=run.route, is_active=True)
     try:
         count = learn_template_from_run(run, template)
     except ValueError as exc:
         messages.error(request, str(exc))
         return redirect('run_detail', pk=pk)
-    messages.success(
-        request,
-        f'Шаблон «{template}» обновлён по этому дню: {count} точек. Другие шаблоны не изменены.',
-    )
+    messages.success(request, f'Шаблон «{template}» обновлён по этому дню: {count} точек. Другие шаблоны не изменены.')
     return redirect('run_detail', pk=pk)
 
 
@@ -322,10 +318,7 @@ def run_reassign(request, pk):
     courier_id = request.POST.get('courier_id', '')
     courier = _couriers().filter(pk=courier_id).first() if courier_id else None
     reassign_route_run(run, courier)
-    messages.success(
-        request,
-        f'{run.route.name}: ' + ('курьер изменён' if courier else 'назначение курьера снято'),
-    )
+    messages.success(request, f'{run.route.name}: ' + ('курьер изменён' if courier else 'назначение курьера снято'))
     return redirect(request.POST.get('next') or f'/dispatcher/?date={run.run_date.isoformat()}')
 
 
@@ -340,11 +333,7 @@ def run_dissolve(request, pk):
     except ValueError as exc:
         messages.error(request, str(exc))
         return redirect('run_detail', pk=pk)
-    messages.success(
-        request,
-        f'{route_name}: маршрут на {run_date:%d.%m.%Y} расформирован. '
-        f'Точек возвращено в список дня: {detached}; старых дублей удалено: {duplicates}.',
-    )
+    messages.success(request, f'{route_name}: маршрут на {run_date:%d.%m.%Y} расформирован. Точек возвращено в список дня: {detached}; старых дублей удалено: {duplicates}.')
     return redirect(f'/dispatcher/?date={run_date.isoformat()}')
 
 
@@ -356,7 +345,6 @@ def run_delivery_move(request, pk, delivery_pk):
     if delivery.status == Delivery.Status.DONE:
         messages.warning(request, 'Выполненную точку изменять нельзя')
         return redirect('run_detail', pk=pk)
-
     action = request.POST.get('direction')
     if action == 'remove':
         delivery.delete()
@@ -368,18 +356,10 @@ def run_delivery_move(request, pk, delivery_pk):
         if delivery.status == Delivery.Status.IN_PROGRESS:
             delivery.status = Delivery.Status.NEW
         delivery.save(update_fields=['courier', 'status', 'updated_at'])
-        DeliveryEvent.objects.create(
-            delivery=delivery,
-            actor=request.user,
-            action='unassigned',
-            note=f'Назначение снято: {old or "—"} → —',
-        )
+        DeliveryEvent.objects.create(delivery=delivery, actor=request.user, action='unassigned', note=f'Назначение снято: {old or "—"} → —')
         messages.success(request, 'Точка снята с курьера')
         return redirect('run_detail', pk=pk)
-
-    items = list(
-        run.deliveries.exclude(status=Delivery.Status.DONE).order_by('route_order', 'id')
-    )
+    items = list(run.deliveries.exclude(status=Delivery.Status.DONE).order_by('route_order', 'id'))
     idx = items.index(delivery)
     target = idx - 1 if action == 'up' else idx + 1
     if 0 <= target < len(items):
@@ -392,9 +372,7 @@ def run_delivery_move(request, pk, delivery_pk):
 @require_POST
 def run_reorder(request, pk):
     run = get_object_or_404(RouteRun, pk=pk)
-    items = list(
-        run.deliveries.exclude(status=Delivery.Status.DONE).order_by('route_order', 'id')
-    )
+    items = list(run.deliveries.exclude(status=Delivery.Status.DONE).order_by('route_order', 'id'))
     by_id = {x.pk: x for x in items}
     requested = _ids(request.POST.get('order'))
     ordered = [by_id[x] for x in requested if x in by_id]
