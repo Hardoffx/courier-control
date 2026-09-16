@@ -93,11 +93,7 @@ def apply_workbook_to_template(content, template, mode='replace'):
         removed_qs.delete()
         for order, row in enumerate(rows, start=1):
             point = row['point']
-            item, _ = RouteTemplateItem.objects.get_or_create(
-                template=template,
-                point=point,
-                defaults={'route_order': order},
-            )
+            item, _ = RouteTemplateItem.objects.get_or_create(template=template, point=point, defaults={'route_order': order})
             item.route_order = order
             item.enabled_by_default = True
             item.time_window = (row.get('time_window') or '')[:64]
@@ -122,14 +118,7 @@ def apply_workbook_to_template(content, template, mode='replace'):
                 if changed:
                     item.save(update_fields=changed)
             else:
-                item = RouteTemplateItem.objects.create(
-                    template=template,
-                    point=point,
-                    route_order=next_order,
-                    enabled_by_default=True,
-                    time_window=(row.get('time_window') or '')[:64],
-                    comment=(row.get('comment') or '')[:255],
-                )
+                item = RouteTemplateItem.objects.create(template=template, point=point, route_order=next_order, enabled_by_default=True, time_window=(row.get('time_window') or '')[:64], comment=(row.get('comment') or '')[:255])
                 by_point[point.pk] = item
                 next_order += 1
             summary.applied += 1
@@ -170,21 +159,16 @@ def apply_workbook_to_run(content, run, actor=None, mode='replace'):
     for file_position, row in enumerate(rows, start=1):
         point = row['point']
         delivery = by_point.get(point.pk)
-        adopted = False
+        was_in_run = bool(delivery and delivery.pk and delivery.route_run_id == run.pk)
         if not delivery:
             delivery = (
-                Delivery.objects.filter(
-                    delivery_date=run.run_date,
-                    point=point,
-                    route_run__isnull=True,
-                )
+                Delivery.objects.filter(delivery_date=run.run_date, point=point, route_run__isnull=True)
                 .exclude(status=Delivery.Status.DONE)
                 .order_by('id')
                 .first()
             )
-            if delivery:
-                adopted = True
-            else:
+            was_in_run = False
+            if not delivery:
                 delivery = Delivery(delivery_date=run.run_date, point=point)
             by_point[point.pk] = delivery
 
@@ -193,7 +177,7 @@ def apply_workbook_to_run(content, run, actor=None, mode='replace'):
         delivery.courier = run.assigned_courier
         if mode == 'replace':
             delivery.route_order = file_position
-        elif not delivery.pk or adopted or delivery.route_run_id != run.pk:
+        elif not was_in_run:
             delivery.route_order = next_order
             next_order += 1
 
@@ -210,11 +194,6 @@ def apply_workbook_to_run(content, run, actor=None, mode='replace'):
         elif delivery.status == Delivery.Status.IN_PROGRESS and not run.assigned_courier:
             delivery.status = Delivery.Status.NEW
         delivery.save()
-        DeliveryEvent.objects.create(
-            delivery=delivery,
-            actor=actor,
-            action='route_excel_import',
-            note=f'Excel → {run.route.name}, позиция {delivery.route_order}',
-        )
+        DeliveryEvent.objects.create(delivery=delivery, actor=actor, action='route_excel_import', note=f'Excel → {run.route.name}, позиция {delivery.route_order}')
         summary.applied += 1
     return summary
