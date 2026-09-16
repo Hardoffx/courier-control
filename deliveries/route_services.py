@@ -125,8 +125,9 @@ def dissolve_route_run(run):
     """Remove one day's named route without losing imported/manual deliveries.
 
     Legacy duplicate rows created by older route generation are removed when an
-    equivalent direct day delivery already exists. Unique route rows are safely
-    returned to the unassigned day pool. Completed work is never modified.
+    equivalent direct day delivery already exists. The retained direct row is
+    unassigned. Unique route rows are returned to the unassigned day pool.
+    Completed work is never modified.
     """
     if run.deliveries.filter(status=Delivery.Status.DONE).exists():
         raise ValueError('Нельзя расформировать маршрут: в нём уже есть выполненные точки')
@@ -134,13 +135,22 @@ def dissolve_route_run(run):
     detached = 0
     removed_duplicates = 0
     for delivery in list(run.deliveries.select_related('point').order_by('id')):
-        duplicate = Delivery.objects.filter(
-            delivery_date=run.run_date,
-            route_run__isnull=True,
-            point_id=delivery.point_id,
-        ).exclude(pk=delivery.pk)
-        if delivery.point_id and duplicate.exists():
+        duplicate = (
+            Delivery.objects.filter(
+                delivery_date=run.run_date,
+                route_run__isnull=True,
+                point_id=delivery.point_id,
+            )
+            .exclude(pk=delivery.pk)
+            .order_by('id')
+            .first()
+        )
+        if delivery.point_id and duplicate:
             delivery.delete()
+            duplicate.courier = None
+            if duplicate.status == Delivery.Status.IN_PROGRESS:
+                duplicate.status = Delivery.Status.NEW
+            duplicate.save(update_fields=['courier', 'status', 'updated_at'])
             removed_duplicates += 1
         else:
             _reset_detached_delivery(delivery)
