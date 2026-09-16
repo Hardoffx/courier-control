@@ -40,6 +40,9 @@ SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'dev-only-change-me')
 DEBUG = os.getenv('DJANGO_DEBUG', '1') == '1'
 ALLOWED_HOSTS = [x.strip() for x in os.getenv('DJANGO_ALLOWED_HOSTS', '127.0.0.1,localhost').split(',') if x.strip()]
 CSRF_TRUSTED_ORIGINS = [x.strip() for x in os.getenv('DJANGO_CSRF_TRUSTED_ORIGINS', '').split(',') if x.strip()]
+DOMAIN_SPLIT_ENABLED = os.getenv('DOMAIN_SPLIT_ENABLED', '0') == '1'
+COURIER_HOST = os.getenv('COURIER_HOST', 'courier.routecontrol.ru').strip().lower()
+CONTROL_HOST = os.getenv('CONTROL_HOST', 'control.routecontrol.ru').strip().lower()
 YANDEX_MAPS_JS_API_KEY = os.getenv('YANDEX_MAPS_JS_API_KEY', '').strip()
 YANDEX_GEOCODER_API_KEY = os.getenv('YANDEX_GEOCODER_API_KEY', '').strip()
 YANDEX_MAPS_LANG = os.getenv('YANDEX_MAPS_LANG', 'ru_RU').strip() or 'ru_RU'
@@ -56,6 +59,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'config.middleware.PortalHostMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
