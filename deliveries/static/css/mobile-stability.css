@@ -116,3 +116,102 @@ body:not(.dispatcher-ui):not(.courier-ui) main.wrap > .card form .btn { margin-t
   .kpi { min-width: 166px !important; }
   .metric { flex-basis: 138px; min-width: 138px !important; }
 }
+
+
+/* UI Forge iteration #2 — dashboard candidate */
+.page-title-icon svg,
+.kpi-icon svg { width: 22px; height: 22px; display: block; }
+.kpi-icon.total::before { content: none; }
+.filter-row label { display: grid; gap: 8px; }
+.filter-row label input,
+.filter-row label select { margin-top: 0; }
+
+.mobile-brand { display: none; }
+
+@media (max-width: 700px) {
+  .dispatcher-top {
+    display: grid !important;
+    grid-template-columns: 44px minmax(0, 1fr) 44px;
+    gap: 10px !important;
+    padding: 8px 14px !important;
+    height: 64px !important;
+  }
+  .mobile-menu {
+    width: 44px !important;
+    height: 44px !important;
+    border-radius: 13px !important;
+    color: var(--blue);
+    font-size: 0 !important;
+  }
+  .mobile-menu span { font-size: 20px; line-height: 1; }
+  .mobile-brand {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: var(--ink);
+    font-size: 15px;
+    font-weight: 850;
+    letter-spacing: -.02em;
+    white-space: nowrap;
+  }
+  .mobile-brand-mark {
+    width: 28px;
+    height: 28px;
+    display: grid;
+    place-items: center;
+    border-radius: 9px;
+    background: linear-gradient(145deg,#3c9cff,#0567e8);
+    color: #fff;
+    font-size: 13px;
+    box-shadow: 0 4px 12px rgba(8,119,249,.22);
+  }
+  .top-user { justify-self: end; }
+  .avatar { width: 40px; height: 40px; }
+
+  .page-title { align-items: flex-start; }
+  .page-title-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    color: #0877f9;
+    background: #eef5ff;
+    border-color: #d8e8ff;
+  }
+
+  .date-nav {
+    width: 100%;
+    display: grid !important;
+    grid-template-columns: 46px minmax(0,1fr) 46px;
+    gap: 10px !important;
+    margin-top: 12px !important;
+  }
+  .date-nav .date-arrow {
+    width: 46px;
+    min-width: 46px;
+    height: 46px;
+    min-height: 46px !important;
+    padding: 0 !important;
+    border-radius: 12px;
+    font-size: 20px !important;
+  }
+  .date-current {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    text-align: center;
+    font-size: 16px;
+  }
+  .date-nav > .btn:not(.date-arrow) { grid-column: 1 / -1; }
+
+  .kpi-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+  }
+  .kpi-icon svg { width: 23px; height: 23px; }
+
+  .filter-row label { gap: 9px; }
+}
