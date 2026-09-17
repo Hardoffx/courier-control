@@ -39,7 +39,8 @@
   </aside>
   <div class="dispatcher-main">
     <header class="dispatcher-top">
-      <button class="mobile-menu" type="button" aria-label="Меню" onclick="document.getElementById('mobile-drawer').classList.toggle('open')">☰</button>
+      <button class="mobile-menu" type="button" aria-label="Меню" onclick="document.getElementById('mobile-drawer').classList.toggle('open')"><span aria-hidden="true">☰</span></button>
+      <a class="mobile-brand" href="{% url 'dispatcher_dashboard' %}" aria-label="Courier Control"><span class="mobile-brand-mark">C</span><span>Courier Control</span></a>
       <form class="global-search" method="get" action="{% url 'dispatcher_dashboard' %}">
         {% if request.GET.date %}<input type="hidden" name="date" value="{{ request.GET.date }}">{% endif %}
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
