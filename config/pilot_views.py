@@ -28,11 +28,6 @@ def manifest(request):
 
 @never_cache
 def service_worker(request):
-    # Transitional cleanup worker: it deliberately does not intercept requests.
-    # On activation it clears caches created by older Courier Control workers,
-    # then immediately takes control so stale navigation/cache behaviour disappears.
-    script="""self.addEventListener('install',()=>self.skipWaiting());self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.map(key=>caches.delete(key)))).then(()=>self.clients.claim())));"""
-    response=HttpResponse(script,content_type='application/javascript')
-    response['Service-Worker-Allowed']='/'
-    response['Cache-Control']='no-store, no-cache, must-revalidate, max-age=0'
+    script="""const STATIC_CACHE='courier-static-v1';const OLD_PREFIXES=['courier-shell-','courier-control-'];self.addEventListener('install',()=>self.skipWaiting());self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key!==STATIC_CACHE&&OLD_PREFIXES.some(prefix=>key.startsWith(prefix))).map(key=>caches.delete(key)))).then(()=>self.clients.claim())));self.addEventListener('fetch',event=>{const request=event.request;if(request.method!=='GET')return;const url=new URL(request.url);if(url.origin!==self.location.origin||!url.pathname.startsWith('/static/'))return;event.respondWith(caches.open(STATIC_CACHE).then(async cache=>{const cached=await cache.match(request);if(cached)return cached;const response=await fetch(request);if(response.ok)cache.put(request,response.clone());return response}))});"""
+    response=HttpResponse(script,content_type='application/javascript'); response['Service-Worker-Allowed']='/'
     return response
