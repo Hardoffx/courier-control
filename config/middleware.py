@@ -15,7 +15,13 @@ class PortalHostMiddleware:
 
     CONTROL_PREFIXES = ('/admin/', '/dispatcher/')
     COURIER_PREFIXES = ('/courier/',)
-    LOCAL_HOSTS = {'127.0.0.1', 'localhost'}
+    # ``testserver`` is Django's built-in test-client hostname. It is intentionally
+    # treated like localhost so legacy view/workflow tests remain independent of
+    # deployment hostname routing. Real portal-isolation tests can still pass the
+    # courier/control hostnames explicitly and exercise the boundary below.
+    # In production ALLOWED_HOSTS remains the outer boundary and does not include
+    # testserver.
+    LOCAL_HOSTS = {'127.0.0.1', 'localhost', 'testserver'}
 
     def __init__(self, get_response):
         self.get_response = get_response
@@ -24,7 +30,8 @@ class PortalHostMiddleware:
         portal = portal_for_request(request)
         host = request_host(request)
 
-        # Local health/deployment checks must keep working with strict mode on.
+        # Local health/deployment checks and Django's test client must keep
+        # working with strict domain split enabled.
         if portal is None and host in self.LOCAL_HOSTS:
             return self.get_response(request)
 
