@@ -15,6 +15,12 @@ class QuickTunnelDeploymentTests(SimpleTestCase):
         self.assertIn('COURIER_CONTROL_TUNNEL_HOST', script)
         self.assertIn('--http-host-header $ORIGIN_HOST', script)
 
+    def test_quick_tunnel_uses_tcp_fallback_and_fresh_journal_entries(self):
+        script = self.script()
+        self.assertIn('tunnel --protocol http2 --url', script)
+        self.assertIn('RestartSec=20', script)
+        self.assertIn('--since "$TUNNEL_LOG_SINCE"', script)
+
     def test_quick_tunnel_reuses_the_existing_service_identity(self):
         script = self.script()
         self.assertNotIn('APP_USER=courierctl', script)
