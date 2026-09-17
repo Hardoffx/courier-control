@@ -15,6 +15,13 @@ class QuickTunnelDeploymentTests(SimpleTestCase):
         self.assertIn('COURIER_CONTROL_TUNNEL_HOST', script)
         self.assertIn('--http-host-header $ORIGIN_HOST', script)
 
+    def test_quick_tunnel_reuses_the_existing_service_identity(self):
+        script = self.script()
+        self.assertNotIn('APP_USER=courierctl', script)
+        self.assertNotIn('APP_GROUP=courierctl', script)
+        self.assertIn('systemctl show "$APP_SERVICE" --property=User --value', script)
+        self.assertIn("stat -c '%U' \"$APP_DIR\"", script)
+
     def test_quick_tunnel_trusts_its_external_csrf_origin(self):
         self.assertIn(
             "add_csv('DJANGO_CSRF_TRUSTED_ORIGINS','https://*.trycloudflare.com')",
