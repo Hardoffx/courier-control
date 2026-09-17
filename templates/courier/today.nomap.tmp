@@ -1,0 +1,146 @@
+{% extends 'base.html' %}
+{% block title %}Мой маршрут · Courier Control{% endblock %}
+{% block head %}
+<style>
+.courier-shell{max-width:680px;margin:auto}
+.courier-head{display:flex;justify-content:space-between;align-items:end;gap:10px;margin:4px 2px 12px}
+.courier-head>div{min-width:0}
+.progress-pill{font-weight:800;color:#1769cf;background:var(--blue-soft);padding:7px 10px;border-radius:999px;flex:none}
+.next-card{padding:0;overflow:hidden;border-color:#cfe2ff}
+.next-bar{background:var(--blue);color:#fff;padding:10px 14px;display:flex;justify-content:space-between;gap:8px;font-size:12px;font-weight:800;letter-spacing:.03em}
+.next-body{padding:16px}
+.next-address{font-size:24px;line-height:1.15;margin:8px 0;overflow-wrap:anywhere}
+.next-meta{display:flex;gap:12px;flex-wrap:wrap;margin:10px 0;font-weight:700}
+.action-row{display:grid;grid-template-columns:1fr;gap:8px;margin-top:14px}
+.action-row .btn{width:100%}
+.big-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:9px}
+.big-actions .btn{width:100%;min-height:50px}
+.route-section{margin-top:18px}
+.route-title{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.route-list{background:#fff;border:1px solid var(--line);border-radius:13px;overflow:hidden}
+.route-row{display:grid;grid-template-columns:28px minmax(0,1fr) auto;gap:9px;align-items:center;padding:12px;border-bottom:1px solid var(--line)}
+.route-row:last-child{border-bottom:0}
+.route-row.current{background:var(--blue-soft)}
+.route-row.problem{background:var(--red-soft)}
+.route-row.done .route-dot{background:var(--green);color:#fff}
+.route-dot{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:#e9edf3;color:#667085;font-size:11px;font-weight:850}
+.route-row.current .route-dot{background:var(--blue);color:#fff}
+.route-row.problem .route-dot{background:var(--red);color:#fff}
+.route-address{font-weight:750;overflow-wrap:anywhere}
+.route-time{font-size:12px;color:var(--muted);white-space:nowrap}
+.delivery-detail{margin-top:10px}
+.delivery-detail summary{cursor:pointer;overflow-wrap:anywhere}
+.reorder-actions{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap}
+.reorder-actions form{margin:0}
+.reorder-actions .btn{margin:0}
+@media(max-width:480px){.next-address{font-size:22px}.big-actions{grid-template-columns:1fr}.route-row{padding:11px 9px}}
+@media(max-width:430px){.courier-head h1{font-size:26px}.next-body{padding:14px}.next-address{font-size:21px}.route-title h2{font-size:20px}.route-row{grid-template-columns:28px minmax(0,1fr);align-items:start}.route-time{grid-column:2;white-space:normal}.reorder-actions{display:grid;grid-template-columns:1fr 1fr}.reorder-actions form,.reorder-actions .btn{width:100%}}
+@media(max-width:375px){.courier-head{align-items:flex-start}.progress-pill{font-size:13px}.next-bar{padding:9px 11px}.next-meta{gap:7px}.route-row{gap:7px}.delivery-detail{padding:12px}}
+</style>
+{% endblock %}
+{% block content %}
+<div id="top" class="courier-shell">
+  <div class="courier-head">
+    <div><h1 style="margin:0 0 3px">Мой маршрут</h1><div class="muted">{{ today }}</div></div>
+    <span class="progress-pill">{{ done }} из {{ total }}</span>
+  </div>
+
+  {% if next_delivery %}
+  <section class="card next-card">
+    <div class="next-bar"><span>СЛЕДУЮЩАЯ ТОЧКА</span><span>№{{ next_delivery.route_order }}</span></div>
+    <div class="next-body">
+      {% if next_delivery.source_label %}<span class="type">{{ next_delivery.source_label }}</span>{% endif %}
+      <h2 class="next-address">{{ next_delivery.address }}</h2>
+      <div class="next-meta">
+        {% if next_delivery.time_window %}<span>◷ {{ next_delivery.time_window }}</span>{% endif %}
+        {% if next_delivery.phone %}<a href="tel:{{ next_delivery.phone }}">☎ {{ next_delivery.phone }}</a>{% endif %}
+      </div>
+      <div class="action-row">
+        {% if next_delivery.phone %}
+          <a class="btn good" href="tel:{{ next_delivery.phone }}">☎ Позвонить</a>
+        {% else %}
+          <a class="btn alt detail-opener" href="#delivery-{{ next_delivery.pk }}" data-open="delivery-{{ next_delivery.pk }}">+ Телефон</a>
+        {% endif %}
+      </div>
+      <div class="big-actions">
+        <form class="done-form" method="post" action="{% url 'courier_update' next_delivery.pk %}">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="done">
+          <input type="hidden" name="latitude">
+          <input type="hidden" name="longitude">
+          <button class="btn good">✓ Отметить как выполнено</button>
+        </form>
+        <a class="btn bad detail-opener" href="#problem-{{ next_delivery.pk }}" data-open="delivery-{{ next_delivery.pk }}" data-open-child="problem-{{ next_delivery.pk }}">⚠ Проблема с доставкой</a>
+      </div>
+    </div>
+  </section>
+  {% endif %}
+
+  <section class="route-section">
+    <div class="route-title"><h2>Мой маршрут сегодня</h2></div>
+    <div class="route-list">
+      {% for d in deliveries %}
+      <a href="#delivery-{{ d.pk }}" class="detail-opener" data-open="delivery-{{ d.pk }}" style="color:inherit;text-decoration:none">
+        <div class="route-row {% if d.status == 'done' %}done{% elif d.status == 'problem' %}problem{% elif next_delivery and d.pk == next_delivery.pk %}current{% endif %}" data-delivery-id="{{ d.pk }}">
+          <span class="route-dot">{% if d.status == 'done' %}✓{% else %}{{ d.route_order }}{% endif %}</span>
+          <div><div class="route-address">{{ d.address }}</div><div class="muted" style="font-size:12px">{{ d.source_label|default:d.get_status_display }}</div></div>
+          <div class="route-time">{{ d.time_window|default:d.get_status_display }}</div>
+        </div>
+      </a>
+      {% empty %}
+      <div style="padding:18px">На сегодня заданий нет.</div>
+      {% endfor %}
+    </div>
+  </section>
+
+  {% for d in deliveries %}
+  <details id="delivery-{{ d.pk }}" class="card delivery-detail" data-delivery-id="{{ d.pk }}">
+    <summary><b>№{{ d.route_order }} · {{ d.address }}</b> <span class="muted">{{ d.get_status_display }}</span></summary>
+    {% if d.comment %}<p>{{ d.comment }}</p>{% endif %}
+    {% if d.problem_reason %}<p style="color:var(--red)"><b>{{ d.problem_reason }}</b></p>{% endif %}
+    {% if d.status != 'done' %}
+      {% if d.phone %}<div class="action-row"><a class="btn good" href="tel:{{ d.phone }}">☎ Позвонить</a></div>{% endif %}
+      <details id="problem-{{ d.pk }}" style="margin-top:12px">
+        <summary class="btn bad">⚠ Проблема</summary>
+        <form method="post" action="{% url 'courier_update' d.pk %}" style="margin-top:10px">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="problem">
+          <label>Причина<select name="problem_reason">{% for reason in problem_reasons %}<option>{{ reason }}</option>{% endfor %}</select></label>
+          <label>Комментарий<input name="problem_comment" placeholder="Что произошло / когда вернуться"></label>
+          <button class="btn bad">Сохранить проблему</button>
+        </form>
+      </details>
+      {% if not d.phone %}
+      <form method="post" action="{% url 'courier_update' d.pk %}" style="margin-top:12px">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="phone">
+        <input name="phone" placeholder="Добавить телефон">
+        <button class="btn alt">Добавить телефон</button>
+      </form>
+      {% endif %}
+      <div class="reorder-actions">
+        <form method="post" action="{% url 'courier_reorder' d.pk %}">{% csrf_token %}<input type="hidden" name="direction" value="up"><button class="btn alt">↑ Раньше</button></form>
+        <form method="post" action="{% url 'courier_reorder' d.pk %}">{% csrf_token %}<input type="hidden" name="direction" value="down"><button class="btn alt">↓ Позже</button></form>
+      </div>
+    {% endif %}
+  </details>
+  {% endfor %}
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+document.querySelectorAll('.done-form').forEach(f=>f.addEventListener('submit',e=>{
+  if(f.dataset.geo==='1'||!navigator.geolocation)return;
+  e.preventDefault();
+  navigator.geolocation.getCurrentPosition(p=>{
+    f.querySelector('[name=latitude]').value=p.coords.latitude;
+    f.querySelector('[name=longitude]').value=p.coords.longitude;
+    f.dataset.geo='1';f.requestSubmit();
+  },()=>{f.dataset.geo='1';f.requestSubmit()},{enableHighAccuracy:true,timeout:4000});
+}));
+document.querySelectorAll('.detail-opener').forEach(a=>a.addEventListener('click',()=>{
+  const d=document.getElementById(a.dataset.open);if(d)d.open=true;
+  const c=document.getElementById(a.dataset.openChild);if(c)c.open=true;
+}));
+</script>
+{% endblock %}
