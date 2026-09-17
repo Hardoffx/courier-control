@@ -40,6 +40,21 @@ class LabIdentityUiTests(TestCase):
         self.assertNotContains(response, 'route-map')
         self.assertEqual(delivery.lab_kind, DeliveryPoint.Kind.CMD)
 
+    def test_courier_uses_one_expandable_route_item_per_delivery(self):
+        delivery = Delivery.objects.create(
+            delivery_date=timezone.localdate(), courier=self.courier, route_order=7,
+            address='Москва г, ул Митинская 27', status=Delivery.Status.IN_PROGRESS,
+        )
+        self.client.login(username='lab-courier', password='pass')
+        response = self.client.get(reverse('courier_today'))
+        html = response.content.decode()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(html.count(f'id="delivery-{delivery.pk}"'), 1)
+        self.assertContains(response, 'class="route-item')
+        self.assertContains(response, 'class="route-detail-body"')
+        self.assertNotContains(response, 'class="card delivery-detail"')
+        self.assertContains(response, 'route-accordion.css')
+
     def test_dispatcher_screen_shows_lab_identity(self):
         Delivery.objects.create(
             delivery_date=timezone.localdate(), courier=self.courier, route_order=1,
