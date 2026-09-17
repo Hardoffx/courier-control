@@ -10,7 +10,7 @@
       </div>
       <div class="date-nav">
         <a class="btn alt date-arrow" href="?date={{ prev_date|date:'Y-m-d' }}" aria-label="Предыдущий день">←</a><strong class="date-current">{{ selected_date }}</strong><a class="btn alt date-arrow" href="?date={{ next_date|date:'Y-m-d' }}" aria-label="Следующий день">→</a>
-        {% if selected_date != today %}<a class="btn alt date-today" href="?date={{ today|date:'Y-m-d' }}"><span aria-hidden="true">↩</span> Сегодня</a>{% endif %}
+        {% if selected_date != today %}<a class="btn alt date-today" href="?date={{ today|date:'Y-m-d' }}"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="4" y="5.5" width="16" height="14" rx="2.5"/><path d="M8 3.5v4M16 3.5v4M4 9.5h16"/><path d="M8 13h3M8 16h5"/></svg><span>Сегодня</span></a>{% endif %}
       </div>
     </div>
     <div class="head-actions"><a class="btn excel-action" href="{% url 'import_excel' %}"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="4" y="3.5" width="16" height="17" rx="2.5"/><path d="M9 3.5v17M9 8h11M9 13h11M9 17h11"/><path d="m5.7 9.3 2.1 3-2.1 3M7.8 9.3l-2.1 3 2.1 3"/></svg><span>Импорт Excel</span></a><a class="btn" href="{% url 'delivery_create' %}">＋ Добавить доставку</a></div>
