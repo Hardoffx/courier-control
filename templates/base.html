@@ -34,7 +34,6 @@
       <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="btn side-logout" type="submit">↪ Выйти</button></form>
     </div>
   </aside>
-
   <div class="dispatcher-main">
     <header class="dispatcher-top">
       <button class="mobile-menu" type="button" aria-label="Меню" onclick="document.getElementById('mobile-drawer').classList.toggle('open')">☰</button>
@@ -48,30 +47,19 @@
     </header>
     <div id="mobile-drawer" class="mobile-drawer" onclick="if(event.target===this)this.classList.remove('open')">
       <nav>
-        <a href="{% url 'dispatcher_dashboard' %}">Сегодня</a>
-        <a href="{% url 'dispatcher_dashboard' %}#deliveries">Доставки</a>
-        <a href="{% url 'courier_manage_list' %}">Курьеры</a>
-        <a href="{% url 'route_list' %}">Маршруты</a>
-        <a href="{% url 'point_list' %}">Постоянные точки</a>
-        <a href="{% url 'import_excel' %}">Импорт Excel</a>
-        <a href="{% url 'management_stats' %}">Статистика</a>
+        <a href="{% url 'dispatcher_dashboard' %}">Сегодня</a><a href="{% url 'dispatcher_dashboard' %}#deliveries">Доставки</a><a href="{% url 'courier_manage_list' %}">Курьеры</a><a href="{% url 'route_list' %}">Маршруты</a><a href="{% url 'point_list' %}">Постоянные точки</a><a href="{% url 'import_excel' %}">Импорт Excel</a><a href="{% url 'management_stats' %}">Статистика</a>
       </nav>
     </div>
-    <main class="wrap">{% block content %}{% endblock %}</main>
-  </div>
-</div>
 {% else %}
   <header class="courier-top">
     <a class="brand" href="{% if user.is_authenticated %}{% url 'home' %}{% else %}#{% endif %}"><span class="brand-cube"><span>C</span></span><span>Courier Control</span></a>
-    {% if user.is_authenticated %}
-    <div class="courier-user">
-      <span class="avatar">{{ user.username|slice:":1"|upper }}</span>
-      <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="logout" type="submit">Выйти</button></form>
-    </div>
-    {% endif %}
+    {% if user.is_authenticated %}<div class="courier-user"><span class="avatar">{{ user.username|slice:":1"|upper }}</span><form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="logout" type="submit">Выйти</button></form></div>{% endif %}
   </header>
-  <main class="wrap">{% block content_guest %}{% if not user.is_authenticated %}{% block content %}{% endblock %}{% else %}{% block content_courier %}{% endblock %}{% endif %}{% endblock %}</main>
 {% endif %}
+
+<main class="wrap">{% block content %}{% endblock %}</main>
+
+{% if user.is_authenticated and user.is_dispatcher %}</div></div>{% endif %}
 <script>if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('{% url "service_worker" %}').catch(()=>{}))}</script>
 {% block scripts %}{% endblock %}
 </body>
