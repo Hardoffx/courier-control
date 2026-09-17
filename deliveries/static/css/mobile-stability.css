@@ -1,0 +1,118 @@
+/* Mobile UI stabilization pass — 2026-09-17 */
+
+/* Forms: predictable vertical rhythm; prevents labels/inputs/buttons overlapping. */
+form > label + label { margin-top: 12px; }
+form > input + label,
+form > select + label,
+form > textarea + label { margin-top: 12px; }
+
+/* Login portals */
+body:not(.dispatcher-ui):not(.courier-ui) main.wrap > .card form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+}
+body:not(.dispatcher-ui):not(.courier-ui) main.wrap > .card form label { margin: 0; }
+body:not(.dispatcher-ui):not(.courier-ui) main.wrap > .card form input { margin: 0 0 6px; min-height: 48px; }
+body:not(.dispatcher-ui):not(.courier-ui) main.wrap > .card form .btn { margin-top: 6px; }
+
+/* Dashboard KPI cards */
+.kpi > div { min-width: 0; }
+.kpi-label { white-space: nowrap; }
+.kpi-icon.total { font-size: 0; }
+.kpi-icon.total::before { content: "▤"; font-size: 18px; line-height: 1; }
+
+/* Route template mobile editor */
+.mobile-template-edit { gap: 12px !important; }
+.mobile-template-edit label { display: grid; gap: 6px; margin: 0 !important; }
+.mobile-template-edit label input { margin: 0; }
+.mobile-template-edit .btn { margin-top: 2px !important; }
+.mobile-template-actions { margin-top: 12px !important; }
+
+@media (max-width: 700px) {
+  /* Keep all mobile content inside the viewport. */
+  .dispatcher-main,
+  .dashboard-page,
+  .period-card,
+  .period-card form,
+  .form-shell,
+  .form-shell .card { min-width: 0; max-width: 100%; }
+
+  /* Dashboard KPIs: content-sized swipe cards, no wrapped labels. */
+  .kpi-grid {
+    display: flex !important;
+    gap: 10px !important;
+    overflow-x: auto !important;
+    overflow-y: hidden;
+    padding: 2px 2px 8px;
+    margin: 0 0 14px !important;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .kpi-grid::-webkit-scrollbar { display: none; }
+  .kpi {
+    flex: 0 0 auto;
+    width: max-content;
+    min-width: 174px !important;
+    max-width: 220px;
+    scroll-snap-align: start;
+  }
+  .kpi-label { font-size: 12px; }
+
+  /* Statistics period picker: two equal columns contained by the card. */
+  .period-card form {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+    gap: 10px !important;
+    width: 100%;
+  }
+  .period-card form label { min-width: 0; width: 100%; margin: 0 !important; }
+  .period-card form input { min-width: 0; width: 100%; max-width: 100%; }
+  .period-card form button { grid-column: 1 / -1 !important; width: 100%; }
+
+  /* Statistics metrics: swipe + snap without an intrusive scrollbar. */
+  .metric-grid {
+    display: flex !important;
+    gap: 10px !important;
+    overflow-x: auto !important;
+    overflow-y: hidden;
+    margin: 10px 0 14px !important;
+    padding: 2px 2px 8px !important;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .metric-grid::-webkit-scrollbar { display: none; }
+  .metric {
+    flex: 0 0 145px;
+    min-width: 145px !important;
+    scroll-snap-align: start;
+  }
+
+  /* Courier form actions belong to document flow on iOS. */
+  .form-actions {
+    position: static !important;
+    inset: auto !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr);
+    gap: 10px !important;
+    margin-top: 18px !important;
+    padding: 0 !important;
+    background: transparent !important;
+  }
+  .form-actions .btn { width: 100%; min-width: 0; }
+  .toggle-row { position: relative; z-index: auto; }
+
+  /* Route editor spacing. */
+  .mobile-template-edit { margin-top: 12px !important; }
+
+  /* iOS date controls sometimes keep an intrinsic minimum width. */
+  input[type="date"] { min-width: 0; }
+}
+
+@media (max-width: 390px) {
+  .form-actions { grid-template-columns: 1fr; }
+  .kpi { min-width: 166px !important; }
+  .metric { flex-basis: 138px; min-width: 138px !important; }
+}
