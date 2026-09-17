@@ -21,8 +21,8 @@
   <div class="kpi-grid">
     <div class="card kpi"><span class="kpi-icon total" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 6h12M8 12h12M8 18h12"/><rect x="3" y="4" width="2.5" height="2.5" rx=".6"/><rect x="3" y="10.7" width="2.5" height="2.5" rx=".6"/><rect x="3" y="17.5" width="2.5" height="2.5" rx=".6"/></svg></span><div><div class="kpi-label">Всего доставок</div><div class="kpi-value">{{ total_count }}</div></div></div>
     <div class="card kpi"><span class="kpi-icon done" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="12" r="8.5"/><path d="m8.2 12.1 2.4 2.5 5.4-5.4"/></svg></span><div><div class="kpi-label">Выполнено</div><div class="kpi-value">{{ counts.done }}</div></div></div>
-    <div class="card kpi"><span class="kpi-icon problem">!</span><div><div class="kpi-label">Проблемы</div><div class="kpi-value">{{ counts.problem }}</div></div></div>
-    <div class="card kpi"><span class="kpi-icon route">◷</span><div><div class="kpi-label">В пути</div><div class="kpi-value">{{ counts.in_progress }}</div></div></div>
+    <div class="card kpi"><span class="kpi-icon problem" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v5.7"/><circle cx="12" cy="16.5" r=".8" fill="currentColor" stroke="none"/></svg></span><div><div class="kpi-label">Проблемы</div><div class="kpi-value">{{ counts.problem }}</div></div></div>
+    <div class="card kpi"><span class="kpi-icon route" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3.5 7.5h10v8h-10z"/><path d="M13.5 10h3.2l3 3v2.5h-6.2z"/><circle cx="7" cy="17.5" r="2"/><circle cx="17" cy="17.5" r="2"/><path d="M5.5 5h5"/></svg></span><div><div class="kpi-label">В пути</div><div class="kpi-value">{{ counts.in_progress }}</div></div></div>
   </div>
 
   <div class="quick-filters" aria-label="Быстрые фильтры">
