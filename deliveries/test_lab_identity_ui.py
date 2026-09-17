@@ -53,7 +53,10 @@ class LabIdentityUiTests(TestCase):
         self.assertContains(response, 'class="route-item')
         self.assertContains(response, 'class="route-detail-body"')
         self.assertNotContains(response, 'class="card delivery-detail"')
-        self.assertContains(response, 'route-accordion.css')
+        # ManifestStaticFilesStorage fingerprints production assets, so assert
+        # the stable asset stem rather than the unhashed development filename.
+        self.assertContains(response, 'route-accordion.')
+        self.assertContains(response, '.css')
 
     def test_dispatcher_screen_shows_lab_identity(self):
         Delivery.objects.create(
