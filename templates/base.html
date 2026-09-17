@@ -61,7 +61,15 @@
 <main class="wrap">{% block content %}{% endblock %}</main>
 
 {% if user.is_authenticated and user.is_dispatcher %}</div></div>{% endif %}
-<script>if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('{% url "service_worker" %}').catch(()=>{}))}</script>
+<script>
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('{% url "service_worker" %}',{updateViaCache:'none'})
+      .then(reg=>reg.update())
+      .catch(()=>{});
+  });
+}
+</script>
 {% block scripts %}{% endblock %}
 </body>
 </html>
