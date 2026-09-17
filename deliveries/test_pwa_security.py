@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from django.conf import settings
-from django.test import SimpleTestCase
+from django.test import RequestFactory, SimpleTestCase
 
 
 class PwaSecurityTests(SimpleTestCase):
@@ -17,10 +17,14 @@ class PwaSecurityTests(SimpleTestCase):
         self.assertNotIn('serviceWorker.register', template)
         self.assertNotIn('navigator.serviceWorker.register', template)
 
-    def test_legacy_service_worker_self_destructs(self):
+    def retirement_worker_response(self):
         from config.pilot_views import service_worker
 
-        response = service_worker(None)
+        request = RequestFactory().get('/service-worker.js', HTTP_HOST='control.routecontrol.ru')
+        return service_worker(request)
+
+    def test_legacy_service_worker_self_destructs(self):
+        response = self.retirement_worker_response()
         self.assertEqual(response.status_code, 200)
         script = response.content.decode()
         self.assertIn('self.registration.unregister()', script)
@@ -29,9 +33,7 @@ class PwaSecurityTests(SimpleTestCase):
         self.assertNotIn('caches.match(', script)
 
     def test_legacy_service_worker_is_never_cached(self):
-        from config.pilot_views import service_worker
-
-        response = service_worker(None)
+        response = self.retirement_worker_response()
         cache_control = response.get('Cache-Control', '')
         self.assertIn('no-store', cache_control)
         self.assertIn('no-cache', cache_control)
