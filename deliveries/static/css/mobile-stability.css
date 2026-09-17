@@ -242,3 +242,14 @@ body:not(.dispatcher-ui):not(.courier-ui) main.wrap > .card form .btn { margin-t
     color: #e79218;
   }
 }
+
+
+/* Excel import action */
+.excel-action {
+  background: #217346 !important;
+  border-color: #217346 !important;
+  color: #fff !important;
+  box-shadow: 0 4px 12px rgba(33,115,70,.18);
+}
+.excel-action:hover { background: #1d633d !important; border-color: #1d633d !important; }
+.excel-action svg { width: 19px; height: 19px; flex: none; }
