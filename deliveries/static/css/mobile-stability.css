@@ -287,3 +287,88 @@ body:not(.dispatcher-ui):not(.courier-ui) main.wrap > .card form .btn { margin-t
   }
   .head-actions .excel-action svg { width: 17px; height: 17px; }
 }
+
+
+/* UI Forge iteration #5 — generated reference translated to real staging */
+@media (max-width: 700px) {
+  .dispatcher-top {
+    height: 72px !important;
+    grid-template-columns: 44px minmax(0,1fr) 44px;
+  }
+  .mobile-brand {
+    gap: 9px;
+    line-height: 1.05;
+  }
+  .mobile-brand-mark {
+    width: 38px;
+    height: 38px;
+    border-radius: 0;
+    background: transparent;
+    color: #1978f2;
+    box-shadow: none;
+  }
+  .mobile-brand-mark svg {
+    display: block;
+    width: 38px;
+    height: 38px;
+  }
+  .mobile-brand-copy {
+    display: grid;
+    gap: 4px;
+    min-width: 0;
+    text-align: left;
+  }
+  .mobile-brand-copy strong {
+    color: var(--ink);
+    font-size: 17px;
+    font-weight: 850;
+    letter-spacing: -.025em;
+    white-space: nowrap;
+  }
+  .mobile-brand-copy small {
+    color: #718096;
+    font-size: 10px;
+    font-weight: 650;
+    letter-spacing: 0;
+    white-space: nowrap;
+  }
+
+  .date-nav > .date-today {
+    grid-column: 2 !important;
+    min-height: 38px !important;
+    padding: 7px 15px !important;
+    gap: 7px;
+    border: 1px solid #cfe4fb !important;
+    border-radius: 999px !important;
+    background: #eef7ff !important;
+    color: #1878ef !important;
+    box-shadow: 0 3px 9px rgba(8,119,249,.08);
+    font-size: 13px !important;
+    font-weight: 750;
+  }
+
+  .head-actions {
+    grid-template-columns: minmax(0,1fr) minmax(0,1fr) !important;
+    gap: 9px !important;
+  }
+  .head-actions .btn {
+    min-height: 52px !important;
+    border-radius: 12px !important;
+    font-size: 13px !important;
+    font-weight: 750;
+    white-space: nowrap;
+    box-shadow: 0 5px 13px rgba(17,33,58,.09);
+  }
+  .head-actions .excel-action {
+    background: #079b58 !important;
+    border-color: #079b58 !important;
+  }
+  .head-actions .excel-action:hover {
+    background: #07884e !important;
+    border-color: #07884e !important;
+  }
+  .head-actions .excel-action svg {
+    width: 20px;
+    height: 20px;
+  }
+}
