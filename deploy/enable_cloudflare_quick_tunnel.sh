@@ -20,6 +20,30 @@ fail(){ echo "ERROR: $*" >&2; exit 1; }
 
 BOT_BEFORE="$(systemctl is-active courier-route-bot.service 2>/dev/null || true)"
 
+# The production deployment uses strict host-based portal separation. A Quick
+# Tunnel normally forwards its random trycloudflare.com Host header, which
+# Django correctly rejects when DOMAIN_SPLIT_ENABLED=1. Rewrite the origin Host
+# to the configured control portal so the emergency URL reaches the same code
+# path as https://control.routecontrol.ru while the browser still uses the
+# temporary HTTPS origin.
+ORIGIN_HOST="${COURIER_CONTROL_TUNNEL_HOST:-$(python3 - "$APP_DIR/.env" <<'PY'
+from pathlib import Path
+import sys
+
+value = ''
+for raw in Path(sys.argv[1]).read_text(encoding='utf-8').splitlines():
+    line = raw.strip()
+    if not line or line.startswith('#') or '=' not in line:
+        continue
+    key, candidate = line.split('=', 1)
+    if key.strip() == 'CONTROL_HOST':
+        value = candidate.strip().strip('"\'')
+        break
+print(value or 'control.routecontrol.ru')
+PY
+)}"
+[[ "$ORIGIN_HOST" =~ ^[A-Za-z0-9.-]+$ ]] || fail "Invalid control portal hostname: $ORIGIN_HOST"
+
 log "Installing cloudflared from Cloudflare package repository"
 export DEBIAN_FRONTEND=noninteractive
 apt-get update
@@ -85,7 +109,7 @@ Type=simple
 User=$APP_USER
 Group=$APP_GROUP
 Environment=HOME=$APP_DIR
-ExecStart=/usr/bin/cloudflared tunnel --url http://127.0.0.1:8010
+ExecStart=/usr/bin/cloudflared tunnel --url http://127.0.0.1:8010 --http-host-header $ORIGIN_HOST
 Restart=always
 RestartSec=5
 TimeoutStopSec=15
@@ -139,6 +163,7 @@ else
 fi
 
 printf '\nCloudflare Quick Tunnel is ready.\n'
+printf 'Portal: control (%s)\n' "$ORIGIN_HOST"
 printf 'Web:    %s/\n' "$URL"
 printf 'Health: %s/healthz/\n' "$URL"
 printf 'Tunnel service: %s\n' "$(systemctl is-active "$TUNNEL_SERVICE" 2>/dev/null || true)"
