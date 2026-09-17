@@ -5,11 +5,11 @@
   <div class="page-head">
     <div>
       <div class="page-title">
-        <span class="page-title-icon">▣</span>
+        <span class="page-title-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3.5" y="5" width="17" height="15" rx="3"/><path d="M7.5 3v4M16.5 3v4M3.5 9.5h17"/><path d="M8 14h3M8 17h6"/></svg></span>
         <div><h1>Сегодня — {{ selected_date|date:'j E Y' }}</h1><div class="page-sub">Управление доставками и курьерами</div></div>
       </div>
       <div class="date-nav">
-        <a class="btn alt" href="?date={{ prev_date|date:'Y-m-d' }}">←</a><strong>{{ selected_date }}</strong><a class="btn alt" href="?date={{ next_date|date:'Y-m-d' }}">→</a>
+        <a class="btn alt date-arrow" href="?date={{ prev_date|date:'Y-m-d' }}" aria-label="Предыдущий день">←</a><strong class="date-current">{{ selected_date }}</strong><a class="btn alt date-arrow" href="?date={{ next_date|date:'Y-m-d' }}" aria-label="Следующий день">→</a>
         {% if selected_date != today %}<a class="btn alt" href="?date={{ today|date:'Y-m-d' }}">Сегодня</a>{% endif %}
       </div>
     </div>
@@ -19,8 +19,8 @@
   {% if messages %}{% for message in messages %}<div class="card">{{ message }}</div>{% endfor %}{% endif %}
 
   <div class="kpi-grid">
-    <div class="card kpi"><span class="kpi-icon total">▣</span><div><div class="kpi-label">Всего доставок</div><div class="kpi-value">{{ total_count }}</div></div></div>
-    <div class="card kpi"><span class="kpi-icon done">✓</span><div><div class="kpi-label">Выполнено</div><div class="kpi-value">{{ counts.done }}</div></div></div>
+    <div class="card kpi"><span class="kpi-icon total" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 6h12M8 12h12M8 18h12"/><rect x="3" y="4" width="2.5" height="2.5" rx=".6"/><rect x="3" y="10.7" width="2.5" height="2.5" rx=".6"/><rect x="3" y="17.5" width="2.5" height="2.5" rx=".6"/></svg></span><div><div class="kpi-label">Всего доставок</div><div class="kpi-value">{{ total_count }}</div></div></div>
+    <div class="card kpi"><span class="kpi-icon done" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="12" r="8.5"/><path d="m8.2 12.1 2.4 2.5 5.4-5.4"/></svg></span><div><div class="kpi-label">Выполнено</div><div class="kpi-value">{{ counts.done }}</div></div></div>
     <div class="card kpi"><span class="kpi-icon problem">!</span><div><div class="kpi-label">Проблемы</div><div class="kpi-value">{{ counts.problem }}</div></div></div>
     <div class="card kpi"><span class="kpi-icon route">◷</span><div><div class="kpi-label">В пути</div><div class="kpi-value">{{ counts.in_progress }}</div></div></div>
   </div>
