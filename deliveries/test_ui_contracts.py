@@ -14,6 +14,10 @@ class UIContractTests(SimpleTestCase):
         self.assertIn("css/tokens.css", html)
         self.assertLess(html.index("css/tokens.css"), html.index("css/app.css"))
 
+    def test_ui_preview_route_exists(self):
+        urls = (ROOT / "deliveries/dispatcher_urls.py").read_text()
+        self.assertIn("ui-preview/", urls)
+
     def test_stats_has_no_inline_style_block(self):
         html = (ROOT / "templates/dispatcher/stats.html").read_text()
         self.assertNotIn("<style>", html)
