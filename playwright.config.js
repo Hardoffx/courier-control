@@ -17,7 +17,7 @@ module.exports = defineConfig({
     { name: 'desktop-1440', use: { viewport: { width: 1440, height: 900 } } },
   ],
   webServer: {
-    command: 'python manage.py runserver 127.0.0.1:8000 --noreload',
+    command: 'python manage.py migrate --noinput && python manage.py seed_ui_test_data && python manage.py runserver 127.0.0.1:8000 --noreload',
     url: 'http://127.0.0.1:8000/healthz/',
     reuseExistingServer: !process.env.CI,
     timeout: 120000,
