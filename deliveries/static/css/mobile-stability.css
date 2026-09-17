@@ -253,3 +253,37 @@ body:not(.dispatcher-ui):not(.courier-ui) main.wrap > .card form .btn { margin-t
 }
 .excel-action:hover { background: #1d633d !important; border-color: #1d633d !important; }
 .excel-action svg { width: 19px; height: 19px; flex: none; }
+
+
+/* UI Forge iteration #4 — compact date return and paired primary actions */
+.date-today { gap: 6px; }
+
+@media (max-width: 700px) {
+  .date-nav > .date-today {
+    grid-column: 2 !important;
+    justify-self: center;
+    width: auto !important;
+    min-height: 34px !important;
+    padding: 6px 12px !important;
+    border-radius: 999px !important;
+    font-size: 12px !important;
+    color: #0877f9;
+    border-color: #d6e7fb;
+    background: #f5f9ff;
+  }
+
+  .head-actions {
+    display: grid !important;
+    grid-template-columns: minmax(0,1fr) minmax(0,1.18fr);
+    gap: 8px !important;
+    width: 100%;
+  }
+  .head-actions .btn {
+    width: 100%;
+    min-width: 0;
+    padding-left: 10px;
+    padding-right: 10px;
+    font-size: 12px;
+  }
+  .head-actions .excel-action svg { width: 17px; height: 17px; }
+}
