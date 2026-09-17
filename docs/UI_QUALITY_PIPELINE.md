@@ -25,3 +25,12 @@ UI changes must be designed, reviewed and tested before they reach the stable de
 
 ## Visual acceptance
 A screen is not complete merely because Django tests pass. It must pass responsive layout checks and screenshot review. A visual baseline is updated only after human approval.
+
+## Staging isolation
+Staging uses its own application directory, virtualenv, SQLite database, runtime directory, systemd service and Gunicorn port:
+
+- stable: /opt/courier-control -> 127.0.0.1:8010
+- staging: /opt/courier-control-staging -> 127.0.0.1:8011
+- public staging host: staging.routecontrol.ru
+
+Never point staging at the stable SQLite database or stable runtime directories. Staging deploys a feature branch; stable continues to deploy main.
