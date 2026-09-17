@@ -19,3 +19,5 @@ jobs:
       - run: python manage.py makemigrations --check --dry-run
       - run: python manage.py migrate --noinput
       - run: python manage.py test
+      - name: UI source guardrails
+        run: python manage.py test deliveries.test_ui_contracts
