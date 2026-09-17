@@ -215,3 +215,30 @@ body:not(.dispatcher-ui):not(.courier-ui) main.wrap > .card form .btn { margin-t
 
   .filter-row label { gap: 9px; }
 }
+
+
+/* UI Forge iteration #3 — approved mockup direction */
+@media (max-width: 700px) {
+  .mobile-menu svg { width: 23px; height: 23px; display: block; }
+  .mobile-menu {
+    color: #0877f9;
+    background: #fff;
+    border-color: #dbe5f1;
+    box-shadow: 0 3px 10px rgba(17,33,58,.05);
+  }
+  .page-sub {
+    font-size: 14px !important;
+    line-height: 1.35;
+    font-weight: 650;
+    color: #718096;
+    margin-top: 4px;
+  }
+  .kpi-icon.problem {
+    background: #fff0f2;
+    color: #ee3f52;
+  }
+  .kpi-icon.route {
+    background: #fff5e8;
+    color: #e79218;
+  }
+}
