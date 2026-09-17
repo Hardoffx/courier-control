@@ -2,8 +2,6 @@
 set -Eeuo pipefail
 
 APP_DIR=/opt/courier-control
-APP_USER=courierctl
-APP_GROUP=courierctl
 APP_SERVICE=courier-control.service
 TUNNEL_SERVICE=courier-control-tunnel.service
 URL_FILE="$APP_DIR/data/quick-tunnel-url.txt"
@@ -17,6 +15,20 @@ fi
 
 log(){ printf '\n==> %s\n' "$*"; }
 fail(){ echo "ERROR: $*" >&2; exit 1; }
+
+# Installations created by install_shared_vps.sh use courierctl, while the
+# replacement VPS was installed manually and runs the application as root.
+# Reuse the existing application service identity instead of assuming either
+# layout. Explicit environment overrides remain available for recovery work.
+APP_USER="${COURIER_CONTROL_APP_USER:-$(systemctl show "$APP_SERVICE" --property=User --value 2>/dev/null || true)}"
+[[ -n "$APP_USER" ]] || APP_USER="$(stat -c '%U' "$APP_DIR")"
+getent passwd "$APP_USER" >/dev/null || fail "Application user does not exist: $APP_USER"
+
+APP_GROUP="${COURIER_CONTROL_APP_GROUP:-$(systemctl show "$APP_SERVICE" --property=Group --value 2>/dev/null || true)}"
+[[ -n "$APP_GROUP" ]] || APP_GROUP="$(id -gn "$APP_USER")"
+getent group "$APP_GROUP" >/dev/null || fail "Application group does not exist: $APP_GROUP"
+
+log "Using application identity $APP_USER:$APP_GROUP"
 
 BOT_BEFORE="$(systemctl is-active courier-route-bot.service 2>/dev/null || true)"
 
