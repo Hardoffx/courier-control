@@ -1,138 +1,118 @@
 {% extends 'base.html' %}
 {% block title %}Сегодня · Courier Control{% endblock %}
-{% block head %}
-<style>
-.day-head,.date-nav,.head-actions,.bulk-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-.day-head{justify-content:space-between;align-items:flex-start;margin-bottom:16px}
-.day-head h1{margin:0;font-size:28px}
-.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:16px 0}
-.kpi{padding:16px}.kpi-value{font-size:29px;font-weight:850}
-.section-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:22px 0 9px}.section-head h2{margin:0}
-.route-summary,.courier-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px}
-.route-actions{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-top:8px}.route-actions form{display:flex;gap:6px;flex:1}.route-actions select{margin:0;min-width:150px}
-.progress-track{height:7px;background:#edf0f4;border-radius:20px;overflow:hidden;margin:10px 0}.progress-track span{display:block;height:100%;background:var(--green)}
-.order-note{margin:9px 0;padding:9px 10px;border-radius:9px;background:var(--amber-soft);font-size:13px}
-.filter-row{display:grid;grid-template-columns:2fr repeat(3,1fr) auto;gap:8px;align-items:end}
-.mobile-deliveries{display:none}.delivery-card{padding:13px;margin:8px 0}.delivery-address{font-weight:750;margin:7px 0;overflow-wrap:anywhere}.delivery-actions{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-top:10px}.delivery-actions a{flex:1}
-.status-chip.s-done{background:var(--green-soft);color:#087443}.status-chip.s-problem{background:var(--red-soft);color:#c53238}.status-chip.s-in_progress{background:var(--blue-soft);color:#1769c2}.status-chip.s-new{background:#f2f4f7;color:#475467}
-.bulk-bar{margin-bottom:10px}.bulk-bar select{width:auto;min-width:190px;margin:0}
-@media(max-width:900px){.filter-row{grid-template-columns:1fr 1fr}.filter-row label:first-child{grid-column:1/-1}.kpi-grid{overflow:auto}}
-@media(max-width:700px){.day-head h1{font-size:23px}.head-actions{width:100%}.head-actions .btn{flex:1}.kpi-grid{display:flex;margin-left:-12px;margin-right:-12px;padding:0 12px}.kpi{min-width:125px}.desktop-table{display:none}.mobile-deliveries{display:block}.delivery-panel.card{background:transparent;border:0;box-shadow:none;padding:0}.filter-row{grid-template-columns:1fr 1fr}.courier-stats{grid-template-columns:1fr 1fr}.route-actions form{width:100%}.bulk-bar select{width:100%;min-width:0}.bulk-bar .btn{flex:1}}
-@media(max-width:390px){.filter-row,.courier-stats{grid-template-columns:1fr}.filter-row label:first-child{grid-column:auto}.delivery-actions{display:grid;grid-template-columns:1fr 1fr}.delivery-actions label{grid-column:1/-1}.route-actions form{display:grid;grid-template-columns:1fr}.route-actions .btn{width:100%}}
-</style>
-{% endblock %}
 {% block content %}
-<div class="day-head">
-  <div>
-    <h1>Сегодняшние доставки</h1>
-    <div class="date-nav">
-      <a class="btn alt" href="?date={{ prev_date|date:'Y-m-d' }}">←</a>
-      <strong>{{ selected_date }}</strong>
-      <a class="btn alt" href="?date={{ next_date|date:'Y-m-d' }}">→</a>
-      {% if selected_date != today %}<a class="btn alt" href="?date={{ today|date:'Y-m-d' }}">Сегодня</a>{% endif %}
-    </div>
-  </div>
-  <div class="head-actions"><a class="btn alt" href="{% url 'import_excel' %}">Импорт доставок дня</a><a class="btn" href="{% url 'delivery_create' %}">+ Добавить точку</a></div>
-</div>
-
-{% if messages %}{% for message in messages %}<div class="card">{{ message }}</div>{% endfor %}{% endif %}
-
-<div class="kpi-grid">
-  <div class="card kpi"><div class="muted">Всего точек</div><div class="kpi-value">{{ total_count }}</div></div>
-  <div class="card kpi"><div class="muted">Выполнено</div><div class="kpi-value" style="color:var(--green)">{{ counts.done }}</div></div>
-  <div class="card kpi"><div class="muted">Проблемы</div><div class="kpi-value" style="color:var(--red)">{{ counts.problem }}</div></div>
-  <div class="card kpi"><div class="muted">В работе</div><div class="kpi-value" style="color:var(--blue)">{{ counts.in_progress }}</div></div>
-</div>
-
-<div class="section-head"><h2>Курьеры и маршруты</h2><a class="btn alt" href="{% url 'route_list' %}">Все маршруты</a></div>
-<div class="route-summary">
-  {% for item in route_runs %}
-  <div class="card">
-    <strong>{{ item.run.route.name }}</strong><span style="float:right">{{ item.done }}/{{ item.total }}</span>
-    <div class="muted">{% if item.run.assigned_courier %}{{ item.run.assigned_courier.get_full_name|default:item.run.assigned_courier.username }}{% else %}Не назначен{% endif %}{% if item.problem %} · проблем {{ item.problem }}{% endif %}</div>
-    {% if item.order_suggestion %}<div class="order-note"><b>Курьер изменил порядок.</b> <a href="{% url 'run_detail' item.run.pk %}">Сравнить и решить →</a></div>{% endif %}
-    <div class="progress-track"><span style="width:{{ item.percent }}%"></span></div>
-    <div class="route-actions">
-      <a class="btn alt" href="{% url 'run_detail' item.run.pk %}">Открыть маршрут</a>
-      {% if item.run.assigned_courier %}<a class="btn alt" target="_blank" href="{% url 'courier_preview' item.run.assigned_courier.pk %}?date={{ selected_date|date:'Y-m-d' }}">Как видит курьер</a>{% endif %}
-      <form method="post" action="{% url 'run_reassign' item.run.pk %}">
-        {% csrf_token %}
-        <select name="courier_id" aria-label="Курьер на этот день">
-          <option value="">Не назначен</option>
-          {% for c in couriers %}<option value="{{ c.pk }}" {% if item.run.assigned_courier_id == c.pk %}selected{% endif %}>{{ c.get_full_name|default:c.username }}{% if c.is_reserve_courier %} · Резерв{% endif %}</option>{% endfor %}
-        </select>
-        <button class="btn" type="submit">Назначить</button>
-      </form>
-    </div>
-  </div>
-  {% empty %}<div class="card">Маршруты на эту дату ещё не сформированы.</div>{% endfor %}
-</div>
-
-<div class="section-head"><h2>Все точки дня <span class="muted">· {{ deliveries|length }}</span></h2></div>
-<div class="card">
-  <form method="get" class="filter-row">
-    <input type="hidden" name="date" value="{{ selected_date|date:'Y-m-d' }}">
-    <label>Поиск<input name="q" value="{{ filters.q }}" placeholder="Адрес, объект, код, телефон"></label>
-    <label>Тип<select name="kind"><option value="">Все</option>{% for value,label in point_kinds %}<option value="{{ value }}" {% if filters.kind == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
-    <label>Статус<select name="status"><option value="">Все</option>{% for value,label in statuses %}<option value="{{ value }}" {% if filters.status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
-    <label>Курьер<select name="courier"><option value="">Все</option><option value="unassigned" {% if filters.courier == 'unassigned' %}selected{% endif %}>Не назначен</option>{% for c in couriers %}<option value="{{ c.pk }}" {% if filters.courier == c.pk|stringformat:'s' %}selected{% endif %}>{{ c.get_full_name|default:c.username }}</option>{% endfor %}</select></label>
-    <button class="btn">Показать</button>
-  </form>
-</div>
-
-<form id="bulk-form" method="post" action="{% url 'dispatcher_bulk_assign' %}">
-  {% csrf_token %}
-  <div id="bulk-bar" class="card bulk-bar">
-    <strong id="selected-count">Выбрано: 0</strong>
-    <select name="courier_id"><option value="">Снять назначение</option>{% for c in couriers %}<option value="{{ c.pk }}">{{ c.get_full_name|default:c.username }}</option>{% endfor %}</select>
-    <button class="btn">Применить</button>
-  </div>
-</form>
-
-<section class="delivery-panel card">
-  <div class="desktop-table table-wrap">
-    <table>
-      <thead><tr><th><input id="select-all" type="checkbox"></th><th>№</th><th>Объект</th><th>Адрес</th><th>Телефон</th><th>Курьер</th><th>Время</th><th>Статус</th><th></th></tr></thead>
-      <tbody>
-        {% for d in deliveries %}
-        <tr data-delivery-id="{{ d.pk }}">
-          <td>{% if d.status != 'done' %}<input class="row-check" form="bulk-form" type="checkbox" name="delivery_ids" value="{{ d.pk }}">{% endif %}</td>
-          <td>{{ d.route_order }}</td><td><strong>{{ d.source_label|default:'—' }}</strong></td><td>{{ d.address }}</td>
-          <td>{% if d.phone %}<a href="tel:{{ d.phone }}">{{ d.phone }}</a>{% else %}—{% endif %}</td>
-          <td>{% if d.courier %}{{ d.courier.get_full_name|default:d.courier.username }}{% else %}Не назначен{% endif %}</td>
-          <td>{{ d.time_window|default:'—' }}</td>
-          <td><span class="status-chip s-{{ d.status }}">{{ d.get_status_display }}</span>{% if d.problem_reason %}<div style="color:var(--red);font-size:12px">{{ d.problem_reason }}</div>{% endif %}</td>
-          <td><a class="btn alt" href="{% url 'delivery_edit' d.pk %}">Изменить</a> <a href="{% url 'delivery_history' d.pk %}">История</a></td>
-        </tr>
-        {% empty %}<tr><td colspan="9">Точек нет.</td></tr>{% endfor %}
-      </tbody>
-    </table>
-  </div>
-  <div class="mobile-deliveries">
-    {% for d in deliveries %}
-    <article class="card delivery-card" data-delivery-id="{{ d.pk }}">
-      <strong>№{{ d.route_order }} · {{ d.source_label|default:'Точка' }}</strong><span class="status-chip s-{{ d.status }}" style="float:right">{{ d.get_status_display }}</span>
-      <div class="delivery-address">{{ d.address }}</div>
-      <div class="muted">{{ d.time_window|default:'Время не указано' }} · {% if d.courier %}{{ d.courier.get_full_name|default:d.courier.username }}{% else %}Не назначен{% endif %}</div>
-      {% if d.problem_reason %}<div style="color:var(--red);margin-top:7px">{{ d.problem_reason }}</div>{% endif %}
-      <div class="delivery-actions">
-        {% if d.status != 'done' %}<label><input class="row-check" form="bulk-form" type="checkbox" name="delivery_ids" value="{{ d.pk }}"> Выбрать</label>{% endif %}
-        {% if d.phone %}<a class="btn alt" href="tel:{{ d.phone }}">Позвонить</a>{% endif %}
-        <a class="btn alt" href="{% url 'delivery_edit' d.pk %}">Изменить</a><a class="btn alt" href="{% url 'delivery_history' d.pk %}">История</a>
+<div class="dashboard-page">
+  <div class="page-head">
+    <div>
+      <div class="page-title">
+        <span class="page-title-icon">▣</span>
+        <div><h1>Сегодня — {{ selected_date|date:'j E Y' }}</h1><div class="page-sub">Управление доставками и курьерами</div></div>
       </div>
-    </article>
-    {% empty %}<div class="card">Точек нет.</div>{% endfor %}
+      <div class="date-nav">
+        <a class="btn alt" href="?date={{ prev_date|date:'Y-m-d' }}">←</a><strong>{{ selected_date }}</strong><a class="btn alt" href="?date={{ next_date|date:'Y-m-d' }}">→</a>
+        {% if selected_date != today %}<a class="btn alt" href="?date={{ today|date:'Y-m-d' }}">Сегодня</a>{% endif %}
+      </div>
+    </div>
+    <div class="head-actions"><a class="btn alt" href="{% url 'import_excel' %}">Импорт Excel</a><a class="btn" href="{% url 'delivery_create' %}">＋ Добавить доставку</a></div>
   </div>
-</section>
 
-<div class="section-head"><h2>Прогресс курьеров</h2></div>
-<div class="courier-stats">{% for item in courier_stats %}<div class="card"><strong>{{ item.courier.get_full_name|default:item.courier.username }}</strong><div class="muted">{{ item.done }}/{{ item.total }} выполнено{% if item.problem %} · проблем {{ item.problem }}{% endif %}</div></div>{% endfor %}</div>
+  {% if messages %}{% for message in messages %}<div class="card">{{ message }}</div>{% endfor %}{% endif %}
+
+  <div class="kpi-grid">
+    <div class="card kpi"><span class="kpi-icon total">▣</span><div><div class="kpi-label">Всего доставок</div><div class="kpi-value">{{ total_count }}</div></div></div>
+    <div class="card kpi"><span class="kpi-icon done">✓</span><div><div class="kpi-label">Выполнено</div><div class="kpi-value">{{ counts.done }}</div></div></div>
+    <div class="card kpi"><span class="kpi-icon problem">!</span><div><div class="kpi-label">Проблемы</div><div class="kpi-value">{{ counts.problem }}</div></div></div>
+    <div class="card kpi"><span class="kpi-icon route">◷</span><div><div class="kpi-label">В пути</div><div class="kpi-value">{{ counts.in_progress }}</div></div></div>
+  </div>
+
+  <div class="quick-filters" aria-label="Быстрые фильтры">
+    <button class="filter-chip {% if not filters.kind and not filters.status %}active{% endif %}" type="button" data-quick="all">Все</button>
+    <button class="filter-chip {% if filters.kind == 'cmd' %}active{% endif %}" type="button" data-kind="cmd">CMD</button>
+    <button class="filter-chip {% if filters.kind == 'invitro' %}active{% endif %}" type="button" data-kind="invitro">ИНВИТРО</button>
+    <button class="filter-chip {% if filters.kind == 'external' %}active{% endif %}" type="button" data-kind="external">Частные</button>
+    <button class="filter-chip {% if filters.status == 'in_progress' %}active{% endif %}" type="button" data-status="in_progress">В пути</button>
+    <button class="filter-chip {% if filters.status == 'problem' %}active{% endif %}" type="button" data-status="problem">Проблемы</button>
+  </div>
+
+  <div class="card filter-card">
+    <form id="filter-form" method="get" class="filter-row">
+      <input type="hidden" name="date" value="{{ selected_date|date:'Y-m-d' }}">
+      <label>Поиск<input name="q" value="{{ filters.q }}" placeholder="Адрес, организация, код, телефон"></label>
+      <label>Тип<select id="filter-kind" name="kind"><option value="">Все</option>{% for value,label in point_kinds %}<option value="{{ value }}" {% if filters.kind == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+      <label>Статус<select id="filter-status" name="status"><option value="">Все</option>{% for value,label in statuses %}<option value="{{ value }}" {% if filters.status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+      <label>Курьер<select name="courier"><option value="">Все курьеры</option><option value="unassigned" {% if filters.courier == 'unassigned' %}selected{% endif %}>Не назначен</option>{% for c in couriers %}<option value="{{ c.pk }}" {% if filters.courier == c.pk|stringformat:'s' %}selected{% endif %}>{{ c.get_full_name|default:c.username }}</option>{% endfor %}</select></label>
+      <button class="btn" type="submit">Показать</button>
+    </form>
+  </div>
+
+  <div id="deliveries" class="section-head"><h2>Все точки дня <span class="muted">· {{ deliveries|length }}</span></h2></div>
+  <form id="bulk-form" method="post" action="{% url 'dispatcher_bulk_assign' %}">{% csrf_token %}
+    <div id="bulk-bar" class="card bulk-bar"><strong id="selected-count">Выбрано: 0</strong><select name="courier_id"><option value="">Снять назначение</option>{% for c in couriers %}<option value="{{ c.pk }}">{{ c.get_full_name|default:c.username }}</option>{% endfor %}</select><button class="btn small" type="submit">Применить</button></div>
+  </form>
+
+  <section class="delivery-panel card">
+    <div class="desktop-table table-wrap">
+      <table>
+        <thead><tr><th><input id="select-all" type="checkbox"></th><th>#</th><th>Адрес</th><th>Организация / лаборатория</th><th>Время</th><th>Курьер</th><th>Статус</th><th></th></tr></thead>
+        <tbody>
+          {% for d in deliveries %}
+          <tr data-delivery-id="{{ d.pk }}">
+            <td>{% if d.status != 'done' %}<input class="row-check" form="bulk-form" type="checkbox" name="delivery_ids" value="{{ d.pk }}">{% endif %}</td>
+            <td><strong>{{ d.route_order }}</strong></td>
+            <td><div class="delivery-address-main">{{ d.address }}</div>{% if d.phone %}<div class="delivery-address-sub">{{ d.phone }}</div>{% endif %}</td>
+            <td class="lab-cell"><div>{% include 'includes/lab_badge.html' with delivery=d %}</div><div class="lab-caption"><strong>{{ d.lab_name }}</strong>{% if d.lpu_number %}<br>ЛПУ {{ d.lpu_number }}{% endif %}</div></td>
+            <td>{{ d.time_window|default:'—' }}</td>
+            <td>{% if d.courier %}{{ d.courier.get_full_name|default:d.courier.username }}{% else %}<span class="muted">Не назначен</span>{% endif %}</td>
+            <td><span class="status-chip s-{{ d.status }}">{{ d.get_status_display }}</span>{% if d.problem_reason %}<div class="status-note">{{ d.problem_reason }}</div>{% endif %}</td>
+            <td><div class="table-actions"><a class="btn alt small" href="{% url 'delivery_edit' d.pk %}">Изменить</a><a href="{% url 'delivery_history' d.pk %}">•••</a></div></td>
+          </tr>
+          {% empty %}<tr><td colspan="8">Точек нет.</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="mobile-deliveries">
+      {% for d in deliveries %}
+      <article class="card delivery-card" data-delivery-id="{{ d.pk }}">
+        <div class="delivery-card-head"><div>{% include 'includes/lab_badge.html' with delivery=d %} <span class="lab-caption"><strong>{{ d.lab_name }}</strong>{% if d.lpu_number %} · ЛПУ {{ d.lpu_number }}{% endif %}</span></div><span class="status-chip s-{{ d.status }}">{{ d.get_status_display }}</span></div>
+        <div class="delivery-address-main">№{{ d.route_order }} · {{ d.address }}</div>
+        <div class="delivery-meta">{{ d.time_window|default:'Время не указано' }} · {% if d.courier %}{{ d.courier.get_full_name|default:d.courier.username }}{% else %}Не назначен{% endif %}</div>
+        {% if d.problem_reason %}<div class="status-note">{{ d.problem_reason }}</div>{% endif %}
+        <div class="delivery-actions">{% if d.status != 'done' %}<label><input class="row-check" form="bulk-form" type="checkbox" name="delivery_ids" value="{{ d.pk }}"> Выбрать</label>{% endif %}{% if d.phone %}<a class="btn alt" href="tel:{{ d.phone }}">Позвонить</a>{% endif %}<a class="btn alt" href="{% url 'delivery_edit' d.pk %}">Изменить</a><a class="btn alt" href="{% url 'delivery_history' d.pk %}">История</a></div>
+      </article>
+      {% empty %}<div class="card">Точек нет.</div>{% endfor %}
+    </div>
+  </section>
+
+  <div class="section-head"><h2>Курьеры и маршруты</h2><a class="btn alt small" href="{% url 'route_list' %}">Все маршруты</a></div>
+  <div class="route-summary">
+    {% for item in route_runs %}
+    <div class="card route-card">
+      <div class="route-card-head"><strong>{{ item.run.route.name }}</strong><span>{{ item.done }}/{{ item.total }}</span></div>
+      <div class="muted">{% if item.run.assigned_courier %}{{ item.run.assigned_courier.get_full_name|default:item.run.assigned_courier.username }}{% else %}Не назначен{% endif %}{% if item.problem %} · проблем {{ item.problem }}{% endif %}</div>
+      {% if item.order_suggestion %}<div class="order-note"><b>Курьер изменил порядок.</b> <a href="{% url 'run_detail' item.run.pk %}">Сравнить →</a></div>{% endif %}
+      <div class="progress-track"><span style="width:{{ item.percent }}%"></span></div>
+      <div class="route-actions">
+        <a class="btn alt small" href="{% url 'run_detail' item.run.pk %}">Открыть</a>
+        {% if item.run.assigned_courier %}<a class="btn alt small" target="_blank" rel="noopener" href="{% url 'courier_preview' item.run.assigned_courier.pk %}?date={{ selected_date|date:'Y-m-d' }}">Как видит курьер</a>{% endif %}
+        <form method="post" action="{% url 'run_reassign' item.run.pk %}">{% csrf_token %}<select name="courier_id" aria-label="Курьер на этот день"><option value="">Не назначен</option>{% for c in couriers %}<option value="{{ c.pk }}" {% if item.run.assigned_courier_id == c.pk %}selected{% endif %}>{{ c.get_full_name|default:c.username }}{% if c.is_reserve_courier %} · Резерв{% endif %}</option>{% endfor %}</select><button class="btn small" type="submit">Назначить</button></form>
+      </div>
+    </div>
+    {% empty %}<div class="card">Маршруты на эту дату ещё не сформированы.</div>{% endfor %}
+  </div>
+
+  <div class="section-head"><h2>Прогресс курьеров</h2></div>
+  <div class="courier-stats">{% for item in courier_stats %}<div class="card"><strong>{{ item.courier.get_full_name|default:item.courier.username }}</strong><div class="muted">{{ item.done }}/{{ item.total }} выполнено{% if item.problem %} · проблем {{ item.problem }}{% endif %}</div></div>{% endfor %}</div>
+</div>
 {% endblock %}
 {% block scripts %}
 <script>
-function checks(){return [...document.querySelectorAll('.row-check')].filter(x=>x.offsetParent!==null)}
-function count(){document.getElementById('selected-count').textContent='Выбрано: '+checks().filter(x=>x.checked).length}
-document.querySelectorAll('.row-check').forEach(x=>x.addEventListener('change',count));
-document.getElementById('select-all')?.addEventListener('change',e=>{checks().forEach(x=>x.checked=e.target.checked);count()});
+function visibleChecks(){return [...document.querySelectorAll('.row-check')].filter(x=>x.offsetParent!==null)}
+function updateSelected(){document.getElementById('selected-count').textContent='Выбрано: '+visibleChecks().filter(x=>x.checked).length}
+document.querySelectorAll('.row-check').forEach(x=>x.addEventListener('change',updateSelected));
+document.getElementById('select-all')?.addEventListener('change',e=>{visibleChecks().forEach(x=>x.checked=e.target.checked);updateSelected()});
+const filterForm=document.getElementById('filter-form'),kind=document.getElementById('filter-kind'),status=document.getElementById('filter-status');
+document.querySelectorAll('[data-kind]').forEach(b=>b.addEventListener('click',()=>{kind.value=b.dataset.kind;status.value='';filterForm.submit()}));
+document.querySelectorAll('[data-status]').forEach(b=>b.addEventListener('click',()=>{status.value=b.dataset.status;kind.value='';filterForm.submit()}));
+document.querySelector('[data-quick="all"]')?.addEventListener('click',()=>{kind.value='';status.value='';filterForm.submit()});
 </script>
 {% endblock %}

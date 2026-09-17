@@ -1,0 +1,11 @@
+{% if delivery.lab_kind == 'cmd' %}
+<span class="lab-badge lab-badge--cmd" title="ЦМД">CMD</span>
+{% elif delivery.lab_kind == 'invitro' %}
+<span class="lab-badge lab-badge--invitro" title="ИНВИТРО">INVITRO</span>
+{% elif delivery.lab_kind == 'service' %}
+<span class="lab-badge lab-badge--service" title="Служебная точка">СЛУЖ.</span>
+{% else %}
+<span class="lab-badge lab-badge--other" title="Лаборатория" aria-label="Лаборатория">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 1.7 3h10.6A2 2 0 0 0 19 18l-5-9V3"/><path d="M8 15h8"/></svg>
+</span>
+{% endif %}

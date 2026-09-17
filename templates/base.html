@@ -1,1 +1,66 @@
-<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0f172a"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Courier"><link rel="manifest" href="{% url 'manifest' %}"><title>{% block title %}Courier Control{% endblock %}</title><style>:root{--bg:#f5f7fb;--surface:#fff;--ink:#162033;--muted:#667085;--line:#e5eaf1;--nav:#101b2d;--blue:#1473e6;--blue-soft:#eaf3ff;--green:#12a15a;--green-soft:#e7f8ef;--red:#e5484d;--red-soft:#fff0f0;--amber:#e89a19;--amber-soft:#fff5df;--radius:14px;--shadow:0 4px 18px rgba(16,24,40,.06)}*{box-sizing:border-box}html{background:var(--bg)}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased}.top{height:64px;background:var(--surface);border-bottom:1px solid var(--line);padding:0 22px;display:flex;justify-content:space-between;gap:14px;align-items:center;position:sticky;top:0;z-index:30}.brand{display:flex;align-items:center;gap:10px;color:var(--ink)!important;text-decoration:none;font-size:17px;font-weight:800}.brand-mark{width:30px;height:30px;border-radius:9px;background:var(--blue);display:grid;place-items:center;color:#fff}.desktop-nav{display:flex;gap:6px}.desktop-nav a{color:#475467;text-decoration:none;padding:9px 11px;border-radius:9px;font-weight:650;font-size:14px}.desktop-nav a:hover{background:#f2f4f7;color:var(--ink)}.user-area{display:flex;align-items:center;gap:10px;font-size:14px}.logout{background:none;border:0;color:#667085;text-decoration:underline;cursor:pointer}.wrap{max-width:1480px;margin:auto;padding:22px;padding-bottom:max(22px,env(safe-area-inset-bottom))}.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin:12px 0;box-shadow:var(--shadow)}.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:0;border-radius:10px;padding:11px 15px;min-height:42px;background:var(--blue);color:#fff;text-decoration:none;font-weight:700;cursor:pointer}.btn.good{background:var(--green)}.btn.bad{background:var(--red)}.btn.alt{background:#eef1f5;color:var(--ink)}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}.stat{font-size:28px;font-weight:850;letter-spacing:-.02em}.muted{color:var(--muted)}input,select,textarea{width:100%;padding:11px;border:1px solid #d5dbe5;border-radius:9px;margin:5px 0 12px;background:#fff;color:var(--ink);font-size:16px}table{width:100%;border-collapse:separate;border-spacing:0;font-size:14px}td,th{padding:11px 10px;text-align:left;border-bottom:1px solid var(--line);vertical-align:middle}th{position:sticky;top:0;background:#f8fafc;color:#667085;font-size:11px;text-transform:uppercase;letter-spacing:.045em;z-index:1}.table-wrap{overflow:auto;border:1px solid var(--line);border-radius:11px}.route-table tbody tr:hover td{filter:brightness(.985)}.route-table td:first-child{font-weight:750;text-align:center;width:54px}.type,.status-chip{display:inline-flex;align-items:center;padding:4px 8px;border-radius:999px;background:#f1f4f8;font-size:11px;font-weight:750}.status{white-space:nowrap;font-weight:700}.row-green td{background:#e8f7ee}.row-yellow td{background:#fff5d7}.row-red td{background:#fde8e8}.row-blue td{background:#e7f1ff}.row-gray td{background:#f0f2f5}.mobile-menu{display:none}.mobile-drawer{display:none}@media(min-width:1000px){body.dispatcher-ui .app-frame{display:grid;grid-template-columns:220px minmax(0,1fr);min-height:calc(100vh - 64px)}body.dispatcher-ui .dispatcher-side{display:block;background:var(--nav);padding:18px 12px;color:#fff}body.dispatcher-ui .dispatcher-side a{display:block;color:#d4dbe7;text-decoration:none;padding:11px 13px;border-radius:9px;margin:3px 0;font-weight:650;font-size:14px}body.dispatcher-ui .dispatcher-side a:hover{background:#172a45;color:#fff}body.dispatcher-ui .wrap{width:100%;margin:0;max-width:none}.dispatcher-side-title{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#7f8da3;padding:8px 13px}.top .desktop-nav.dispatcher-links{display:none}}@media(max-width:700px){.top{height:58px;padding:0 12px;padding-top:env(safe-area-inset-top)}.brand{font-size:16px}.desktop-nav,.user-name{display:none}.mobile-menu{display:inline-flex;width:42px;height:42px;align-items:center;justify-content:center;border:0;border-radius:10px;background:#eef2f7;font-size:20px}.mobile-drawer.open{display:block;position:fixed;inset:58px 0 0 0;background:rgba(15,23,42,.35);z-index:50}.mobile-drawer nav{background:#fff;padding:12px;box-shadow:var(--shadow)}.mobile-drawer a{display:block;padding:13px;border-bottom:1px solid var(--line);color:var(--ink);text-decoration:none;font-weight:700}.wrap{padding:12px}.card{border-radius:12px;padding:14px;margin:10px 0}.btn{min-height:46px;padding:12px 14px}.desktop{display:none}.dispatcher-side{display:none}.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.stat{font-size:24px}body.courier-ui .top{position:static}.table-wrap.mobile-cards{border:0;overflow:visible}}@media(min-width:701px){.dispatcher-side{display:none}}</style>{% block head %}{% endblock %}</head><body class="{% if user.is_authenticated and user.is_dispatcher %}dispatcher-ui{% elif user.is_authenticated %}courier-ui{% endif %}"><header class="top"><a class="brand" href="{% url 'home' %}"><span class="brand-mark">◆</span>Courier Control</a>{% if user.is_authenticated and user.is_dispatcher %}<nav class="desktop-nav dispatcher-links"><a href="{% url 'dispatcher_dashboard' %}">Сегодня</a><a href="{% url 'route_list' %}">Маршруты</a><a href="{% url 'courier_manage_list' %}">Курьеры</a><a href="{% url 'management_stats' %}">Статистика</a><a href="{% url 'point_list' %}">Точки</a><a href="{% url 'import_excel' %}">Импорт дня</a></nav>{% endif %}{% if user.is_authenticated %}<div class="user-area"><span class="user-name">{{ user.get_full_name|default:user.username }}</span>{% if user.is_dispatcher %}<button class="mobile-menu" type="button" onclick="document.getElementById('mobile-drawer').classList.toggle('open')">☰</button>{% endif %}<form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="logout">Выйти</button></form></div>{% endif %}</header>{% if user.is_authenticated and user.is_dispatcher %}<div id="mobile-drawer" class="mobile-drawer" onclick="if(event.target===this)this.classList.remove('open')"><nav><a href="{% url 'dispatcher_dashboard' %}">Сегодня</a><a href="{% url 'route_list' %}">Маршруты</a><a href="{% url 'courier_manage_list' %}">Курьеры</a><a href="{% url 'management_stats' %}">Статистика</a><a href="{% url 'point_list' %}">Постоянные точки</a><a href="{% url 'import_excel' %}">Импорт доставок дня</a></nav></div>{% endif %}<div class="app-frame">{% if user.is_authenticated and user.is_dispatcher %}<aside class="dispatcher-side"><div class="dispatcher-side-title">Управление</div><a href="{% url 'dispatcher_dashboard' %}">▣ Сегодня</a><a href="{% url 'courier_manage_list' %}">♟ Курьеры</a><a href="{% url 'route_list' %}">⌁ Маршруты</a><a href="{% url 'point_list' %}">● Постоянные точки</a><a href="{% url 'import_excel' %}">⇧ Импорт доставок дня</a><a href="{% url 'management_stats' %}">⌁ Статистика и отчёты</a></aside>{% endif %}<main class="wrap">{% block content %}{% endblock %}</main></div><script>if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('{% url "service_worker" %}').catch(()=>{}))}</script>{% block scripts %}{% endblock %}</body></html>
+{% load static %}
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#0a2747">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Courier Control">
+  <link rel="manifest" href="{% url 'manifest' %}">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+  <title>{% block title %}Courier Control{% endblock %}</title>
+  {% block head %}{% endblock %}
+</head>
+<body class="{% if user.is_authenticated and user.is_dispatcher %}dispatcher-ui{% elif user.is_authenticated %}courier-ui{% endif %}">
+{% if user.is_authenticated and user.is_dispatcher %}
+<div class="dispatcher-shell">
+  <aside class="dispatcher-side">
+    <a class="brand" href="{% url 'dispatcher_dashboard' %}"><span class="brand-cube"><span>C</span></span><span>Courier Control</span></a>
+    <div class="dispatcher-side-title">Управление</div>
+    <nav class="side-nav">
+      <a class="{% if request.resolver_match.url_name == 'dispatcher_dashboard' %}active{% endif %}" href="{% url 'dispatcher_dashboard' %}"><span class="side-icon">▣</span>Сегодня</a>
+      <a href="{% url 'dispatcher_dashboard' %}#deliveries"><span class="side-icon">▤</span>Доставки</a>
+      <a class="{% if 'courier' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'courier_manage_list' %}"><span class="side-icon">♟</span>Курьеры</a>
+      <a class="{% if 'route' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'route_list' %}"><span class="side-icon">⌁</span>Маршруты</a>
+      <a class="{% if 'point' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'point_list' %}"><span class="side-icon">●</span>Постоянные точки</a>
+      <a class="{% if request.resolver_match.url_name == 'import_excel' %}active{% endif %}" href="{% url 'import_excel' %}"><span class="side-icon">⇧</span>Импорт Excel</a>
+    </nav>
+    <div class="dispatcher-side-title">Аналитика</div>
+    <nav class="side-nav"><a class="{% if request.resolver_match.url_name == 'management_stats' %}active{% endif %}" href="{% url 'management_stats' %}"><span class="side-icon">⌁</span>Статистика</a></nav>
+    <div class="side-bottom">
+      <div class="muted">{{ user.get_full_name|default:user.username }}</div>
+      <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="btn side-logout" type="submit">↪ Выйти</button></form>
+    </div>
+  </aside>
+  <div class="dispatcher-main">
+    <header class="dispatcher-top">
+      <button class="mobile-menu" type="button" aria-label="Меню" onclick="document.getElementById('mobile-drawer').classList.toggle('open')">☰</button>
+      <form class="global-search" method="get" action="{% url 'dispatcher_dashboard' %}">
+        {% if request.GET.date %}<input type="hidden" name="date" value="{{ request.GET.date }}">{% endif %}
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input name="q" value="{{ request.GET.q|default:'' }}" placeholder="Поиск по адресам, организациям, телефонам…" aria-label="Поиск">
+      </form>
+      <div class="top-spacer"></div>
+      <div class="top-user"><span class="avatar">{{ user.username|slice:":1"|upper }}</span><span class="user-name">{{ user.get_full_name|default:'Диспетчер' }}</span></div>
+    </header>
+    <div id="mobile-drawer" class="mobile-drawer" onclick="if(event.target===this)this.classList.remove('open')">
+      <nav>
+        <a href="{% url 'dispatcher_dashboard' %}">Сегодня</a><a href="{% url 'dispatcher_dashboard' %}#deliveries">Доставки</a><a href="{% url 'courier_manage_list' %}">Курьеры</a><a href="{% url 'route_list' %}">Маршруты</a><a href="{% url 'point_list' %}">Постоянные точки</a><a href="{% url 'import_excel' %}">Импорт Excel</a><a href="{% url 'management_stats' %}">Статистика</a>
+      </nav>
+    </div>
+{% else %}
+  <header class="courier-top">
+    <a class="brand" href="{% if user.is_authenticated %}{% url 'home' %}{% else %}#{% endif %}"><span class="brand-cube"><span>C</span></span><span>Courier Control</span></a>
+    {% if user.is_authenticated %}<div class="courier-user"><span class="avatar">{{ user.username|slice:":1"|upper }}</span><form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="logout" type="submit">Выйти</button></form></div>{% endif %}
+  </header>
+{% endif %}
+
+<main class="wrap">{% block content %}{% endblock %}</main>
+
+{% if user.is_authenticated and user.is_dispatcher %}</div></div>{% endif %}
+<script>if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('{% url "service_worker" %}').catch(()=>{}))}</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>
