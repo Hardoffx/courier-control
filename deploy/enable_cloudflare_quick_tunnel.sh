@@ -110,6 +110,11 @@ chmod 600 "$APP_DIR/.env"
 systemctl restart "$APP_SERVICE"
 
 log "Installing persistent Quick Tunnel service"
+TUNNEL_WAS_INSTALLED=0
+if systemctl cat "$TUNNEL_SERVICE" >/dev/null 2>&1; then
+  TUNNEL_WAS_INSTALLED=1
+  systemctl stop "$TUNNEL_SERVICE" >/dev/null 2>&1 || true
+fi
 cat > "/etc/systemd/system/$TUNNEL_SERVICE" <<EOF
 [Unit]
 Description=Courier Control Cloudflare Quick Tunnel
@@ -121,9 +126,9 @@ Type=simple
 User=$APP_USER
 Group=$APP_GROUP
 Environment=HOME=$APP_DIR
-ExecStart=/usr/bin/cloudflared tunnel --url http://127.0.0.1:8010 --http-host-header $ORIGIN_HOST
+ExecStart=/usr/bin/cloudflared tunnel --protocol http2 --url http://127.0.0.1:8010 --http-host-header $ORIGIN_HOST
 Restart=always
-RestartSec=5
+RestartSec=20
 TimeoutStopSec=15
 
 [Install]
@@ -131,14 +136,20 @@ WantedBy=multi-user.target
 EOF
 systemctl daemon-reload
 systemctl enable "$TUNNEL_SERVICE" >/dev/null
-systemctl restart "$TUNNEL_SERVICE"
+systemctl reset-failed "$TUNNEL_SERVICE" >/dev/null 2>&1 || true
+if [[ "$TUNNEL_WAS_INSTALLED" -eq 1 ]]; then
+  log "Waiting for the previous account-less tunnel lease to clear"
+  sleep 20
+fi
+TUNNEL_LOG_SINCE="@$(date +%s)"
+systemctl start "$TUNNEL_SERVICE"
 
 log "Waiting for Cloudflare public HTTPS URL"
 URL=""
-for _ in {1..60}; do
-  URL="$(journalctl -u "$TUNNEL_SERVICE" -n 250 --no-pager 2>/dev/null | grep -oE 'https://[a-z0-9-]+\.trycloudflare\.com' | tail -n 1 || true)"
+for _ in {1..120}; do
+  URL="$(journalctl -u "$TUNNEL_SERVICE" --since "$TUNNEL_LOG_SINCE" --no-pager 2>/dev/null | grep -oE 'https://[a-z0-9-]+\.trycloudflare\.com' | tail -n 1 || true)"
   if [[ -n "$URL" ]]; then
-    if curl -fsS --max-time 8 "$URL/healthz/" >/tmp/courier-control-cloudflare-health.json 2>/dev/null; then
+    if curl -fsS --max-time 5 "$URL/healthz/" >/tmp/courier-control-cloudflare-health.json 2>/dev/null; then
       break
     fi
   fi
@@ -147,7 +158,7 @@ for _ in {1..60}; do
 done
 
 if [[ -z "$URL" ]]; then
-  journalctl -u "$TUNNEL_SERVICE" -n 120 --no-pager || true
+  journalctl -u "$TUNNEL_SERVICE" --since "$TUNNEL_LOG_SINCE" --no-pager || true
   fail "Cloudflare Quick Tunnel did not become healthy. Check outbound connectivity to Cloudflare and rerun this script."
 fi
 
@@ -178,6 +189,7 @@ printf '\nCloudflare Quick Tunnel is ready.\n'
 printf 'Portal: control (%s)\n' "$ORIGIN_HOST"
 printf 'Web:    %s/\n' "$URL"
 printf 'Health: %s/healthz/\n' "$URL"
+printf 'Tunnel protocol: HTTP/2\n'
 printf 'Tunnel service: %s\n' "$(systemctl is-active "$TUNNEL_SERVICE" 2>/dev/null || true)"
 printf 'App service:    %s\n' "$(systemctl is-active "$APP_SERVICE" 2>/dev/null || true)"
 printf '\nCurrent URL later: courier-control-url\n'
