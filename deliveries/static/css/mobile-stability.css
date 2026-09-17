@@ -372,3 +372,25 @@ body:not(.dispatcher-ui):not(.courier-ui) main.wrap > .card form .btn { margin-t
     height: 20px;
   }
 }
+
+
+/* UI Forge iteration #6 — final reference fidelity pass */
+@media (max-width: 700px) {
+  .date-nav > .date-today svg {
+    width: 18px;
+    height: 18px;
+    display: block;
+    flex: none;
+  }
+  .date-nav > .date-today {
+    min-height: 36px !important;
+    padding: 7px 14px !important;
+    background: #eef7ff !important;
+    border-color: #cfe4fb !important;
+    box-shadow: 0 3px 10px rgba(8,119,249,.07);
+  }
+  .head-actions .excel-action {
+    background: #0aa35c !important;
+    border-color: #0aa35c !important;
+  }
+}
