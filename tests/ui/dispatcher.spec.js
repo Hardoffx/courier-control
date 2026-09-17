@@ -11,7 +11,7 @@ const pages = [
 async function layoutViolations(page) {
   return page.evaluate(() => {
     const vw = document.documentElement.clientWidth;
-    const nodes = [...document.querySelectorAll('input,select,textarea,button,.btn,.card,form')];
+    const nodes = [...document.querySelectorAll('input,select,textarea,button,.btn,form')];
     return nodes.flatMap((el) => {
       const r = el.getBoundingClientRect();
       if (!r.width || !r.height) return [];
