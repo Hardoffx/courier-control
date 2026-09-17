@@ -1,5 +1,7 @@
 {% extends 'base.html' %}
+{% load static %}
 {% block title %}Мой маршрут · Courier Control{% endblock %}
+{% block head %}<link rel="stylesheet" href="{% static 'css/route-accordion.css' %}">{% endblock %}
 {% block content %}
 <div id="top" class="courier-shell">
   <div class="courier-head">
@@ -40,59 +42,64 @@
 
   <section id="route-list" class="route-section">
     <div class="route-title"><h2>Мой маршрут сегодня</h2><span class="muted">{{ total }} точек</span></div>
-    <div class="route-list">
+    <div class="route-list route-accordion-list">
       {% for d in deliveries %}
-      <a href="#delivery-{{ d.pk }}" class="detail-opener" data-open="delivery-{{ d.pk }}" style="color:inherit;text-decoration:none">
-        <div class="route-row {% if d.status == 'done' %}done{% elif d.status == 'problem' %}problem{% elif next_delivery and d.pk == next_delivery.pk %}current{% endif %}" data-delivery-id="{{ d.pk }}">
+      <details id="delivery-{{ d.pk }}" class="route-item {% if d.status == 'done' %}done{% elif d.status == 'problem' %}problem{% elif next_delivery and d.pk == next_delivery.pk %}current{% endif %}" data-delivery-id="{{ d.pk }}">
+        <summary class="route-row">
           <span class="route-dot">{% if d.status == 'done' %}✓{% elif d.status == 'problem' %}!{% else %}{{ d.route_order }}{% endif %}</span>
           <div class="route-primary">
             <div class="route-labline">{% include 'includes/lab_badge.html' with delivery=d %}<span class="route-sub">{{ d.lab_name }}{% if d.lpu_number %} · ЛПУ {{ d.lpu_number }}{% endif %}</span></div>
             <div class="route-address">{{ d.address }}</div>
           </div>
           <div class="route-time">{{ d.time_window|default:d.get_status_display }}</div>
+          <span class="route-chevron" aria-hidden="true"></span>
+        </summary>
+
+        <div class="route-detail-body">
+          {% if d.comment %}<div class="route-detail-note">{{ d.comment }}</div>{% endif %}
+          {% if d.problem_reason %}<div class="route-detail-problem"><b>{{ d.problem_reason }}</b></div>{% endif %}
+
+          {% if d.status != 'done' %}
+            <div class="action-row route-detail-actions">
+              <a class="btn" target="_blank" rel="noopener" href="https://yandex.ru/maps/?text={{ d.address|urlencode }}">➤ Открыть в Яндекс.Картах</a>
+              {% if d.phone %}<a class="btn good" href="tel:{{ d.phone }}">☎ Позвонить</a>{% endif %}
+            </div>
+
+            <details id="problem-{{ d.pk }}" class="problem-panel">
+              <summary class="btn bad">⚠ Проблема</summary>
+              <form method="post" action="{% url 'courier_update' d.pk %}" class="route-detail-form">
+                {% csrf_token %}<input type="hidden" name="action" value="problem">
+                <label>Причина<select name="problem_reason">{% for reason in problem_reasons %}<option>{{ reason }}</option>{% endfor %}</select></label>
+                <label>Комментарий<input name="problem_comment" placeholder="Что произошло / когда вернуться"></label>
+                <button class="btn bad" type="submit">Сохранить проблему</button>
+              </form>
+            </details>
+
+            {% if not d.phone %}
+            <form method="post" action="{% url 'courier_update' d.pk %}" class="route-detail-form phone-form">
+              {% csrf_token %}<input type="hidden" name="action" value="phone"><input name="phone" placeholder="Добавить телефон"><button class="btn alt" type="submit">Добавить телефон</button>
+            </form>
+            {% endif %}
+
+            <div class="reorder-actions">
+              <form method="post" action="{% url 'courier_reorder' d.pk %}">{% csrf_token %}<input type="hidden" name="direction" value="up"><button class="btn alt" type="submit">↑ Раньше</button></form>
+              <form method="post" action="{% url 'courier_reorder' d.pk %}">{% csrf_token %}<input type="hidden" name="direction" value="down"><button class="btn alt" type="submit">↓ Позже</button></form>
+            </div>
+          {% else %}
+            <div class="route-complete-note">✓ Точка выполнена</div>
+          {% endif %}
         </div>
-      </a>
+      </details>
       {% empty %}<div style="padding:18px">На сегодня заданий нет.</div>{% endfor %}
     </div>
   </section>
-
-  {% for d in deliveries %}
-  <details id="delivery-{{ d.pk }}" class="card delivery-detail" data-delivery-id="{{ d.pk }}">
-    <summary><b>№{{ d.route_order }} · {{ d.address }}</b> <span class="muted">{{ d.get_status_display }}</span></summary>
-    <div style="margin-top:10px">{% include 'includes/lab_badge.html' with delivery=d %} <span class="lab-caption"><strong>{{ d.lab_name }}</strong>{% if d.lpu_number %} · ЛПУ {{ d.lpu_number }}{% endif %}</span></div>
-    {% if d.comment %}<p>{{ d.comment }}</p>{% endif %}
-    {% if d.problem_reason %}<p style="color:var(--red)"><b>{{ d.problem_reason }}</b></p>{% endif %}
-    {% if d.status != 'done' %}
-      <div class="action-row">
-        <a class="btn" target="_blank" rel="noopener" href="https://yandex.ru/maps/?text={{ d.address|urlencode }}">➤ Открыть в Яндекс.Картах</a>
-        {% if d.phone %}<a class="btn good" href="tel:{{ d.phone }}">☎ Позвонить</a>{% endif %}
-      </div>
-      <details id="problem-{{ d.pk }}" style="margin-top:12px">
-        <summary class="btn bad">⚠ Проблема</summary>
-        <form method="post" action="{% url 'courier_update' d.pk %}" style="margin-top:10px">
-          {% csrf_token %}<input type="hidden" name="action" value="problem">
-          <label>Причина<select name="problem_reason">{% for reason in problem_reasons %}<option>{{ reason }}</option>{% endfor %}</select></label>
-          <label>Комментарий<input name="problem_comment" placeholder="Что произошло / когда вернуться"></label>
-          <button class="btn bad" type="submit">Сохранить проблему</button>
-        </form>
-      </details>
-      {% if not d.phone %}
-      <form method="post" action="{% url 'courier_update' d.pk %}" style="margin-top:12px">
-        {% csrf_token %}<input type="hidden" name="action" value="phone"><input name="phone" placeholder="Добавить телефон"><button class="btn alt" type="submit">Добавить телефон</button>
-      </form>
-      {% endif %}
-      <div class="reorder-actions">
-        <form method="post" action="{% url 'courier_reorder' d.pk %}">{% csrf_token %}<input type="hidden" name="direction" value="up"><button class="btn alt" type="submit">↑ Раньше</button></form>
-        <form method="post" action="{% url 'courier_reorder' d.pk %}">{% csrf_token %}<input type="hidden" name="direction" value="down"><button class="btn alt" type="submit">↓ Позже</button></form>
-      </div>
-    {% endif %}
-  </details>
-  {% endfor %}
 </div>
 {% endblock %}
 {% block scripts %}
 <script>
 document.querySelectorAll('.done-form').forEach(f=>f.addEventListener('submit',e=>{if(f.dataset.geo==='1'||!navigator.geolocation)return;e.preventDefault();navigator.geolocation.getCurrentPosition(p=>{f.querySelector('[name=latitude]').value=p.coords.latitude;f.querySelector('[name=longitude]').value=p.coords.longitude;f.dataset.geo='1';f.requestSubmit()},()=>{f.dataset.geo='1';f.requestSubmit()},{enableHighAccuracy:true,timeout:4000})}));
-document.querySelectorAll('.detail-opener').forEach(a=>a.addEventListener('click',()=>{const d=document.getElementById(a.dataset.open);if(d)d.open=true;const c=document.getElementById(a.dataset.openChild);if(c)c.open=true}));
+function openDelivery(id,childId,scroll=true){const d=document.getElementById(id);if(!d)return;d.open=true;if(childId){const c=document.getElementById(childId);if(c)c.open=true}if(scroll)requestAnimationFrame(()=>d.scrollIntoView({behavior:'smooth',block:'center'}))}
+document.querySelectorAll('.detail-opener').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();openDelivery(a.dataset.open,a.dataset.openChild)}));
+if(location.hash&&location.hash.startsWith('#delivery-'))openDelivery(location.hash.slice(1),null,false);
 </script>
 {% endblock %}
