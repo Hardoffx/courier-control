@@ -21,3 +21,19 @@ jobs:
       - run: python manage.py test
       - name: UI source guardrails
         run: python manage.py test deliveries.test_ui_contracts
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm install
+      - run: npx playwright install --with-deps chromium webkit
+      - name: Responsive browser tests
+        run: npm run test:ui
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: ui-test-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14
