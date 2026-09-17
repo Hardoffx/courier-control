@@ -1,5 +1,7 @@
 import re
 from dataclasses import dataclass
+
+from .lab_catalog import resolve_known_lab
 from .models import Delivery, DeliveryPoint
 
 
@@ -11,6 +13,7 @@ def normalize(value):
 
 def normalize_code(value):
     return re.sub(r'\s+','',normalize(value))
+
 
 @dataclass
 class PointMatch:
@@ -42,13 +45,31 @@ def match_point(label='',address=''):
     return PointMatch(None,'unmatched')
 
 
+def _enrich_known_point(point,known):
+    if not point or not known: return point
+    changed=[]
+    if point.kind!=known.kind:
+        point.kind=known.kind; changed.append('kind')
+    if known.kind==DeliveryPoint.Kind.CMD and known.facility_code and point.code!=known.facility_code:
+        point.code=known.facility_code; changed.append('code')
+    if changed: point.save(update_fields=changed+['updated_at'])
+    return point
+
+
 def resolve_point(label='',address='',phone='',create=True):
-    match=match_point(label,address)
-    if match.point or not create: return match
+    match=match_point(label,address); known=resolve_known_lab(address)
+    if match.point:
+        if create and known: _enrich_known_point(match.point,known)
+        return match
+    if not create: return match
     label=(label or '').strip(); address=(address or '').strip()
     if not address: return match
-    kind=Delivery.infer_point_kind(label)
-    point=DeliveryPoint.objects.create(name=label or address,code=label if kind==DeliveryPoint.Kind.CMD else '',address=address,kind=kind,phone=(phone or '').strip()[:64])
+    kind=known.kind if known else Delivery.infer_point_kind(label)
+    code=''
+    if known and known.kind==DeliveryPoint.Kind.CMD: code=known.facility_code
+    elif kind==DeliveryPoint.Kind.CMD: code=label
+    default_name='ЦМД' if kind==DeliveryPoint.Kind.CMD else 'ИНВИТРО' if kind==DeliveryPoint.Kind.INVITRO else label or address
+    point=DeliveryPoint.objects.create(name=label or default_name,code=code,address=address,kind=kind,phone=(phone or '').strip()[:64])
     return PointMatch(point,'created',True)
 
 
