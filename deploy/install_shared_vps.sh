@@ -79,9 +79,6 @@ DJANGO_CSRF_TRUSTED_ORIGINS=
 DJANGO_LOG_LEVEL=INFO
 SQLITE_PATH=$APP_DIR/data/db.sqlite3
 IMPORT_STAGING_DIR=$APP_DIR/var/import-staging
-YANDEX_MAPS_JS_API_KEY=
-YANDEX_GEOCODER_API_KEY=
-YANDEX_MAPS_LANG=ru_RU
 EOF
   chown "$APP_USER:$APP_GROUP" "$APP_DIR/.env"
   chmod 600 "$APP_DIR/.env"
@@ -132,4 +129,4 @@ echo "Health: http://${SERVER_IP:-SERVER_IP}:${PUBLIC_PORT}/healthz/"
 echo "Temporary web: http://${SERVER_IP:-SERVER_IP}:${PUBLIC_PORT}/"
 echo
 echo "Do not enter real courier/admin passwords over this temporary HTTP endpoint."
-echo "Next stage: attach a domain, enable HTTPS, then create pilot accounts and configure Yandex keys."
+echo "Next stage: attach a domain, enable HTTPS, then create pilot accounts."
