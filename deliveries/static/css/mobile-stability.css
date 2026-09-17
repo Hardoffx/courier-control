@@ -68,7 +68,7 @@ body:not(.dispatcher-ui):not(.courier-ui) main.wrap > .card form .btn { margin-t
     width: 100%;
   }
   .period-card form label { min-width: 0; width: 100%; margin: 0 !important; }
-  .period-card form input { min-width: 0; width: 100%; max-width: 100%; }
+  .period-card form input {\n    display: block;\n    box-sizing: border-box;\n    min-width: 0 !important;\n    width: 0 !important;\n    min-inline-size: 100% !important;\n    max-inline-size: 100% !important;\n    -webkit-appearance: none;\n    appearance: none;\n  }
   .period-card form button { grid-column: 1 / -1 !important; width: 100%; }
 
   /* Statistics metrics: swipe + snap without an intrusive scrollbar. */
