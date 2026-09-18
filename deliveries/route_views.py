@@ -187,6 +187,15 @@ def run_detail(request, pk):
     previous = RouteRun.objects.filter(route=run.route, run_date__lt=run.run_date).order_by('-run_date').first()
     templates = run.route.templates.filter(is_active=True).order_by('kind', 'id')
     suggestion = RouteOrderSuggestion.objects.filter(run=run, status=RouteOrderSuggestion.Status.PENDING).select_related('courier').first()
+    rows = list(deliveries)
+    total = len(rows)
+    done = sum(d.status == Delivery.Status.DONE for d in rows)
+    problem = sum(d.status == Delivery.Status.PROBLEM for d in rows)
+    completed = [d for d in rows if d.status == Delivery.Status.DONE and d.completed_at]
+    last_done = max(completed, key=lambda d: d.completed_at) if completed else None
+    next_stop = next((d for d in rows if d.status != Delivery.Status.DONE), None)
+    remaining = total - done
+    percent = round(done * 100 / total) if total else 0
     before = after = []
     moved_count = 0
     if suggestion:
@@ -204,6 +213,9 @@ def run_detail(request, pk):
         'order_before': before,
         'order_after': after,
         'order_moved_count': moved_count,
+        'route_kpis': {'total': total, 'done': done, 'remaining': remaining, 'problem': problem, 'percent': percent},
+        'last_done': last_done,
+        'next_stop': next_stop,
     })
 
 

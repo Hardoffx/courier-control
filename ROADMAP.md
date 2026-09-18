@@ -51,6 +51,20 @@ Roadmap отражает порядок разработки, а не обеща
 - [ ] Live visual/device QA at 375/390/430, tablet, laptop, wide desktop
 - [ ] Real API key/domain-restriction acceptance on deployed host
 
+## Phase 3.6 — Route-centric operations (approved 2026-09-18)
+- [ ] Today: global KPI cards include routes/deliveries/completed/problems
+- [ ] Today: dense RouteRun card board becomes primary operational surface
+- [ ] Route cards: courier, progress, remaining, problems, last completed, next stop, attention/completed state
+- [ ] RouteRun detail: route-specific KPI cards and operational “current state” summary
+- [ ] Preserve global delivery search/bulk operations as secondary surface
+- [ ] Add route-board sorting/filtering for scale (attention/progress/courier/name)
+- [ ] RouteRun events/history presentation
+- [ ] Staging demo dataset for realistic multi-route visual acceptance
+- [ ] Later: route-selected map monitoring with numbered status markers and click details
+- [ ] Later: cached coordinates on persistent points; no continuous courier GPS required
+
+See docs/ROUTE_CENTRIC_OPERATIONS.md.
+
 ## Phase 4 — Quality gate
 - [x] Core role/workflow/import/route tests
 - [x] Health/PWA tests

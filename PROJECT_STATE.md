@@ -2,14 +2,21 @@
 
 Перед разработкой читать этот файл, ROADMAP.md, DESIGN_SPEC.md и PILOT_ACCEPTANCE.md; затем проверять main и CI. После крупного блока обновлять.
 
-Последнее обновление: 2026-09-15. Repo: Hardoffx/courier-control. Branch: main.
+Последнее обновление: 2026-09-18. Repo: Hardoffx/courier-control. Branch: main.
 Стадия: functional MVP complete; internal pilot hardening complete enough for live deployment/acceptance.
 
 ## Continuation
 Дальше / Курьер Бот — продолжай: проверить state, roadmap, design spec, main и CI; автономно реализовать следующий крупный блок; исправить CI; обновить handoff. Не менять утвержденное визуальное направление.
 
+## Approved direction 2026-09-18
+- RouteRun is now the primary dispatcher operational entity: route -> courier -> ordered deliveries -> events/problems.
+- Today becomes a route board: global day KPIs + dense RouteRun cards; flat deliveries are secondary.
+- Opening a RouteRun shows route-specific KPIs and full operational detail.
+- Deferred monitoring map: select one route, status-colored numbered delivery markers, click for details; no continuous courier GPS. Provider may be Leaflet/OpenStreetMap for simplicity.
+- Full product contract: `docs/ROUTE_CENTRIC_OPERATIONS.md`.
+
 ## Source of truth
-DESIGN_SPEC.md и design/v1/courier-control-v1-reference.png; design/v1/README.md фиксирует continuity rule. Основной сценарий list-first, карта вторична. Courier mobile-first. Dispatcher полноценно работает desktop/tablet/phone. Встроенная operational карта только Yandex Maps.
+DESIGN_SPEC.md, docs/ROUTE_CENTRIC_OPERATIONS.md и design/v1/courier-control-v1-reference.png; design/v1/README.md фиксирует continuity rule. Основной сценарий list-first, карта вторична. Courier mobile-first. Dispatcher полноценно работает desktop/tablet/phone. Встроенная operational карта только Yandex Maps.
 
 ## Готово
 - Operational Django MVP: Excel import, point directory, routes/templates/runs, courier/dispatcher workflows, GPS, problems, history, stats/CSV, demo seed.

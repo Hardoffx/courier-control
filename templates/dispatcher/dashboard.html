@@ -19,18 +19,18 @@
   {% if messages %}{% for message in messages %}<div class="card">{{ message }}</div>{% endfor %}{% endif %}
 
   <div class="kpi-grid">
-    <div class="card kpi"><span class="kpi-icon total" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 6h12M8 12h12M8 18h12"/><rect x="3" y="4" width="2.5" height="2.5" rx=".6"/><rect x="3" y="10.7" width="2.5" height="2.5" rx=".6"/><rect x="3" y="17.5" width="2.5" height="2.5" rx=".6"/></svg></span><div><div class="kpi-label">Всего доставок</div><div class="kpi-value">{{ total_count }}</div></div></div>
-    <div class="card kpi"><span class="kpi-icon done" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="12" r="8.5"/><path d="m8.2 12.1 2.4 2.5 5.4-5.4"/></svg></span><div><div class="kpi-label">Выполнено</div><div class="kpi-value">{{ counts.done }}</div></div></div>
-    <div class="card kpi"><span class="kpi-icon problem" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v5.7"/><circle cx="12" cy="16.5" r=".8" fill="currentColor" stroke="none"/></svg></span><div><div class="kpi-label">Проблемы</div><div class="kpi-value">{{ counts.problem }}</div></div></div>
-    <div class="card kpi"><span class="kpi-icon route" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3.5 7.5h10v8h-10z"/><path d="M13.5 10h3.2l3 3v2.5h-6.2z"/><circle cx="7" cy="17.5" r="2"/><circle cx="17" cy="17.5" r="2"/><path d="M5.5 5h5"/></svg></span><div><div class="kpi-label">В пути</div><div class="kpi-value">{{ counts.in_progress }}</div></div></div>
+    <div class="card kpi"><span class="kpi-icon total" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 6h12M8 12h12M8 18h12"/><rect x="3" y="4" width="2.5" height="2.5" rx=".6"/><rect x="3" y="10.7" width="2.5" height="2.5" rx=".6"/><rect x="3" y="17.5" width="2.5" height="2.5" rx=".6"/></svg></span><div><div class="kpi-label">Маршрутов</div><div class="kpi-value">{{ route_count }}</div><div class="muted">{{ completed_routes }} завершено</div></div></div>
+    <div class="card kpi"><span class="kpi-icon done" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="12" r="8.5"/><path d="m8.2 12.1 2.4 2.5 5.4-5.4"/></svg></span><div><div class="kpi-label">Доставок</div><div class="kpi-value">{{ total_count }}</div><div class="muted">{{ counts.done }} выполнено</div></div></div>
+    <div class="card kpi"><span class="kpi-icon problem" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v5.7"/><circle cx="12" cy="16.5" r=".8" fill="currentColor" stroke="none"/></svg></span><div><div class="kpi-label">Выполнено</div><div class="kpi-value">{{ counts.done }} · {{ completion_percent }}%</div><div class="muted">за выбранный день</div></div></div>
+    <div class="card kpi"><span class="kpi-icon route" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3.5 7.5h10v8h-10z"/><path d="M13.5 10h3.2l3 3v2.5h-6.2z"/><circle cx="7" cy="17.5" r="2"/><circle cx="17" cy="17.5" r="2"/><path d="M5.5 5h5"/></svg></span><div><div class="kpi-label">Проблемы</div><div class="kpi-value">{{ counts.problem }}</div><div class="muted">{{ attention_routes }} маршрутов требуют внимания</div></div></div>
   </div>
 
-  <div class="section-head"><h2>Курьеры и маршруты</h2><a class="btn alt small" href="{% url 'route_list' %}">Все маршруты</a></div>
+  <div class="section-head"><h2>Маршруты сегодня</h2><a class="btn alt small" href="{% url 'route_list' %}">Все маршруты</a></div>
   <div class="route-summary">
     {% for item in route_runs %}
-    <div class="card route-card">
-      <div class="route-card-head"><strong>{{ item.run.route.name }}</strong><span>{{ item.done }}/{{ item.total }}</span></div>
-      <div class="muted">{% if item.run.assigned_courier %}{{ item.run.assigned_courier.get_full_name|default:item.run.assigned_courier.username }}{% else %}Не назначен{% endif %} · осталось {{ item.remaining }}{% if item.problem %} · проблем {{ item.problem }}{% endif %}</div>{% if item.last_done %}<div class="route-live"><b>Последняя:</b> №{{ item.last_done.route_order }} · {{ item.last_done.address }} <span>{{ item.last_done.completed_at|date:"H:i" }}</span></div>{% endif %}{% if item.next_stop %}<div class="route-live muted"><b>Следующая:</b> №{{ item.next_stop.route_order }} · {{ item.next_stop.address }}</div>{% endif %}
+    <div class="card route-card route-state-{{ item.state }}">
+      <div class="route-card-head"><strong>{{ item.run.route.name }}</strong><span>{{ item.done }}/{{ item.total }} · {{ item.percent }}%</span></div>
+      <div class="route-courier">{% if item.run.assigned_courier %}{{ item.run.assigned_courier.get_full_name|default:item.run.assigned_courier.username }}{% else %}<b>Курьер не назначен</b>{% endif %}</div><div class="route-facts"><span>Осталось <b>{{ item.remaining }}</b></span><span>Проблем <b>{{ item.problem }}</b></span>{% if item.state == 'completed' %}<span class="route-complete">✓ Завершён</span>{% endif %}</div>{% if item.last_done %}<div class="route-live"><b>Последняя:</b> №{{ item.last_done.route_order }} · {{ item.last_done.address }} <span>{{ item.last_done.completed_at|date:"H:i" }}</span></div>{% endif %}{% if item.next_stop %}<div class="route-live muted"><b>Следующая:</b> №{{ item.next_stop.route_order }} · {{ item.next_stop.address }}</div>{% endif %}
       {% if item.order_suggestion %}<div class="order-note"><b>Курьер изменил порядок.</b> <a href="{% url 'run_detail' item.run.pk %}">Сравнить →</a></div>{% endif %}
       <div class="progress-track"><span style="width:{{ item.percent }}%"></span></div>
       <div class="route-actions">
@@ -62,7 +62,7 @@
     </form>
   </details>
 
-  <div id="deliveries" class="section-head"><h2>Все точки дня <span class="muted">· {{ deliveries|length }}</span></h2></div>
+  <div id="deliveries" class="section-head"><h2>Все точки дня · поиск и массовые действия <span class="muted">· {{ deliveries|length }}</span></h2></div>
   <form id="bulk-form" method="post" action="{% url 'dispatcher_bulk_assign' %}">{% csrf_token %}
     <div id="bulk-bar" class="card bulk-bar"><strong id="selected-count">Выбрано: 0</strong><select name="courier_id"><option value="">Снять назначение</option>{% for c in couriers %}<option value="{{ c.pk }}">{{ c.get_full_name|default:c.username }}</option>{% endfor %}</select><button class="btn small" type="submit">Применить</button></div>
   </form>
