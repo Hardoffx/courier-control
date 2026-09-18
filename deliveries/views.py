@@ -39,7 +39,7 @@ def _dashboard_date(request):
 @dispatcher_required
 def dispatcher_dashboard(request):
     selected_date=_dashboard_date(request); base=Delivery.objects.filter(delivery_date=selected_date).select_related('courier','point','route_run__route'); deliveries=base
-    q=request.GET.get('q','').strip(); kind=request.GET.get('kind','').strip(); status=request.GET.get('status','').strip(); courier_filter=request.GET.get('courier','').strip()
+    q=request.GET.get('q','').strip(); kind=request.GET.get('kind','').strip(); status=request.GET.get('status','').strip(); courier_filter=request.GET.get('courier','').strip(); route_q=request.GET.get('route_q','').strip(); route_state=request.GET.get('route_state','').strip(); route_sort=request.GET.get('route_sort','name').strip()
     if q: deliveries=deliveries.filter(Q(source_label__icontains=q)|Q(address__icontains=q)|Q(phone__icontains=q)|Q(organization__icontains=q)|Q(recipient__icontains=q))
     if kind: deliveries=deliveries.filter(point__kind=kind)
     if status: deliveries=deliveries.filter(status=status)
@@ -55,7 +55,16 @@ def dispatcher_dashboard(request):
     for run in RouteRun.objects.filter(run_date=selected_date).select_related('route','template','assigned_courier').prefetch_related('deliveries').order_by('route__name'):
         rows=list(run.deliveries.all()); total=len(rows); done=sum(d.status==Delivery.Status.DONE for d in rows); problem=sum(d.status==Delivery.Status.PROBLEM for d in rows); completed=[d for d in rows if d.status==Delivery.Status.DONE and d.completed_at]; last_done=max(completed,key=lambda d:d.completed_at) if completed else None; remaining=total-done; next_stop=next((d for d in sorted(rows,key=lambda x:(x.route_order,x.id)) if d.status!=Delivery.Status.DONE),None); state='completed' if total and done==total else ('attention' if problem or not run.assigned_courier else ('active' if done else 'waiting')); runs.append({'run':run,'total':total,'done':done,'remaining':remaining,'problem':problem,'percent':round(done*100/total) if total else 0,'order_suggestion':suggestions.get(run.pk),'last_done':last_done,'next_stop':next_stop,'state':state})
     route_count=len(runs); completed_routes=sum(item['state']=='completed' for item in runs); attention_routes=sum(item['state']=='attention' for item in runs); done_count=counts.get(Delivery.Status.DONE,0); completion_percent=round(done_count*100/base.count()) if base.count() else 0
-    return render(request,'dispatcher/dashboard.html',{'deliveries':deliveries,'total_count':base.count(),'couriers':couriers,'row_colors':Delivery.RowColor.choices,'point_kinds':DeliveryPoint.Kind.choices,'statuses':Delivery.Status.choices,'counts':counts,'courier_stats':courier_stats,'today':timezone.localdate(),'selected_date':selected_date,'prev_date':selected_date-timedelta(days=1),'next_date':selected_date+timedelta(days=1),'route_runs':runs,'route_count':route_count,'completed_routes':completed_routes,'attention_routes':attention_routes,'completion_percent':completion_percent,'filters':{'q':q,'kind':kind,'status':status,'courier':courier_filter}})
+    visible_runs=runs
+    if route_q:
+        needle=route_q.casefold()
+        visible_runs=[item for item in visible_runs if needle in item['run'].route.name.casefold() or (item['run'].assigned_courier and needle in (item['run'].assigned_courier.get_full_name() or item['run'].assigned_courier.username).casefold())]
+    if route_state:
+        visible_runs=[item for item in visible_runs if item['state']==route_state]
+    if route_sort=='progress': visible_runs=sorted(visible_runs,key=lambda item:(item['percent'],item['run'].route.name))
+    elif route_sort=='attention': visible_runs=sorted(visible_runs,key=lambda item:(item['state']!='attention',-item['problem'],item['run'].route.name))
+    elif route_sort=='courier': visible_runs=sorted(visible_runs,key=lambda item:((item['run'].assigned_courier.get_full_name() or item['run'].assigned_courier.username) if item['run'].assigned_courier else 'яяя',item['run'].route.name))
+    return render(request,'dispatcher/dashboard.html',{'deliveries':deliveries,'total_count':base.count(),'couriers':couriers,'row_colors':Delivery.RowColor.choices,'point_kinds':DeliveryPoint.Kind.choices,'statuses':Delivery.Status.choices,'counts':counts,'courier_stats':courier_stats,'today':timezone.localdate(),'selected_date':selected_date,'prev_date':selected_date-timedelta(days=1),'next_date':selected_date+timedelta(days=1),'route_runs':visible_runs,'route_count':route_count,'completed_routes':completed_routes,'attention_routes':attention_routes,'completion_percent':completion_percent,'filters':{'q':q,'kind':kind,'status':status,'courier':courier_filter},'route_filters':{'q':route_q,'state':route_state,'sort':route_sort}})
 
 def _resolve_courier(courier_id):
     if not courier_id: return None
