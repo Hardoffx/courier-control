@@ -88,3 +88,9 @@ if not DEBUG:
 
 LOG_LEVEL = os.getenv('DJANGO_LOG_LEVEL', 'INFO')
 LOGGING = {'version':1,'disable_existing_loggers':False,'formatters':{'standard':{'format':'%(asctime)s %(levelname)s %(name)s %(message)s'}},'handlers':{'console':{'class':'logging.StreamHandler','formatter':'standard'}},'root':{'handlers':['console'],'level':LOG_LEVEL},'loggers':{'django.request':{'handlers':['console'],'level':'WARNING','propagate':False}}}
+
+
+# UI_TESTING: local/CI browser tests only
+if os.getenv("UI_TESTING") == "1":
+    SESSION_COOKIE_SECURE = False
+    CSRF_COOKIE_SECURE = False

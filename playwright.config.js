@@ -20,6 +20,12 @@ module.exports = defineConfig({
   ],
   webServer: {
     command: 'python manage.py migrate --noinput && python manage.py seed_ui_test_data && python manage.py runserver 127.0.0.1:8000 --noreload',
+    env: {
+      ...process.env,
+      UI_TESTING: '1',
+      SQLITE_PATH: '/tmp/courier-control-ui-tests.sqlite3',
+      DJANGO_DEBUG: '1',
+    },
     url: 'http://127.0.0.1:8000/healthz/',
     reuseExistingServer: !process.env.CI,
     timeout: 120000,
