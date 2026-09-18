@@ -122,7 +122,25 @@ def import_excel(request):
 @login_required
 def courier_today(request):
     if request.user.is_dispatcher: return redirect('dispatcher_dashboard')
-    today=timezone.localdate(); deliveries=list(Delivery.objects.filter(delivery_date=today,courier=request.user).select_related('point','route_run__route','route_run__template').order_by('route_run__route__name','route_order','id')); done=sum(d.status==Delivery.Status.DONE for d in deliveries); next_delivery=next((d for d in deliveries if d.status not in (Delivery.Status.DONE,Delivery.Status.PROBLEM)),None) or next((d for d in deliveries if d.status!=Delivery.Status.DONE),None); return render(request,'courier/today.html',{'deliveries':deliveries,'done':done,'total':len(deliveries),'today':today,'next_delivery':next_delivery,'problem_reasons':PROBLEM_REASONS})
+    today=timezone.localdate()
+    deliveries=list(Delivery.objects.filter(delivery_date=today,courier=request.user).select_related('point','route_run__route','route_run__template').order_by('route_run__route__name','route_order','id'))
+    done=sum(d.status==Delivery.Status.DONE for d in deliveries)
+    unfinished=[d for d in deliveries if d.status!=Delivery.Status.DONE]
+    selected_id=request.GET.get('selected','').strip()
+    selected_delivery=next((d for d in unfinished if str(d.pk)==selected_id),None)
+    if not selected_delivery:
+        selected_delivery=next((d for d in unfinished if d.status!=Delivery.Status.PROBLEM),None) or (unfinished[0] if unfinished else None)
+    selectable=unfinished
+    selected_index=selectable.index(selected_delivery) if selected_delivery in selectable else -1
+    previous_delivery=selectable[selected_index-1] if selected_index>0 else None
+    next_delivery=selectable[selected_index+1] if 0<=selected_index<len(selectable)-1 else None
+    route_runs=[]
+    seen=set()
+    for delivery in deliveries:
+        if delivery.route_run_id and delivery.route_run_id not in seen:
+            seen.add(delivery.route_run_id); route_runs.append(delivery.route_run)
+    route_name=' + '.join(run.route.name for run in route_runs) if route_runs else ('Без маршрута' if deliveries else '')
+    return render(request,'courier/today.html',{'deliveries':deliveries,'done':done,'total':len(deliveries),'today':today,'selected_delivery':selected_delivery,'previous_delivery':previous_delivery,'next_delivery':next_delivery,'route_name':route_name,'route_runs':route_runs,'problem_reasons':PROBLEM_REASONS})
 
 @login_required
 @require_POST
