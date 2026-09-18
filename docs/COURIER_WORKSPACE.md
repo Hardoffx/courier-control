@@ -158,3 +158,15 @@ The courier UI must not maintain a hidden independent copy of operational route 
 - [ ] Audit long-route density and 375/390/430 px behavior.
 - [ ] Consider drag reorder only after the reliable neighbor-swap workflow is preserved.
 - [ ] Keep completion GPS optional and non-blocking.
+
+
+## Future idea: free multi-stop launch in Yandex Maps
+
+Deferred; do not implement until explicitly requested.
+
+- Add a courier action to open the current RouteRun as a multi-stop route in the external Yandex Maps app/site.
+- Source data may initially be the delivery addresses already stored in Courier Control; avoid requiring paid Routing API usage for this feature.
+- Preserve Courier Control `route_order` as the intended stop sequence.
+- If the external Yandex Maps route has a stop-count limit, split a long RouteRun into sequential parts and keep continuity between parts.
+- Before implementation, re-check the current public Yandex Maps URL/deep-link format, current stop limit, and whether a key/signature is required for the chosen free launch method.
+- This is external navigation only: Courier Control does not need to calculate roads, traffic, or turn-by-turn navigation itself.
