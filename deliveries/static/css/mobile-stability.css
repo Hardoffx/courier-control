@@ -419,3 +419,19 @@ body:not(.dispatcher-ui):not(.courier-ui) main.wrap > .card form .btn { margin-t
   .route-card { padding:14px !important; }
   .route-live { overflow-wrap:anywhere; }
 }
+
+/* Route-centric operations board — 2026-09-18 */
+.route-summary { grid-template-columns: repeat(auto-fit,minmax(290px,1fr)); align-items:stretch; }
+.route-card { display:flex; flex-direction:column; min-height:220px; }
+.route-card-head strong { font-size:18px; }
+.route-courier { margin-top:8px; font-weight:750; }
+.route-facts { display:flex; gap:8px 14px; flex-wrap:wrap; margin-top:10px; font-size:13px; color:var(--muted); }
+.route-complete { color:var(--green); font-weight:850; }
+.route-card .progress-track { margin-top:12px; }
+.route-card .route-actions { margin-top:auto; padding-top:14px; }
+.route-state-attention { border-color:#f0c66e; }
+.route-state-completed { border-color:#b9e4cf; }
+.route-kpi-grid { margin-top:14px; }
+@media (min-width:1200px) { .route-summary { grid-template-columns:repeat(3,minmax(0,1fr)); } }
+@media (min-width:1600px) { .route-summary { grid-template-columns:repeat(4,minmax(0,1fr)); } }
+@media (max-width:700px) { .route-summary { grid-template-columns:1fr; } .route-card { min-height:0; } }
