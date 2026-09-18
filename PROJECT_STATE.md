@@ -13,10 +13,11 @@
 - Today becomes a route board: global day KPIs + dense RouteRun cards; flat deliveries are secondary.
 - Opening a RouteRun shows route-specific KPIs and full operational detail.
 - Deferred monitoring map: select one route, status-colored numbered delivery markers, click for details; no continuous courier GPS. Provider may be Leaflet/OpenStreetMap for simplicity.
-- Full product contract: `docs/ROUTE_CENTRIC_OPERATIONS.md`.
+- Full dispatcher contract: `docs/ROUTE_CENTRIC_OPERATIONS.md`.
+- Courier workspace contract: `docs/COURIER_WORKSPACE.md`: real selected point, row selection without forced scrolling, Previous/Next selection, explicit route context, exact completion time, optional non-blocking GPS, separate reorder semantics.
 
 ## Source of truth
-DESIGN_SPEC.md, docs/ROUTE_CENTRIC_OPERATIONS.md и design/v1/courier-control-v1-reference.png; design/v1/README.md фиксирует continuity rule. Основной сценарий list-first, карта вторична. Courier mobile-first. Dispatcher полноценно работает desktop/tablet/phone. Встроенная operational карта только Yandex Maps.
+DESIGN_SPEC.md, docs/ROUTE_CENTRIC_OPERATIONS.md, docs/COURIER_WORKSPACE.md и design/v1/courier-control-v1-reference.png; design/v1/README.md фиксирует continuity rule. Основной сценарий list-first, карта вторична. Courier mobile-first. Dispatcher полноценно работает desktop/tablet/phone. Встроенная operational карта только Yandex Maps.
 
 ## Готово
 - Operational Django MVP: Excel import, point directory, routes/templates/runs, courier/dispatcher workflows, GPS, problems, history, stats/CSV, demo seed.
