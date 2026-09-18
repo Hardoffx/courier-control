@@ -283,8 +283,7 @@ def _rows(content, create_points=False):
             if index < len(row)
         }
         raw_address = _cell_text(values.get('address'))
-        if not raw_address or _address_score(raw_address) < 3:
-            continue
+        # Headered exports are explicit: keep accepting short/internal addresses\n        # such as «Старый адрес». Headerless sheets need semantic evidence so\n        # decorative text is not mistaken for a delivery row.\n        if not raw_address or (not header_row and _address_score(raw_address) < 3):\n            continue
 
         address = normalize_delivery_address(raw_address)
         if not address:
