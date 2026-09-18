@@ -446,3 +446,5 @@ body:not(.dispatcher-ui):not(.courier-ui) main.wrap > .card form .btn { margin-t
 .selected-card .next-bar{position:relative}
 @media(max-width:900px){.route-board-tools{grid-template-columns:1fr 1fr}.route-board-tools label:first-of-type{grid-column:1/-1}}
 @media(max-width:560px){.route-board-tools{grid-template-columns:1fr}.route-board-tools label:first-of-type{grid-column:auto}.selected-nav{grid-template-columns:1fr 1fr}.selected-nav .btn{white-space:normal;min-width:0}.selected-card .action-row{grid-template-columns:1fr 1fr}.selected-card .action-row .btn{white-space:normal;overflow-wrap:anywhere}}
+
+.courier-note{border-left:3px solid #f0b429;background:#fff8e6}.courier-note-form{margin:10px 0}.courier-note-form label{margin:0}.courier-note-form input{margin-top:5px}
