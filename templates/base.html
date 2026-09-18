@@ -24,7 +24,6 @@
     <div class="dispatcher-side-title">Управление</div>
     <nav class="side-nav">
       <a class="{% if request.resolver_match.url_name == 'dispatcher_dashboard' %}active{% endif %}" href="{% url 'dispatcher_dashboard' %}"><span class="side-icon">▣</span>Сегодня</a>
-      <a href="{% url 'dispatcher_dashboard' %}#deliveries"><span class="side-icon">▤</span>Доставки</a>
       <a class="{% if 'courier' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'courier_manage_list' %}"><span class="side-icon">♟</span>Курьеры</a>
       <a class="{% if 'route' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'route_list' %}"><span class="side-icon">⌁</span>Маршруты</a>
       <a class="{% if 'point' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'point_list' %}"><span class="side-icon">●</span>Постоянные точки</a>
@@ -51,7 +50,7 @@
     </header>
     <div id="mobile-drawer" class="mobile-drawer" onclick="if(event.target===this)this.classList.remove('open')">
       <nav>
-        <a href="{% url 'dispatcher_dashboard' %}">Сегодня</a><a href="{% url 'dispatcher_dashboard' %}#deliveries">Доставки</a><a href="{% url 'courier_manage_list' %}">Курьеры</a><a href="{% url 'route_list' %}">Маршруты</a><a href="{% url 'point_list' %}">Постоянные точки</a><a href="{% url 'import_excel' %}">Импорт Excel</a><a href="{% url 'management_stats' %}">Статистика</a>
+        <a href="{% url 'dispatcher_dashboard' %}">Сегодня</a><a href="{% url 'courier_manage_list' %}">Курьеры</a><a href="{% url 'route_list' %}">Маршруты</a><a href="{% url 'point_list' %}">Постоянные точки</a><a href="{% url 'import_excel' %}">Импорт Excel</a><a href="{% url 'management_stats' %}">Статистика</a>
       </nav>
     </div>
 {% else %}

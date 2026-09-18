@@ -11,14 +11,14 @@
 
   {% if next_delivery %}
   <section class="card next-card">
-    <div class="next-bar"><span>Следующая точка</span><span>{{ next_delivery.route_order }} из {{ total }}</span></div>
+    <div class="next-bar"><span>Выбранная точка</span><span>{{ next_delivery.route_order }} из {{ total }}</span></div>
     <div class="next-body">
       <div class="next-lab">{% include 'includes/lab_badge.html' with delivery=next_delivery %}</div>
       <div class="address-line">
         <span class="address-pin" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a7 7 0 0 0-7 7c0 5.3 7 13 7 13s7-7.7 7-13a7 7 0 0 0-7-7Zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5Z"/></svg></span>
         <div>
           <h2 class="next-address">{{ next_delivery.address }}</h2>
-          <div class="lab-caption"><strong>{{ next_delivery.lab_name }}</strong>{% if next_delivery.lpu_number %} · ЛПУ {{ next_delivery.lpu_number }}{% endif %}</div>
+          <div class="lab-caption">{% if next_delivery.lpu_number %}<strong>ЛПУ {{ next_delivery.lpu_number }}</strong>{% endif %}</div>
         </div>
       </div>
       <div class="next-meta">
@@ -27,7 +27,7 @@
       </div>
       <div class="action-row">
         <a class="btn" target="_blank" rel="noopener" href="https://yandex.ru/maps/?text={{ next_delivery.address|urlencode }}">➤ Открыть в Яндекс.Картах</a>
-        {% if next_delivery.phone %}<a class="btn good" href="tel:{{ next_delivery.phone }}">☎ Позвонить</a>{% else %}<a class="btn alt detail-opener" href="#delivery-{{ next_delivery.pk }}" data-open="delivery-{{ next_delivery.pk }}">+ Телефон</a>{% endif %}
+        {% if next_delivery.phone %}<a class="btn good" href="tel:{{ next_delivery.phone }}">☎ {{ next_delivery.phone }}</a>{% else %}<a class="btn alt detail-opener" href="#delivery-{{ next_delivery.pk }}" data-open="delivery-{{ next_delivery.pk }}">+ Телефон</a>{% endif %}
       </div>
       <div class="big-actions">
         <form class="done-form" method="post" action="{% url 'courier_update' next_delivery.pk %}">
@@ -48,7 +48,7 @@
         <summary class="route-row">
           <span class="route-dot">{% if d.status == 'done' %}✓{% elif d.status == 'problem' %}!{% else %}{{ d.route_order }}{% endif %}</span>
           <div class="route-primary">
-            <div class="route-labline">{% include 'includes/lab_badge.html' with delivery=d %}<span class="route-sub">{{ d.lab_name }}{% if d.lpu_number %} · ЛПУ {{ d.lpu_number }}{% endif %}</span></div>
+            <div class="route-labline">{% include 'includes/lab_badge.html' with delivery=d %}{% if d.lpu_number %}<span class="route-sub route-lpu">ЛПУ {{ d.lpu_number }}</span>{% endif %}</div>
             <div class="route-address">{{ d.address }}</div>
           </div>
           <div class="route-time">{{ d.time_window|default:d.get_status_display }}</div>
@@ -62,8 +62,10 @@
           {% if d.status != 'done' %}
             <div class="action-row route-detail-actions">
               <a class="btn" target="_blank" rel="noopener" href="https://yandex.ru/maps/?text={{ d.address|urlencode }}">➤ Открыть в Яндекс.Картах</a>
-              {% if d.phone %}<a class="btn good" href="tel:{{ d.phone }}">☎ Позвонить</a>{% endif %}
+              {% if d.phone %}<a class="btn good" href="tel:{{ d.phone }}">☎ {{ d.phone }}</a>{% endif %}
             </div>
+
+            <form class="done-form route-inline-done" method="post" action="{% url 'courier_update' d.pk %}">{% csrf_token %}<input type="hidden" name="action" value="done"><input type="hidden" name="latitude"><input type="hidden" name="longitude"><button class="btn good" type="submit">✓ Выполнено</button></form>
 
             <details id="problem-{{ d.pk }}" class="problem-panel">
               <summary class="btn bad">⚠ Проблема</summary>
@@ -77,7 +79,7 @@
 
             {% if not d.phone %}
             <form method="post" action="{% url 'courier_update' d.pk %}" class="route-detail-form phone-form">
-              {% csrf_token %}<input type="hidden" name="action" value="phone"><input name="phone" placeholder="Добавить телефон"><button class="btn alt" type="submit">Добавить телефон</button>
+              {% csrf_token %}<input type="hidden" name="action" value="phone"><input name="phone" placeholder="Добавить телефон"><button class="btn alt" type="submit">Добавить</button>
             </form>
             {% endif %}
 

@@ -394,3 +394,28 @@ body:not(.dispatcher-ui):not(.courier-ui) main.wrap > .card form .btn { margin-t
     border-color: #0aa35c !important;
   }
 }
+
+
+/* UX refinement — 2026-09-18 */
+.route-live { margin-top: 8px; font-size: 13px; line-height: 1.4; }
+.route-live span { font-weight: 800; margin-left: 6px; }
+.filter-details > summary { width: max-content; list-style: none; cursor: pointer; }
+.filter-details > summary::-webkit-details-marker { display:none; }
+.route-lpu { font-weight: 800; color: #52657a; }
+.route-inline-done { margin-top: 10px; }
+.phone-form { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px; align-items:end; }
+.phone-form input,.phone-form .btn { margin:0 !important; }
+
+@media (max-width:700px) {
+  .route-detail-actions { display:grid !important; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:8px !important; }
+  .route-detail-actions .btn { width:100%; min-width:0; padding-left:8px; padding-right:8px; font-size:12px; }
+  .route-inline-done .btn { width:100%; }
+  .route-labline .route-sub:not(.route-lpu) { display:none; }
+  .route-time { font-weight:750; }
+  .filter-details { padding:10px !important; }
+  .filter-details[open] > summary { margin-bottom:12px; }
+  .filter-row { display:grid !important; grid-template-columns:1fr !important; }
+  .live-search-label { order:-1; }
+  .route-card { padding:14px !important; }
+  .route-live { overflow-wrap:anywhere; }
+}
