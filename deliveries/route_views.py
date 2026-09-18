@@ -191,6 +191,7 @@ def run_detail(request, pk):
     total = len(rows)
     done = sum(d.status == Delivery.Status.DONE for d in rows)
     problem = sum(d.status == Delivery.Status.PROBLEM for d in rows)
+    problem_rows = [d for d in rows if d.status == Delivery.Status.PROBLEM]
     completed = [d for d in rows if d.status == Delivery.Status.DONE and d.completed_at]
     last_done = max(completed, key=lambda d: d.completed_at) if completed else None
     next_stop = next((d for d in rows if d.status != Delivery.Status.DONE), None)
@@ -216,6 +217,8 @@ def run_detail(request, pk):
         'route_kpis': {'total': total, 'done': done, 'remaining': remaining, 'problem': problem, 'percent': percent},
         'last_done': last_done,
         'next_stop': next_stop,
+        'problem_rows': problem_rows,
+        'recent_events': DeliveryEvent.objects.filter(delivery__route_run=run).select_related('delivery','actor').order_by('-created_at')[:20],
     })
 
 
