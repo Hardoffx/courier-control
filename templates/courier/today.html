@@ -44,8 +44,8 @@
     <div class="route-title"><h2>Мой маршрут сегодня</h2><span class="muted">{{ total }} точек</span></div>
     <div class="route-list route-accordion-list">
       {% for d in deliveries %}
-      <details id="delivery-{{ d.pk }}" class="route-item {% if d.status == 'done' %}done{% elif d.status == 'problem' %}problem{% elif selected_delivery and d.pk == selected_delivery.pk %}current{% endif %}" data-delivery-id="{{ d.pk }}" {% if selected_delivery and d.pk == selected_delivery.pk %}open{% endif %}>
-        <summary class="route-row" data-select-url="?selected={{ d.pk }}">
+      <details id="delivery-{{ d.pk }}" class="route-item {% if d.status == 'done' %}done{% elif d.status == 'problem' %}problem{% elif selected_delivery and d.pk == selected_delivery.pk %}current{% endif %}" data-delivery-id="{{ d.pk }}">
+        <summary class="route-row">
           <span class="route-dot">{% if d.status == 'done' %}✓{% elif d.status == 'problem' %}!{% else %}{{ d.route_order }}{% endif %}</span>
           <div class="route-primary">
             <div class="route-labline">{% include 'includes/lab_badge.html' with delivery=d %}{% if d.lpu_number %}<span class="route-sub route-lpu">ЛПУ {{ d.lpu_number }}</span>{% endif %}</div>
@@ -55,7 +55,7 @@
           <span class="route-chevron" aria-hidden="true"></span>
         </summary>
 
-        <div class="route-detail-body">
+        <div class="route-detail-body">{% if d.status != "done" %}<a class="btn alt route-select-btn" href="?selected={{ d.pk }}">Показать сверху</a>{% endif %}
           {% if d.comment %}<div class="route-detail-note">{{ d.comment }}</div>{% endif %}
           {% if d.problem_reason %}<div class="route-detail-problem"><b>{{ d.problem_reason }}</b></div>{% endif %}
 
@@ -102,7 +102,6 @@
 document.querySelectorAll('.done-form').forEach(f=>f.addEventListener('submit',e=>{if(f.dataset.geo==='1'||!navigator.geolocation)return;e.preventDefault();navigator.geolocation.getCurrentPosition(p=>{f.querySelector('[name=latitude]').value=p.coords.latitude;f.querySelector('[name=longitude]').value=p.coords.longitude;f.dataset.geo='1';f.requestSubmit()},()=>{f.dataset.geo='1';f.requestSubmit()},{enableHighAccuracy:true,timeout:4000})}));
 function openDelivery(id,childId){const d=document.getElementById(id);if(!d)return;d.open=true;if(childId){const c=document.getElementById(childId);if(c)c.open=true}}
 document.querySelectorAll('.detail-opener').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();openDelivery(a.dataset.open,a.dataset.openChild)}));
-document.querySelectorAll('.route-row[data-select-url]').forEach(row=>row.addEventListener('click',e=>{if(e.target.closest('a,button,input,select,form'))return;e.preventDefault();location.href=row.dataset.selectUrl;}));
 if(location.hash&&location.hash.startsWith('#delivery-'))openDelivery(location.hash.slice(1));
 </script>
 {% endblock %}
