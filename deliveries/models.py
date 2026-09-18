@@ -118,11 +118,25 @@ class Delivery(models.Model):
 
     @staticmethod
     def infer_point_kind(label):
-        value=(label or '').strip(); low=value.lower(); compact=value.replace('/','').replace(' ','')
-        if value and compact.isdigit(): return DeliveryPoint.Kind.CMD
-        if low.startswith('мо ') or 'инвитро' in low: return DeliveryPoint.Kind.INVITRO
-        if any(word in low for word in ('склад','итого получено','ветеринар')): return DeliveryPoint.Kind.SERVICE
-        if value: return DeliveryPoint.Kind.EXTERNAL
+        value = (label or '').strip()
+        low = value.casefold()
+        compact = value.replace('/', '').replace(' ', '')
+
+        if value and compact.isdigit():
+            return DeliveryPoint.Kind.CMD
+
+        # «В+» — маркер ветеринарной точки INVITRO в текущем формате.
+        if 'в+' in low or 'v+' in low:
+            return DeliveryPoint.Kind.INVITRO
+
+        # «МО» здесь — внутренний маркер INVITRO, а не сокращение региона.
+        if low.startswith('мо ') or 'инвитро' in low:
+            return DeliveryPoint.Kind.INVITRO
+
+        if any(word in low for word in ('склад', 'итого получено', 'ветеринар')):
+            return DeliveryPoint.Kind.SERVICE
+        if value:
+            return DeliveryPoint.Kind.EXTERNAL
         return DeliveryPoint.Kind.UNKNOWN
 
     @cached_property

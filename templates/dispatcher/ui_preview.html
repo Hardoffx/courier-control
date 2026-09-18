@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+{% block title %}UI Preview · Courier Control{% endblock %}
+{% block content %}
+<div class="dashboard-page ui-preview">
+  <div class="page-head"><div><h1>UI Preview</h1><div class="page-sub">Эталон компонентов Courier Control</div></div></div>
+
+  <section class="card ui-preview-section">
+    <h2>Кнопки</h2>
+    <div class="ui-preview-row">
+      <button class="btn">Основная</button>
+      <button class="btn alt">Вторичная</button>
+      <button class="btn good">Сохранить</button>
+      <button class="btn bad">Удалить</button>
+    </div>
+  </section>
+
+  <section class="card ui-preview-section">
+    <h2>Поля</h2>
+    <div class="ui-preview-grid">
+      <label>Имя<input value="Иван"></label>
+      <label>Дата<input type="date" value="2026-09-18"></label>
+      <label>Статус<select><option>В работе</option></select></label>
+      <label>Комментарий<textarea rows="3">Комментарий к доставке</textarea></label>
+    </div>
+  </section>
+
+  <section class="card ui-preview-section">
+    <h2>Карточки показателей</h2>
+    <div class="kpi-grid">
+      <div class="card kpi"><div class="kpi-icon total">▣</div><div><div class="kpi-label">Всего доставок</div><div class="kpi-value">46</div></div></div>
+      <div class="card kpi"><div class="kpi-icon done">✓</div><div><div class="kpi-label">Выполнено</div><div class="kpi-value">38</div></div></div>
+      <div class="card kpi"><div class="kpi-icon problem">!</div><div><div class="kpi-label">Проблемы</div><div class="kpi-value">2</div></div></div>
+    </div>
+  </section>
+
+  <section class="card ui-preview-section">
+    <h2>Длинный контент</h2>
+    <div class="delivery-address-main">Москва, очень длинное название улицы для проверки переноса и отсутствия горизонтального переполнения, дом 123, корпус 4</div>
+  </section>
+</div>
+{% endblock %}

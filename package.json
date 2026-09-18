@@ -1,0 +1,11 @@
+{
+  "name": "courier-control-ui-tests",
+  "private": true,
+  "scripts": {
+    "test:ui": "playwright test",
+    "test:ui:update": "playwright test --update-snapshots"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.0"
+  }
+}

@@ -116,3 +116,281 @@ body:not(.dispatcher-ui):not(.courier-ui) main.wrap > .card form .btn { margin-t
   .kpi { min-width: 166px !important; }
   .metric { flex-basis: 138px; min-width: 138px !important; }
 }
+
+
+/* UI Forge iteration #2 — dashboard candidate */
+.page-title-icon svg,
+.kpi-icon svg { width: 22px; height: 22px; display: block; }
+.kpi-icon.total::before { content: none; }
+.filter-row label { display: grid; gap: 8px; }
+.filter-row label input,
+.filter-row label select { margin-top: 0; }
+
+.mobile-brand { display: none; }
+
+@media (max-width: 700px) {
+  .dispatcher-top {
+    display: grid !important;
+    grid-template-columns: 44px minmax(0, 1fr) 44px;
+    gap: 10px !important;
+    padding: 8px 14px !important;
+    height: 64px !important;
+  }
+  .mobile-menu {
+    width: 44px !important;
+    height: 44px !important;
+    border-radius: 13px !important;
+    color: var(--blue);
+    font-size: 0 !important;
+  }
+  .mobile-menu span { font-size: 20px; line-height: 1; }
+  .mobile-brand {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: var(--ink);
+    font-size: 15px;
+    font-weight: 850;
+    letter-spacing: -.02em;
+    white-space: nowrap;
+  }
+  .mobile-brand-mark {
+    width: 28px;
+    height: 28px;
+    display: grid;
+    place-items: center;
+    border-radius: 9px;
+    background: linear-gradient(145deg,#3c9cff,#0567e8);
+    color: #fff;
+    font-size: 13px;
+    box-shadow: 0 4px 12px rgba(8,119,249,.22);
+  }
+  .top-user { justify-self: end; }
+  .avatar { width: 40px; height: 40px; }
+
+  .page-title { align-items: flex-start; }
+  .page-title-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    color: #0877f9;
+    background: #eef5ff;
+    border-color: #d8e8ff;
+  }
+
+  .date-nav {
+    width: 100%;
+    display: grid !important;
+    grid-template-columns: 46px minmax(0,1fr) 46px;
+    gap: 10px !important;
+    margin-top: 12px !important;
+  }
+  .date-nav .date-arrow {
+    width: 46px;
+    min-width: 46px;
+    height: 46px;
+    min-height: 46px !important;
+    padding: 0 !important;
+    border-radius: 12px;
+    font-size: 20px !important;
+  }
+  .date-current {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    text-align: center;
+    font-size: 16px;
+  }
+  .date-nav > .btn:not(.date-arrow) { grid-column: 1 / -1; }
+
+  .kpi-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+  }
+  .kpi-icon svg { width: 23px; height: 23px; }
+
+  .filter-row label { gap: 9px; }
+}
+
+
+/* UI Forge iteration #3 — approved mockup direction */
+@media (max-width: 700px) {
+  .mobile-menu svg { width: 23px; height: 23px; display: block; }
+  .mobile-menu {
+    color: #0877f9;
+    background: #fff;
+    border-color: #dbe5f1;
+    box-shadow: 0 3px 10px rgba(17,33,58,.05);
+  }
+  .page-sub {
+    font-size: 14px !important;
+    line-height: 1.35;
+    font-weight: 650;
+    color: #718096;
+    margin-top: 4px;
+  }
+  .kpi-icon.problem {
+    background: #fff0f2;
+    color: #ee3f52;
+  }
+  .kpi-icon.route {
+    background: #fff5e8;
+    color: #e79218;
+  }
+}
+
+
+/* Excel import action */
+.excel-action {
+  background: #217346 !important;
+  border-color: #217346 !important;
+  color: #fff !important;
+  box-shadow: 0 4px 12px rgba(33,115,70,.18);
+}
+.excel-action:hover { background: #1d633d !important; border-color: #1d633d !important; }
+.excel-action svg { width: 19px; height: 19px; flex: none; }
+
+
+/* UI Forge iteration #4 — compact date return and paired primary actions */
+.date-today { gap: 6px; }
+
+@media (max-width: 700px) {
+  .date-nav > .date-today {
+    grid-column: 2 !important;
+    justify-self: center;
+    width: auto !important;
+    min-height: 34px !important;
+    padding: 6px 12px !important;
+    border-radius: 999px !important;
+    font-size: 12px !important;
+    color: #0877f9;
+    border-color: #d6e7fb;
+    background: #f5f9ff;
+  }
+
+  .head-actions {
+    display: grid !important;
+    grid-template-columns: minmax(0,1fr) minmax(0,1.18fr);
+    gap: 8px !important;
+    width: 100%;
+  }
+  .head-actions .btn {
+    width: 100%;
+    min-width: 0;
+    padding-left: 10px;
+    padding-right: 10px;
+    font-size: 12px;
+  }
+  .head-actions .excel-action svg { width: 17px; height: 17px; }
+}
+
+
+/* UI Forge iteration #5 — generated reference translated to real staging */
+@media (max-width: 700px) {
+  .dispatcher-top {
+    height: 72px !important;
+    grid-template-columns: 44px minmax(0,1fr) 44px;
+  }
+  .mobile-brand {
+    gap: 9px;
+    line-height: 1.05;
+  }
+  .mobile-brand-mark {
+    width: 38px;
+    height: 38px;
+    border-radius: 0;
+    background: transparent;
+    color: #1978f2;
+    box-shadow: none;
+  }
+  .mobile-brand-mark svg {
+    display: block;
+    width: 38px;
+    height: 38px;
+  }
+  .mobile-brand-copy {
+    display: grid;
+    gap: 4px;
+    min-width: 0;
+    text-align: left;
+  }
+  .mobile-brand-copy strong {
+    color: var(--ink);
+    font-size: 17px;
+    font-weight: 850;
+    letter-spacing: -.025em;
+    white-space: nowrap;
+  }
+  .mobile-brand-copy small {
+    color: #718096;
+    font-size: 10px;
+    font-weight: 650;
+    letter-spacing: 0;
+    white-space: nowrap;
+  }
+
+  .date-nav > .date-today {
+    grid-column: 2 !important;
+    min-height: 38px !important;
+    padding: 7px 15px !important;
+    gap: 7px;
+    border: 1px solid #cfe4fb !important;
+    border-radius: 999px !important;
+    background: #eef7ff !important;
+    color: #1878ef !important;
+    box-shadow: 0 3px 9px rgba(8,119,249,.08);
+    font-size: 13px !important;
+    font-weight: 750;
+  }
+
+  .head-actions {
+    grid-template-columns: minmax(0,1fr) minmax(0,1fr) !important;
+    gap: 9px !important;
+  }
+  .head-actions .btn {
+    min-height: 52px !important;
+    border-radius: 12px !important;
+    font-size: 13px !important;
+    font-weight: 750;
+    white-space: nowrap;
+    box-shadow: 0 5px 13px rgba(17,33,58,.09);
+  }
+  .head-actions .excel-action {
+    background: #079b58 !important;
+    border-color: #079b58 !important;
+  }
+  .head-actions .excel-action:hover {
+    background: #07884e !important;
+    border-color: #07884e !important;
+  }
+  .head-actions .excel-action svg {
+    width: 20px;
+    height: 20px;
+  }
+}
+
+
+/* UI Forge iteration #6 — final reference fidelity pass */
+@media (max-width: 700px) {
+  .date-nav > .date-today svg {
+    width: 18px;
+    height: 18px;
+    display: block;
+    flex: none;
+  }
+  .date-nav > .date-today {
+    min-height: 36px !important;
+    padding: 7px 14px !important;
+    background: #eef7ff !important;
+    border-color: #cfe4fb !important;
+    box-shadow: 0 3px 10px rgba(8,119,249,.07);
+  }
+  .head-actions .excel-action {
+    background: #0aa35c !important;
+    border-color: #0aa35c !important;
+  }
+}

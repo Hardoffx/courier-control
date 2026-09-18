@@ -9,7 +9,9 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Courier Control">
   <link rel="manifest" href="{% url 'manifest' %}">
+  <link rel="stylesheet" href="{% static 'css/tokens.css' %}">
   <link rel="stylesheet" href="{% static 'css/app.css' %}">
+  <link rel="stylesheet" href="{% static 'css/ui-preview.css' %}">
   <title>{% block title %}Courier Control{% endblock %}</title>
   {% block head %}{% endblock %}
   <link rel="stylesheet" href="{% static 'css/mobile-stability.css' %}">
@@ -37,7 +39,8 @@
   </aside>
   <div class="dispatcher-main">
     <header class="dispatcher-top">
-      <button class="mobile-menu" type="button" aria-label="Меню" onclick="document.getElementById('mobile-drawer').classList.toggle('open')">☰</button>
+      <button class="mobile-menu" type="button" aria-label="Меню" onclick="document.getElementById('mobile-drawer').classList.toggle('open')"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 7h14M5 12h14M5 17h14"/></svg></button>
+      <a class="mobile-brand" href="{% url 'dispatcher_dashboard' %}" aria-label="Courier Control"><span class="mobile-brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 10 11-6 11 6-11 6-11-6Z"/><path d="M5 10v12l11 6 11-6V10M16 16v12"/></svg></span><span class="mobile-brand-copy"><strong>Courier Control</strong><small>Доставка под контролем</small></span></a>
       <form class="global-search" method="get" action="{% url 'dispatcher_dashboard' %}">
         {% if request.GET.date %}<input type="hidden" name="date" value="{{ request.GET.date }}">{% endif %}
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
