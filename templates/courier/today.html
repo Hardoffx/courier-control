@@ -21,7 +21,7 @@
           <div class="lab-caption">{% if selected_delivery.lpu_number %}<strong>ЛПУ {{ selected_delivery.lpu_number }}</strong>{% endif %}</div>
         </div>
       </div>
-      {% if selected_delivery.comment %}<div class="route-detail-note selected-note">{{ selected_delivery.comment }}</div>{% endif %}{% if selected_delivery.problem_reason %}<div class="route-detail-problem"><b>⚠ {{ selected_delivery.problem_reason }}</b></div>{% endif %}<div class="next-meta">
+      {% if selected_delivery.comment %}<div class="route-detail-note selected-note">{{ selected_delivery.comment }}</div>{% endif %}{% if selected_delivery.courier_daily_note %}<div class="route-detail-note courier-note"><b>Моя заметка на сегодня:</b> {{ selected_delivery.courier_daily_note }}</div>{% endif %}<form method="post" action="{% url 'courier_update' selected_delivery.pk %}" class="route-detail-form courier-note-form">{% csrf_token %}<input type="hidden" name="action" value="daily_note"><label>Заметка только на сегодня<input name="courier_daily_note" maxlength="500" value="{{ selected_delivery.courier_daily_note }}" placeholder="Например: не забыть отдать расходники"></label><button class="btn alt" type="submit">{% if selected_delivery.courier_daily_note %}Обновить заметку{% else %}+ Добавить заметку{% endif %}</button></form>{% if selected_delivery.problem_reason %}<div class="route-detail-problem"><b>⚠ {{ selected_delivery.problem_reason }}</b></div>{% endif %}<div class="next-meta">
         {% if selected_delivery.time_window %}<div class="meta-line"><span class="meta-icon">◷</span><span>{{ selected_delivery.time_window }}</span></div>{% endif %}
         {% if selected_delivery.phone %}<div class="meta-line"><span class="meta-icon">☎</span><a href="tel:{{ selected_delivery.phone }}">{{ selected_delivery.phone }}</a></div>{% endif %}
       </div>
@@ -56,10 +56,10 @@
         </summary>
 
         <div class="route-detail-body">{% if d.status != "done" %}<a class="btn alt route-select-btn" href="?selected={{ d.pk }}">Показать сверху</a>{% endif %}
-          {% if d.comment %}<div class="route-detail-note">{{ d.comment }}</div>{% endif %}
+          {% if d.comment %}<div class="route-detail-note">{{ d.comment }}</div>{% endif %}{% if d.courier_daily_note %}<div class="route-detail-note courier-note"><b>Моя заметка на сегодня:</b> {{ d.courier_daily_note }}</div>{% endif %}
           {% if d.problem_reason %}<div class="route-detail-problem"><b>{{ d.problem_reason }}</b></div>{% endif %}
 
-          {% if d.status != 'done' %}
+          {% if d.status != 'done' %}<form method="post" action="{% url 'courier_update' d.pk %}" class="route-detail-form courier-note-form">{% csrf_token %}<input type="hidden" name="action" value="daily_note"><label>Заметка только на сегодня<input name="courier_daily_note" maxlength="500" value="{{ d.courier_daily_note }}" placeholder="Не забыть отдать расходники / документы"></label><button class="btn alt" type="submit">{% if d.courier_daily_note %}Обновить{% else %}+ Заметка{% endif %}</button></form>
             <div class="action-row route-detail-actions">
               <a class="btn" target="_blank" rel="noopener" href="https://yandex.ru/maps/?text={{ d.address|urlencode }}">➤ Открыть в Яндекс.Картах</a>
               {% if d.phone %}<a class="btn good" href="tel:{{ d.phone }}">☎ {{ d.phone }}</a>{% endif %}
@@ -88,7 +88,7 @@
               <form method="post" action="{% url 'courier_reorder' d.pk %}">{% csrf_token %}<input type="hidden" name="direction" value="down"><button class="btn alt" type="submit">↓ Позже</button></form>
             </div>
           {% else %}
-            <div class="route-complete-note">✓ Точка выполнена{% if d.completed_at %} · {{ d.completed_at|date:"H:i" }}{% endif %}</div>
+            <div class="route-complete-note">✓ Точка выполнена{% if d.completed_at %} · {{ d.completed_at|date:"H:i" }}{% endif %}</div>{% if d.courier_daily_note %}<div class="route-detail-note courier-note"><b>Заметка на сегодня:</b> {{ d.courier_daily_note }}</div>{% endif %}
           {% endif %}
         </div>
       </details>
