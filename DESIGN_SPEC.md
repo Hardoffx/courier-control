@@ -30,16 +30,15 @@ Default screen is **Маршрут**, not map.
 10. Completion confirmation clearly shows time/GPS when available and next-stop CTA. Problem flow uses presets + optional comment.
 
 ## Dispatcher / logistician — desktop
-Default is **Список**.
+Default is **Маршруты сегодня**. RouteRun cards are the dominant operational surface; the flat delivery list is secondary.
 - Dark left sidebar: Сегодня, Курьеры, Маршруты, Постоянные точки, Импорт Excel, Статистика/Отчёты; settings/admin only where useful.
 - Top bar/date controls and add/import actions.
-- KPI cards: total, done, problems, in progress/remaining.
-- Search + compact filters.
-- Main delivery table is the dominant work surface.
-- Clear status chips and fast actions; bulk assignment remains available.
-- Courier progress cards/summary visible without overwhelming the delivery table.
-- View switch: `Список | Карта | Список + карта`.
-- `Список + карта`: list ~65–70%, map ~30–35%; selecting courier/row focuses corresponding route/point and vice versa.
+- Global KPI cards summarize the selected day; route-detail KPI cards use the same language but summarize only that RouteRun.
+- Dense RouteRun card grid is primary: route, courier, done/total/percent, remaining, problems, last completed stop/time, next stop, attention state.
+- Search + compact filters remain available.
+- Flat delivery table remains available for global search/bulk operations but is secondary.
+- Opening a RouteRun exposes the full route workspace and route-specific KPIs.
+- Future map monitoring follows `docs/ROUTE_CENTRIC_OPERATIONS.md`: select one route and show only its status markers; no continuous courier GPS required.
 
 ## Dispatcher — phone (mandatory, not fallback)
 Dispatcher must be able to control operations fully from a phone.
@@ -54,8 +53,8 @@ Dispatcher must be able to control operations fully from a phone.
 ## Responsive targets
 Must be intentionally checked at ~375/390/430 px phone widths, tablet ~768–1024 px, laptop ~1280–1440 px and wide desktop. Courier prioritizes phone. Dispatcher must be first-class on phone, tablet and desktop.
 
-## Map implementation contract — Yandex Maps only
-**Yandex Maps is the approved and mandatory V1 map provider.** Do not replace it with Google Maps, OpenStreetMap/Leaflet, Mapbox or another provider without explicit user approval.
+## Existing map implementation / future monitoring decision
+Existing V1 Yandex map code may remain where already implemented. For the newly approved future dispatcher monitoring view, provider choice is reopened: prefer the simplest low-cost interactive implementation (including Leaflet + OpenStreetMap) unless deployment constraints justify another provider. See `docs/ROUTE_CENTRIC_OPERATIONS.md`.
 
 Integration target: current Yandex Maps **JavaScript API 3.0** for embedded interactive maps. The API key must be supplied through deployment configuration/environment and restricted by HTTP Referer/domain in Yandex Developer Dashboard. No production key is committed to Git.
 
