@@ -5,36 +5,36 @@
 {% block content %}
 <div id="top" class="courier-shell">
   <div class="courier-head">
-    <div><h1>Мой маршрут</h1><div class="muted">{{ today }}</div></div>
+    <div><h1>{{ route_name|default:"Мой маршрут" }}</h1><div class="muted">{{ today }}{% if route_runs|length > 1 %} · {{ route_runs|length }} маршрута{% endif %}</div></div>
     <span class="progress-pill">{{ done }} из {{ total }}</span>
   </div>
 
-  {% if next_delivery %}
-  <section class="card next-card">
-    <div class="next-bar"><span>Выбранная точка</span><span>{{ next_delivery.route_order }} из {{ total }}</span></div>
+  {% if selected_delivery %}
+  <section class="card next-card selected-card" data-selected-id="{{ selected_delivery.pk }}">
+    <div class="next-bar"><span>Выбранная точка</span><span>№{{ selected_delivery.route_order }} · {{ done }}/{{ total }} выполнено</span></div>
     <div class="next-body">
-      <div class="next-lab">{% include 'includes/lab_badge.html' with delivery=next_delivery %}</div>
+      <div class="next-lab">{% include 'includes/lab_badge.html' with delivery=selected_delivery %}</div>
       <div class="address-line">
         <span class="address-pin" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a7 7 0 0 0-7 7c0 5.3 7 13 7 13s7-7.7 7-13a7 7 0 0 0-7-7Zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5Z"/></svg></span>
         <div>
-          <h2 class="next-address">{{ next_delivery.address }}</h2>
-          <div class="lab-caption">{% if next_delivery.lpu_number %}<strong>ЛПУ {{ next_delivery.lpu_number }}</strong>{% endif %}</div>
+          <h2 class="next-address">{{ selected_delivery.address }}</h2>
+          <div class="lab-caption">{% if selected_delivery.lpu_number %}<strong>ЛПУ {{ selected_delivery.lpu_number }}</strong>{% endif %}</div>
         </div>
       </div>
-      <div class="next-meta">
-        {% if next_delivery.time_window %}<div class="meta-line"><span class="meta-icon">◷</span><span>{{ next_delivery.time_window }}</span></div>{% endif %}
-        {% if next_delivery.phone %}<div class="meta-line"><span class="meta-icon">☎</span><a href="tel:{{ next_delivery.phone }}">{{ next_delivery.phone }}</a></div>{% endif %}
+      {% if selected_delivery.comment %}<div class="route-detail-note selected-note">{{ selected_delivery.comment }}</div>{% endif %}{% if selected_delivery.problem_reason %}<div class="route-detail-problem"><b>⚠ {{ selected_delivery.problem_reason }}</b></div>{% endif %}<div class="next-meta">
+        {% if selected_delivery.time_window %}<div class="meta-line"><span class="meta-icon">◷</span><span>{{ selected_delivery.time_window }}</span></div>{% endif %}
+        {% if selected_delivery.phone %}<div class="meta-line"><span class="meta-icon">☎</span><a href="tel:{{ selected_delivery.phone }}">{{ selected_delivery.phone }}</a></div>{% endif %}
       </div>
       <div class="action-row">
-        <a class="btn" target="_blank" rel="noopener" href="https://yandex.ru/maps/?text={{ next_delivery.address|urlencode }}">➤ Открыть в Яндекс.Картах</a>
-        {% if next_delivery.phone %}<a class="btn good" href="tel:{{ next_delivery.phone }}">☎ {{ next_delivery.phone }}</a>{% else %}<a class="btn alt detail-opener" href="#delivery-{{ next_delivery.pk }}" data-open="delivery-{{ next_delivery.pk }}">+ Телефон</a>{% endif %}
+        <a class="btn" target="_blank" rel="noopener" href="https://yandex.ru/maps/?text={{ selected_delivery.address|urlencode }}">➤ Открыть в Яндекс.Картах</a>
+        {% if selected_delivery.phone %}<a class="btn good" href="tel:{{ selected_delivery.phone }}">☎ {{ selected_delivery.phone }}</a>{% else %}<a class="btn alt detail-opener" href="#delivery-{{ selected_delivery.pk }}" data-open="delivery-{{ selected_delivery.pk }}">+ Телефон</a>{% endif %}
       </div>
-      <div class="big-actions">
-        <form class="done-form" method="post" action="{% url 'courier_update' next_delivery.pk %}">
+      <div class="selected-nav">{% if previous_delivery %}<a class="btn alt" href="?selected={{ previous_delivery.pk }}">← Предыдущая</a>{% else %}<span></span>{% endif %}{% if next_delivery %}<a class="btn alt" href="?selected={{ next_delivery.pk }}">Следующая →</a>{% endif %}</div><div class="big-actions">
+        <form class="done-form" method="post" action="{% url 'courier_update' selected_delivery.pk %}">
           {% csrf_token %}<input type="hidden" name="action" value="done"><input type="hidden" name="latitude"><input type="hidden" name="longitude">
           <button class="btn good" type="submit">✓ Выполнено</button>
         </form>
-        <a class="btn bad detail-opener" href="#problem-{{ next_delivery.pk }}" data-open="delivery-{{ next_delivery.pk }}" data-open-child="problem-{{ next_delivery.pk }}">⚠ Проблема</a>
+        <a class="btn bad detail-opener" href="#problem-{{ selected_delivery.pk }}" data-open="delivery-{{ selected_delivery.pk }}" data-open-child="problem-{{ selected_delivery.pk }}">⚠ Проблема</a>
       </div>
     </div>
   </section>
@@ -44,7 +44,7 @@
     <div class="route-title"><h2>Мой маршрут сегодня</h2><span class="muted">{{ total }} точек</span></div>
     <div class="route-list route-accordion-list">
       {% for d in deliveries %}
-      <details id="delivery-{{ d.pk }}" class="route-item {% if d.status == 'done' %}done{% elif d.status == 'problem' %}problem{% elif next_delivery and d.pk == next_delivery.pk %}current{% endif %}" data-delivery-id="{{ d.pk }}">
+      <details id="delivery-{{ d.pk }}" class="route-item {% if d.status == 'done' %}done{% elif d.status == 'problem' %}problem{% elif selected_delivery and d.pk == selected_delivery.pk %}current{% endif %}" data-delivery-id="{{ d.pk }}">
         <summary class="route-row">
           <span class="route-dot">{% if d.status == 'done' %}✓{% elif d.status == 'problem' %}!{% else %}{{ d.route_order }}{% endif %}</span>
           <div class="route-primary">
@@ -55,7 +55,7 @@
           <span class="route-chevron" aria-hidden="true"></span>
         </summary>
 
-        <div class="route-detail-body">
+        <div class="route-detail-body">{% if d.status != "done" %}<a class="btn alt route-select-btn" href="?selected={{ d.pk }}">Показать сверху</a>{% endif %}
           {% if d.comment %}<div class="route-detail-note">{{ d.comment }}</div>{% endif %}
           {% if d.problem_reason %}<div class="route-detail-problem"><b>{{ d.problem_reason }}</b></div>{% endif %}
 
@@ -88,7 +88,7 @@
               <form method="post" action="{% url 'courier_reorder' d.pk %}">{% csrf_token %}<input type="hidden" name="direction" value="down"><button class="btn alt" type="submit">↓ Позже</button></form>
             </div>
           {% else %}
-            <div class="route-complete-note">✓ Точка выполнена</div>
+            <div class="route-complete-note">✓ Точка выполнена{% if d.completed_at %} · {{ d.completed_at|date:"H:i" }}{% endif %}</div>
           {% endif %}
         </div>
       </details>
@@ -100,8 +100,8 @@
 {% block scripts %}
 <script>
 document.querySelectorAll('.done-form').forEach(f=>f.addEventListener('submit',e=>{if(f.dataset.geo==='1'||!navigator.geolocation)return;e.preventDefault();navigator.geolocation.getCurrentPosition(p=>{f.querySelector('[name=latitude]').value=p.coords.latitude;f.querySelector('[name=longitude]').value=p.coords.longitude;f.dataset.geo='1';f.requestSubmit()},()=>{f.dataset.geo='1';f.requestSubmit()},{enableHighAccuracy:true,timeout:4000})}));
-function openDelivery(id,childId,scroll=true){const d=document.getElementById(id);if(!d)return;d.open=true;if(childId){const c=document.getElementById(childId);if(c)c.open=true}if(scroll)requestAnimationFrame(()=>d.scrollIntoView({behavior:'smooth',block:'center'}))}
+function openDelivery(id,childId){const d=document.getElementById(id);if(!d)return;d.open=true;if(childId){const c=document.getElementById(childId);if(c)c.open=true}}
 document.querySelectorAll('.detail-opener').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();openDelivery(a.dataset.open,a.dataset.openChild)}));
-if(location.hash&&location.hash.startsWith('#delivery-'))openDelivery(location.hash.slice(1),null,false);
+if(location.hash&&location.hash.startsWith('#delivery-'))openDelivery(location.hash.slice(1));
 </script>
 {% endblock %}

@@ -14,6 +14,7 @@ from .models import (
     RouteOrderSuggestion,
     RouteTemplate,
     RouteTemplateItem,
+    Delivery,
 )
 from .route_import_services import apply_workbook_to_run, apply_workbook_to_template
 from .route_services import decide_order_suggestion, generate_route_run, record_courier_order_change
@@ -185,3 +186,36 @@ class RouteWorkflowV2Tests(TestCase):
         self.assertContains(response, 'Просмотр как курьер — без переключения аккаунта')
         self.assertContains(response, self.p1.address)
         self.assertEqual(int(self.client.session['_auth_user_id']), self.dispatcher.pk)
+
+
+class CourierWorkspaceContractTests(TestCase):
+    def setUp(self):
+        self.day=timezone.localdate()
+        self.courier=User.objects.create_user(username='workspace-courier',password='pass',role=User.Role.COURIER)
+        self.route=Route.objects.create(name='Workspace Route',default_courier=self.courier)
+        self.template=RouteTemplate.objects.create(route=self.route,kind=RouteTemplate.Kind.WEEKDAY)
+        self.points=[DeliveryPoint.objects.create(name=f'P{i}',code=f'W{i}',address=f'Moscow, Test {i}') for i in range(1,4)]
+        for i,p in enumerate(self.points,1): RouteTemplateItem.objects.create(template=self.template,point=p,route_order=i)
+        self.run=generate_route_run(self.template,self.day,courier=self.courier)
+        self.rows=list(self.run.deliveries.order_by('route_order','id'))
+        self.client.force_login(self.courier)
+
+    def test_default_selected_point_is_first_unfinished_non_problem(self):
+        self.rows[0].status=Delivery.Status.DONE; self.rows[0].completed_at=timezone.now(); self.rows[0].save()
+        self.rows[1].status=Delivery.Status.PROBLEM; self.rows[1].save()
+        response=self.client.get(reverse('courier_today'))
+        self.assertEqual(response.context['selected_delivery'].pk,self.rows[2].pk)
+        self.assertContains(response,'Workspace Route')
+
+    def test_explicit_selected_point_does_not_change_route_order(self):
+        before=list(self.run.deliveries.order_by('route_order').values_list('pk','route_order'))
+        response=self.client.get(reverse('courier_today')+f'?selected={self.rows[2].pk}')
+        self.assertEqual(response.context['selected_delivery'].pk,self.rows[2].pk)
+        self.assertEqual(response.context['previous_delivery'].pk,self.rows[1].pk)
+        after=list(self.run.deliveries.order_by('route_order').values_list('pk','route_order'))
+        self.assertEqual(before,after)
+
+    def test_completed_row_renders_exact_completion_time(self):
+        self.rows[0].status=Delivery.Status.DONE; self.rows[0].completed_at=timezone.now(); self.rows[0].save()
+        response=self.client.get(reverse('courier_today'))
+        self.assertContains(response,self.rows[0].completed_at.strftime('%H:%M'))

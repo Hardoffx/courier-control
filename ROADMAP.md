@@ -52,13 +52,13 @@ Roadmap отражает порядок разработки, а не обеща
 - [ ] Real API key/domain-restriction acceptance on deployed host
 
 ## Phase 3.6 — Route-centric operations (approved 2026-09-18)
-- [ ] Today: global KPI cards include routes/deliveries/completed/problems
-- [ ] Today: dense RouteRun card board becomes primary operational surface
-- [ ] Route cards: courier, progress, remaining, problems, last completed, next stop, attention/completed state
-- [ ] RouteRun detail: route-specific KPI cards and operational “current state” summary
-- [ ] Preserve global delivery search/bulk operations as secondary surface
-- [ ] Add route-board sorting/filtering for scale (attention/progress/courier/name)
-- [ ] RouteRun events/history presentation
+- [x] Today: global KPI cards include routes/deliveries/completed/problems
+- [x] Today: dense RouteRun card board becomes primary operational surface
+- [x] Route cards: courier, progress, remaining, problems, last completed, next stop, attention/completed state
+- [x] RouteRun detail: route-specific KPI cards and operational “current state” summary
+- [x] Preserve global delivery search/bulk operations as secondary surface
+- [x] Add route-board sorting/filtering for scale (attention/progress/courier/name)
+- [x] RouteRun events/history presentation
 - [ ] Staging demo dataset for realistic multi-route visual acceptance
 - [ ] Later: route-selected map monitoring with numbered status markers and click details
 - [ ] Later: cached coordinates on persistent points; no continuous courier GPS required
@@ -66,16 +66,16 @@ Roadmap отражает порядок разработки, а не обеща
 See docs/ROUTE_CENTRIC_OPERATIONS.md.
 
 ## Phase 3.7 — Courier workspace refinement
-- [ ] Real selected-point state; initial selection = first unfinished point
-- [ ] Tap route row to select/expand without forced scroll and without changing route order
-- [ ] Previous / Next point selection controls
-- [ ] Prominent assigned route context in courier header
-- [ ] Selected card includes LPU, phone, time, notes/problem context
-- [ ] Exact completion time visible where useful; completion GPS optional/non-blocking
-- [ ] Preserve Done from selected card and expanded unfinished rows
-- [ ] Preserve compact problem presets + optional comment
+- [x] Real selected-point state; initial selection = first unfinished point
+- [x] Tap route row to select/expand without forced scroll and without changing route order
+- [x] Previous / Next point selection controls
+- [x] Prominent assigned route context in courier header
+- [x] Selected card includes LPU, phone, time, notes/problem context
+- [x] Exact completion time visible where useful; completion GPS optional/non-blocking
+- [x] Preserve Done from selected card and expanded unfinished rows
+- [x] Preserve compact problem presets + optional comment
 - [ ] Long-route density QA at 375/390/430 px
-- [ ] Preserve neighbor-swap reorder invariant; drag handle is optional later enhancement
+- [x] Preserve neighbor-swap reorder invariant; drag handle is optional later enhancement
 
 See docs/COURIER_WORKSPACE.md.
 
