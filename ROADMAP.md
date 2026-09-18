@@ -65,6 +65,20 @@ Roadmap отражает порядок разработки, а не обеща
 
 See docs/ROUTE_CENTRIC_OPERATIONS.md.
 
+## Phase 3.7 — Courier workspace refinement
+- [ ] Real selected-point state; initial selection = first unfinished point
+- [ ] Tap route row to select/expand without forced scroll and without changing route order
+- [ ] Previous / Next point selection controls
+- [ ] Prominent assigned route context in courier header
+- [ ] Selected card includes LPU, phone, time, notes/problem context
+- [ ] Exact completion time visible where useful; completion GPS optional/non-blocking
+- [ ] Preserve Done from selected card and expanded unfinished rows
+- [ ] Preserve compact problem presets + optional comment
+- [ ] Long-route density QA at 375/390/430 px
+- [ ] Preserve neighbor-swap reorder invariant; drag handle is optional later enhancement
+
+See docs/COURIER_WORKSPACE.md.
+
 ## Phase 4 — Quality gate
 - [x] Core role/workflow/import/route tests
 - [x] Health/PWA tests

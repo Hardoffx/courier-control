@@ -17,17 +17,20 @@ The primary working surface is deliberately minimal and list-first. The route ma
 - Row color from imported Excel remains dispatcher annotation only and never affects business logic.
 
 ## Courier — mobile first
-Default screen is **Маршрут**, not map.
+Full interaction contract: `docs/COURIER_WORKSPACE.md`.
+
+Default screen is **Маршрут**, not map. The top operational card represents a real **selected point**: initial selection is the first unfinished point, but tapping another unfinished row or Previous/Next changes selection without changing route order.
 1. Compact app header.
 2. Progress (`done / total`).
-3. Dominant `Следующая точка` card: order, object/source, address, time, phone.
+3. Dominant `Выбранная точка` card: route name/context, order, object/source, LPU, address, time, phone, comment/problem context.
 4. Primary actions: `Открыть в Яндекс Картах`, `Позвонить`.
 5. Strong operational actions: green `Выполнено`, red `Проблема`.
-6. Compact `Мой маршрут сегодня` list below, with done/current/upcoming/problem states.
+6. Compact `Мой маршрут сегодня` list below, with done/selected/upcoming/problem states. Tapping a row selects/expands it without forced page scrolling.
 7. Bottom navigation includes `Маршрут` and `Карта`; route header also exposes a small map shortcut.
 8. `Карта` is an alternate view of the same day's route: completed green, current blue, upcoming neutral, problem red, ordered path. A compact route list remains accessible below/alongside it.
 9. Internal route map answers “where am I in the whole route?”; Yandex Maps action answers “how do I drive to this next point?”.
-10. Completion confirmation clearly shows time/GPS when available and next-stop CTA. Problem flow uses presets + optional comment.
+10. Completion uses exact server timestamp; GPS is optional supporting metadata and never proof of a physical visit. Problem flow uses presets + optional comment.
+11. Previous / Next changes only selected point, never route order. Courier reorder is a separate explicit action and must preserve unrelated points.
 
 ## Dispatcher / logistician — desktop
 Default is **Маршруты сегодня**. RouteRun cards are the dominant operational surface; the flat delivery list is secondary.
