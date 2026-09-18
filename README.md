@@ -25,3 +25,8 @@ python manage.py runserver
 5. Диспетчер увидит статус `Выполнена`.
 
 SQLite используется для быстрого локального старта. При наличии переменных `POSTGRES_*` приложение автоматически использует PostgreSQL.
+
+
+## Current product direction
+
+Dispatcher operations are route-centric: the selected day's RouteRun board is the primary surface, with global day KPIs above it and route-specific KPIs/details after opening a route. The flat delivery list remains a secondary search/bulk tool. See [docs/ROUTE_CENTRIC_OPERATIONS.md](docs/ROUTE_CENTRIC_OPERATIONS.md) before changing dispatcher information architecture.
