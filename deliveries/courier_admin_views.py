@@ -4,6 +4,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import url_has_allowed_host_and_scheme
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 from accounts.models import User
@@ -52,8 +53,11 @@ def courier_edit(request,pk=None):
             elif not courier.pk: courier.set_unusable_password()
             courier.save()
             messages.success(request,'Курьер сохранён')
+            next_url=request.POST.get('next') or request.GET.get('next')
+            if next_url and url_has_allowed_host_and_scheme(next_url,allowed_hosts={request.get_host()},require_https=request.is_secure()):
+                return redirect(next_url)
             return redirect('courier_manage_list')
-    return render(request,'dispatcher/couriers/form.html',{'courier':courier})
+    return render(request,'dispatcher/couriers/form.html',{'courier':courier,'next_url':request.GET.get('next','')})
 
 
 @dispatcher_required
