@@ -233,27 +233,24 @@ def normalize_delivery_address(raw_address):
     Interior details are removed because routing needs the building, not a room
     or floor. The function intentionally does not geocode or invent geography.
     """
-    value = _cell_text(raw_address).replace('\\xa0', ' ')
-    value = re.sub(r'[\\r\\n\\t]+', ' ', value)
+    value = _cell_text(raw_address).replace('\xa0', ' ')
+    value = re.sub(r'[\r\n\t]+', ' ', value)
     interior = INTERIOR_START_RE.search(value)
     if interior:
         value = value[:interior.start()]
 
-    value = HOUSE_WORD_RE.sub('', value)
-    value = CORPUS_RE.sub(lambda match: f'к{match.group(1)}', value)
-    value = BUILDING_RE.sub(lambda match: f'с{match.group(1)}', value)
-    value = re.sub(r'\\s*№\\s*(?=\\d)', ' ', value)
-    value = re.sub(r'\\s*,\\s*', ', ', value)
-
-    # After removing «дом/д.» a comma can remain immediately before the
-    # building number. Corpus/structure suffixes are part of that number.
+    # Remove the house marker together with the separator before it. Doing this
+    # before compacting corpus/structure avoids leaving «ул, 10» behind.
     value = re.sub(
-        r',\\s*(?=\\d+[а-яa-z]?(?:к\\d+[а-яa-z]?)?(?:с\\d+[а-яa-z]?)?(?:\\s|,|$))',
+        r'(?iu)\s*,?\s*\b(?:д|дом)\.?\s*(?:№\s*)?(?=\d)',
         ' ',
         value,
-        flags=re.IGNORECASE,
     )
-    value = re.sub(r'\\s+', ' ', value).strip(' ,;')
+    value = CORPUS_RE.sub(lambda match: f'к{match.group(1)}', value)
+    value = BUILDING_RE.sub(lambda match: f'с{match.group(1)}', value)
+    value = re.sub(r'\s*№\s*(?=\d)', ' ', value)
+    value = re.sub(r'\s*,\s*', ', ', value)
+    value = re.sub(r'\s+', ' ', value).strip(' ,;')
     return value
 
 
