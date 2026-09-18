@@ -334,3 +334,640 @@ GitHub CI run #328 для этого commit:
 - tests/ui/ — executable specification.
 
 Этот handbook должен обновляться при изменении архитектуры или рабочего процесса. Его задача — позволить продолжить разработку в новом чате, на другом компьютере или другим разработчиком без потери принципов и контекста.
+
+
+---
+
+# 15. Целевой продукт: AI-native UI Engineering Agent
+
+## 15.1. Новое определение продукта
+
+Долгосрочная цель UI Forge шире visual regression framework. UI Forge должен стать **AI-native средой проектирования, реализации, проверки и безопасного внедрения пользовательских интерфейсов**, где человек задаёт намерение и принимает визуальные решения, а система самостоятельно выполняет повторяемую инженерную работу.
+
+Целевой цикл:
+
+**Intent → Design Proposals → Human Selection → Design Contract → Autonomous Implementation Loop → Multimodal Verification → Real Staging → Human Acceptance → Release Pipeline → Production Verification → Immutable Checkpoint**
+
+Главный UX-принцип: пользователь работает с UI Forge через естественный диалог и визуальные результаты. Playwright, browser matrix, fixtures, DOM geometry, screenshot diff, CI, staging и release orchestration остаются внутренними механизмами.
+
+## 15.2. Основной сценарий взаимодействия
+
+Пользователь может сказать:
+
+> Создай четыре варианта мобильного Dashboard. Сохрани функции текущего экрана, но сделай интерфейс современнее и удобнее одной рукой.
+
+UI Forge:
+1. анализирует существующий экран, компоненты, маршруты и ограничения проекта;
+2. формирует несколько визуально и структурно различающихся design proposals;
+3. показывает их пользователю;
+4. принимает естественно-языковые уточнения: «карточки из C, шапку из A», «кнопку сделать компактнее»;
+5. повторяет design iteration до явного утверждения;
+6. фиксирует выбранный вариант как versioned Design Contract;
+7. создаёт feature branch/workspace;
+8. реализует настоящий frontend;
+9. самостоятельно выполняет цикл render → inspect → diagnose → repair → verify;
+10. показывает пользователю уже настоящую staging-страницу только когда кандидат достиг достаточного качества и прошёл автоматические gates;
+11. принимает финальные человеческие корректировки;
+12. после явного acceptance запускает release pipeline.
+
+Таким образом, пользователь не обязан наблюдать промежуточные неудачные реализации и не обязан вручную управлять тестовой инфраструктурой.
+
+# 16. Design Contract
+
+Утверждённая картинка не должна быть единственным источником требований. Screenshot не описывает интерактивность, адаптивность, допустимый scroll, состояния ошибок и смысл компонентов. Поэтому UI Forge вводит **Design Contract** — версионированное представление утверждённого намерения.
+
+Design Contract должен содержать несколько слоёв.
+
+## 16.1. Reference layer
+
+- утверждённые reference images;
+- optional references для нескольких viewport;
+- crop/region metadata;
+- допустимые visual masks;
+- идентификатор design revision;
+- provenance: generated / uploaded / existing-page / sketch;
+- human approval metadata.
+
+## 16.2. Structural layer
+
+Описывает важные элементы и отношения:
+- component identity;
+- hierarchy;
+- relative alignment;
+- ordering;
+- expected containment;
+- minimum/maximum dimensions;
+- responsive transitions;
+- allowed component-level horizontal scroll;
+- forbidden page-level overflow.
+
+Пример концептуального контракта:
+
+    Dashboard.Actions:
+      layout: row
+      children: [ExcelImport, AddDelivery]
+      equal_height: true
+      inside_viewport: true
+
+    Dashboard.KPI:
+      mobile:
+        overflow: component-horizontal-scroll
+      page:
+        overflow_x: forbidden
+
+## 16.3. Visual layer
+
+- colors/tokens;
+- typography;
+- spacing;
+- radius;
+- shadows;
+- icon treatment;
+- component proportions;
+- region-level perceptual similarity requirements.
+
+Visual layer не должен требовать абсолютного pixel-perfect совпадения там, где браузерный рендеринг объективно отличается. Порог должен быть contextual/perceptual.
+
+## 16.4. Semantic layer
+
+Описывает **почему** интерфейс устроен именно так:
+- primary/secondary actions;
+- визуальный приоритет;
+- compact/comfortable intent;
+- information hierarchy;
+- элементы, которые нельзя скрывать;
+- допустимые компромиссы при малой ширине;
+- business-critical affordances.
+
+Это позволит агенту отличать случайный pixel drift от изменения, нарушающего продуктовый замысел.
+
+## 16.5. Interaction layer
+
+- click/tap outcomes;
+- navigation;
+- back behavior;
+- keyboard/focus;
+- form validation;
+- disabled/loading/error/success;
+- gestures/scroll;
+- modal/dialog behavior.
+
+## 16.6. Responsive layer
+
+Design Contract должен описывать не набор независимых картинок, а правила перехода между состояниями. Система должна проверять промежуточные ширины и искать breakpoint defects, а не только заранее выбранные 320/375/430/768/1440.
+
+# 17. Autonomous Implementation Loop
+
+После утверждения Design Contract UI Forge запускает автономный инженерный цикл.
+
+## 17.1. Observe
+
+Система собирает:
+- DOM snapshot;
+- computed styles;
+- bounding boxes;
+- accessibility tree;
+- screenshot;
+- browser console;
+- network/application errors;
+- interaction traces;
+- текущий source dependency graph.
+
+## 17.2. Compare
+
+Кандидат сравнивается одновременно с:
+1. reference image;
+2. structural contract;
+3. semantic contract;
+4. interaction contract;
+5. responsive invariants;
+6. предыдущими утверждёнными экранами проекта.
+
+## 17.3. Diagnose
+
+Вместо сообщения «screenshot differs 2.7%» система должна локализовать проблему:
+
+    Dashboard / 375 / Actions
+    AddDelivery shifted +11px Y
+    Expected equal alignment with ExcelImport
+    Probable source: mobile-stability.css rule ...
+    Unaffected regions: Header, KPI, Navigation
+
+Диагностика должна связывать visual region → DOM node → component → CSS/template/source ownership.
+
+## 17.4. Repair
+
+Агент формирует минимальный patch, ограниченный затронутой областью. После каждого patch выполняется повторная проверка. Если изменение ухудшило другие approved regions, оно откатывается или пересматривается.
+
+## 17.5. Convergence
+
+Цикл продолжается до одного из состояний:
+- PASS — контракт выполнен;
+- REVIEW_READY — оставшиеся отличия допустимы/субъективны и нужен человек;
+- BLOCKED — агент не может безопасно улучшить результат;
+- REGRESSION — исправление вызывает неприемлемые побочные изменения.
+
+Система не должна бесконечно «подкручивать CSS». Нужны iteration budget, convergence criteria и rollback.
+
+# 18. Multimodal Inspector
+
+UI Forge должен объединять несколько независимых сигналов.
+
+## 18.1. Pixel/perceptual vision
+Определяет visual drift, геометрию крупных областей, spacing, цветовые и типографические расхождения.
+
+## 18.2. DOM geometry
+Даёт точные координаты, размеры, overflow, stacking, clipping и relationships.
+
+## 18.3. Accessibility tree
+Помогает понять роль элемента и обнаружить ситуации, когда визуально правильный control семантически сломан.
+
+## 18.4. Interaction probes
+Проверяют, что визуально правильная кнопка действительно нажимается, форма отправляется, back работает, dialog закрывается.
+
+## 18.5. Source mapping
+Связывает дефект с конкретными template/component/style declarations и dependency graph.
+
+Ни один отдельный сигнал не считается достаточным доказательством корректности UI.
+
+# 19. Три пользовательских режима
+
+## 19.1. DESIGN
+
+Запросы вида:
+> Придумай новый экран.
+> Покажи четыре варианта.
+> Возьми шапку из A и карточки из C.
+
+Результат — design proposals и затем утверждённый Design Contract. Production code до утверждения дизайна не требуется.
+
+## 19.2. IMPLEMENT
+
+Запрос:
+> Этот вариант утверждаю. Реализуй.
+
+UI Forge переводит Design Contract в production-quality frontend, самостоятельно выполняя implementation loop. Пользователь подключается снова на стадии REVIEW_READY.
+
+## 19.3. REPAIR
+
+Запрос:
+> На iPhone уехала кнопка назад. Исправь.
+
+Для локального дефекта отдельный design proposal не нужен. Система:
+reproduce → isolate → minimal patch → regression verification → staging review.
+
+Режим определяется автоматически, но пользователь может задать его явно.
+
+# 20. Conversational Control Plane
+
+Чат должен стать главным control plane UI Forge.
+
+Пользователь говорит на уровне намерения:
+- «сгенерируй варианты»;
+- «вариант C»;
+- «шапку возьми из A»;
+- «утверждаю»;
+- «реализуй»;
+- «эта кнопка темнее»;
+- «оставляем».
+
+Система переводит эти команды в versioned operations.
+
+Критически важные решения должны иметь явные состояния:
+- PROPOSED;
+- DESIGN_APPROVED;
+- IMPLEMENTING;
+- REVIEW_READY;
+- UI_ACCEPTED;
+- RELEASE_CANDIDATE;
+- RELEASED.
+
+Фраза пользователя «утверждаю дизайн» не равна «разрешаю production deploy». Design approval и final implementation acceptance — разные gates.
+
+# 21. UI Graph и автоматическое исследование приложения
+
+В зрелой версии новый проект не должен требовать ручного перечисления каждой страницы.
+
+UI Forge строит **UI Graph**:
+- reachable routes/screens;
+- auth roles;
+- links/navigation edges;
+- forms;
+- dialogs;
+- reusable components;
+- important states;
+- user journeys.
+
+После discovery пользователь/проект задаёт важность:
+
+    critical:
+      - login
+      - dashboard
+      - route-editor
+    important:
+      - statistics
+    exclude:
+      - debug
+
+Graph используется для test generation, impact analysis и определения regression scope.
+
+Discovery не должен бесконтрольно выполнять destructive actions. Mutating flows запускаются только в disposable/test runtime с известными fixtures.
+
+# 22. Dependency Graph и risk-based testing
+
+Полная browser matrix полезна перед release, но слишком дорога для каждой CSS-правки.
+
+UI Forge должен строить связи:
+
+**source file → token/component → rendered regions → screens → user journeys**
+
+При изменении stats.css система сначала запускает tests для Statistics и shared dependencies. При изменении глобального token запускается более широкая матрица.
+
+Уровни:
+- FAST — source/contracts + directly affected screens;
+- STANDARD — affected + dependent screens + key browsers;
+- RELEASE — полная матрица и critical journeys.
+
+Перед merge/release сокращённый FAST режим не заменяет полный RELEASE gate.
+
+# 23. Автоматическая генерация тестов
+
+На базе UI Graph, Design Contract и accessibility/DOM metadata UI Forge должен генерировать:
+- viewport geometry assertions;
+- smoke interactions;
+- navigation assertions;
+- visual targets;
+- component state coverage;
+- form validation cases;
+- breakpoint probes.
+
+Generated tests должны хранить provenance: почему тест существует и из какого contract/route/component он получен. Человек может закрепить важный generated test как permanent contract.
+
+# 24. Deterministic Scenario Engine
+
+Visual quality невозможно надёжно оценивать на случайных данных.
+
+Нужен Scenario Engine с именованными состояниями:
+- empty;
+- normal;
+- dense;
+- long-content;
+- error;
+- loading;
+- completed;
+- mixed;
+- role-specific.
+
+Каждый scenario:
+- versioned;
+- deterministic;
+- idempotent;
+- isolated;
+- не использует production DB;
+- способен восстановить исходное состояние.
+
+Design Contract может ссылаться на конкретный scenario, например:
+
+    screen: dashboard
+    scenario: mixed-deliveries
+    viewport: mobile-375
+
+# 25. Visual Diff Intelligence
+
+Вместо одного общего diff система должна строить:
+- BEFORE;
+- AFTER;
+- pixel DIFF;
+- perceptual DIFF;
+- DOM overlay;
+- changed-region map;
+- component ownership;
+- likely source cause.
+
+Diff классифицируется:
+- EXPECTED;
+- UNEXPECTED;
+- ENVIRONMENTAL;
+- NONDETERMINISTIC;
+- NEEDS_HUMAN_JUDGMENT.
+
+Система может предложить классификацию, но изменение утверждённого Design Contract без human approval запрещено.
+
+# 26. Human Review UX
+
+Пользователь не должен читать CI logs при нормальной работе.
+
+Целевой review:
+
+    Dashboard v3.1 — REVIEW READY
+
+    ✓ Structure
+    ✓ Responsive
+    ✓ Interactions
+    ✓ Accessibility
+    ✓ Visual consistency
+
+    Remaining intentional changes: 2
+
+    [REFERENCE] [REAL] [DIFF]
+
+    Open real staging page
+
+    Actions:
+    - Accept implementation
+    - Request changes
+    - Compare variants
+
+При request changes естественно-языковая обратная связь становится новой design revision или implementation constraint.
+
+# 27. Release Orchestrator
+
+После **final UI acceptance**, а не после design selection, запускается release candidate pipeline:
+
+1. freeze implementation SHA;
+2. full deterministic test reset;
+3. source/security/contracts;
+4. full browser matrix;
+5. full visual regression;
+6. critical interaction journeys;
+7. build/package checks;
+8. PR status verification;
+9. merge according to project policy;
+10. production deploy;
+11. health check;
+12. production smoke verification;
+13. optional production visual sanity check без использования production data для baseline;
+14. immutable checkpoint;
+15. release report.
+
+Любое падение останавливает progression. Автоматический rollback может стать отдельной capability, но должен быть проектно настроен и проверяем.
+
+# 28. Safety model для автономного агента
+
+Автономность должна быть высокой внутри безопасного sandbox, но границы окружений должны быть жёсткими.
+
+- DESIGN sandbox: свободные эксперименты.
+- TEST runtime: disposable data, автоматические mutations разрешены.
+- STAGING: deployment разрешён pipeline-политикой проекта.
+- MAIN/PRODUCTION: только после соответствующих gates.
+- Production data никогда не используется как fixture.
+- Credentials не попадают в screenshots/artifacts/logs.
+- Destructive UI discovery запрещён вне disposable environment.
+- Каждый autonomous patch имеет commit/diff/trace.
+- Каждый automatic rollback проверяем.
+- Human approval имеет audit record.
+
+# 29. Техническая архитектура будущего standalone UI Forge
+
+Предполагаемые подсистемы:
+
+    ui-forge/
+      core/
+        orchestrator
+        state-machine
+        policy-engine
+        project-model
+      design/
+        proposal-engine
+        contract-schema
+        reference-store
+      discovery/
+        ui-graph
+        route-crawler
+        component-map
+      runtime/
+        environment-adapters
+        scenario-engine
+        auth-adapters
+      browsers/
+        playwright-runner
+        viewport-registry
+        interaction-probes
+      inspect/
+        visual-inspector
+        dom-geometry
+        accessibility
+        source-mapper
+      repair/
+        diagnosis
+        patch-planner
+        convergence-controller
+        rollback
+      regression/
+        baseline-store
+        diff-engine
+        impact-analysis
+      review/
+        report-generator
+        before-after-diff
+        approval-manifest
+      release/
+        ci-adapter
+        staging-adapter
+        release-orchestrator
+        checkpoint-manager
+      adapters/
+        django
+        react
+        vue
+        generic-web
+      cli/
+      api/
+
+Framework adapters не должны менять core semantics.
+
+# 30. Состояние и артефакты
+
+Для воспроизводимости UI Forge должен сохранять machine-readable artifacts:
+- project manifest;
+- Design Contract;
+- UI Graph;
+- scenario manifest;
+- baseline manifest;
+- approval manifest;
+- run manifest;
+- diff report;
+- release manifest.
+
+Каждый run связывается с:
+- repository;
+- branch;
+- commit SHA;
+- tool version;
+- browser versions;
+- scenario version;
+- contract version;
+- environment fingerprint.
+
+Это позволит объяснить, **почему** конкретный UI был принят и при каких условиях он проверялся.
+
+# 31. CLI и API
+
+Целевой CLI:
+
+    ui-forge init
+    ui-forge doctor
+    ui-forge discover
+    ui-forge design
+    ui-forge implement
+    ui-forge repair
+    ui-forge verify
+    ui-forge review
+    ui-forge approve
+    ui-forge release
+    ui-forge report
+
+Чат использует тот же underlying API/state machine, что и CLI. Нельзя создавать отдельную «магическую» логику только для AI-чата: операции должны быть воспроизводимы локально и в CI.
+
+# 32. Модель оценки кандидата
+
+Не следует сводить качество к одному проценту похожести. Нужен vector score/status:
+- structural;
+- visual/perceptual;
+- responsive;
+- interaction;
+- accessibility;
+- regression;
+- performance (informational или policy-controlled).
+
+Hard failure по interaction не может быть компенсирован высоким visual similarity.
+
+Автоматический цикл использует score для convergence, но human review получает объяснимые категории и конкретные diffs.
+
+# 33. Roadmap перехода от текущего пилота
+
+## Stage A — доказать фундамент
+Текущая задача Courier Control:
+- зелёный CI;
+- reproducible visual baseline;
+- deterministic fixtures;
+- стабильный WebKit/Chromium;
+- удобные artifacts;
+- staging parity.
+
+## Stage B — Design Contract v0
+- schema для screen/component intent;
+- reference metadata;
+- approval manifest;
+- связать baseline с contract revision;
+- отделить design approval от implementation approval.
+
+## Stage C — Intelligent diff
+- region segmentation;
+- DOM bounding-box overlay;
+- source ownership;
+- BEFORE/AFTER/DIFF report;
+- classification workflow.
+
+## Stage D — Scenario/UI Graph
+- route discovery;
+- named deterministic scenarios;
+- role-aware auth;
+- generated smoke/geometry tests;
+- impact analysis.
+
+## Stage E — Agentic repair loop
+- defect localization;
+- minimal patch planner;
+- automatic rerun;
+- regression-aware rollback;
+- iteration budget;
+- REVIEW_READY state.
+
+## Stage F — Conversational design workflow
+- multi-variant proposal generation;
+- mixed feedback («A header + C cards»);
+- Design Contract creation from approved proposal;
+- design revision history;
+- handoff directly into implementation agent.
+
+## Stage G — Standalone platform
+- extract Hardoffx/ui-forge;
+- framework adapters;
+- stable config/schema;
+- CLI/API;
+- reusable GitHub Actions;
+- onboarding via ui-forge init.
+
+## Stage H — Full product UX
+Пользователь работает почти полностью на уровне:
+
+    «Покажи варианты»
+        ↓
+    «Вариант C»
+        ↓
+    «Шапку из A»
+        ↓
+    «Утверждаю дизайн»
+        ↓
+    [autonomous implementation + verification]
+        ↓
+    «Покажи настоящую страницу»
+        ↓
+    «Сделай кнопку темнее»
+        ↓
+    [automatic repair + verification]
+        ↓
+    «Оставляем»
+        ↓
+    [release pipeline]
+
+# 34. Критерии успеха продукта
+
+UI Forge достигает целевой формы, когда:
+1. пользователь может заказать redesign без знания тестовой инфраструктуры;
+2. утверждённый дизайн превращается в versioned contract;
+3. агент способен самостоятельно приблизить реальный frontend к contract;
+4. система обнаруживает функционально сломанный UI даже при идеальном screenshot;
+5. unintended regression локализуется до component/source;
+6. большинство промежуточных implementation iterations не требуют участия человека;
+7. человек видит реальную staging-страницу и небольшое число осмысленных diffs;
+8. production никогда не является экспериментальной средой;
+9. любой релиз воспроизводим по manifests/commit/contracts;
+10. подключение нового проекта требует преимущественно declarative config/adapters, а не копирования инфраструктуры.
+
+# 35. Главный продуктовый принцип
+
+**UI Forge не должен быть AI, который умеет рисовать интерфейс. Он должен быть автономным UI-инженером и системой доказательства корректности результата.**
+
+Генерация красивого изображения — начало процесса. Ценность появляется тогда, когда система способна превратить утверждённое намерение в настоящий работающий frontend, самостоятельно обнаруживать и исправлять расхождения, доказать отсутствие непреднамеренных регрессий, показать человеку проверяемый результат и безопасно провести его до production.
