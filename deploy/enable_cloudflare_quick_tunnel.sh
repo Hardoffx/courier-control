@@ -2,8 +2,6 @@
 set -Eeuo pipefail
 
 APP_DIR=/opt/courier-control
-APP_USER=courierctl
-APP_GROUP=courierctl
 APP_SERVICE=courier-control.service
 TUNNEL_SERVICE=courier-control-tunnel.service
 URL_FILE="$APP_DIR/data/quick-tunnel-url.txt"
@@ -18,7 +16,45 @@ fi
 log(){ printf '\n==> %s\n' "$*"; }
 fail(){ echo "ERROR: $*" >&2; exit 1; }
 
+# Installations created by install_shared_vps.sh use courierctl, while the
+# replacement VPS was installed manually and runs the application as root.
+# Reuse the existing application service identity instead of assuming either
+# layout. Explicit environment overrides remain available for recovery work.
+APP_USER="${COURIER_CONTROL_APP_USER:-$(systemctl show "$APP_SERVICE" --property=User --value 2>/dev/null || true)}"
+[[ -n "$APP_USER" ]] || APP_USER="$(stat -c '%U' "$APP_DIR")"
+getent passwd "$APP_USER" >/dev/null || fail "Application user does not exist: $APP_USER"
+
+APP_GROUP="${COURIER_CONTROL_APP_GROUP:-$(systemctl show "$APP_SERVICE" --property=Group --value 2>/dev/null || true)}"
+[[ -n "$APP_GROUP" ]] || APP_GROUP="$(id -gn "$APP_USER")"
+getent group "$APP_GROUP" >/dev/null || fail "Application group does not exist: $APP_GROUP"
+
+log "Using application identity $APP_USER:$APP_GROUP"
+
 BOT_BEFORE="$(systemctl is-active courier-route-bot.service 2>/dev/null || true)"
+
+# The production deployment uses strict host-based portal separation. A Quick
+# Tunnel normally forwards its random trycloudflare.com Host header, which
+# Django correctly rejects when DOMAIN_SPLIT_ENABLED=1. Rewrite the origin Host
+# to the configured control portal so the emergency URL reaches the same code
+# path as https://control.routecontrol.ru while the browser still uses the
+# temporary HTTPS origin.
+ORIGIN_HOST="${COURIER_CONTROL_TUNNEL_HOST:-$(python3 - "$APP_DIR/.env" <<'PY'
+from pathlib import Path
+import sys
+
+value = ''
+for raw in Path(sys.argv[1]).read_text(encoding='utf-8').splitlines():
+    line = raw.strip()
+    if not line or line.startswith('#') or '=' not in line:
+        continue
+    key, candidate = line.split('=', 1)
+    if key.strip() == 'CONTROL_HOST':
+        value = candidate.strip().strip('"\'')
+        break
+print(value or 'control.routecontrol.ru')
+PY
+)}"
+[[ "$ORIGIN_HOST" =~ ^[A-Za-z0-9.-]+$ ]] || fail "Invalid control portal hostname: $ORIGIN_HOST"
 
 log "Installing cloudflared from Cloudflare package repository"
 export DEBIAN_FRONTEND=noninteractive
@@ -74,6 +110,11 @@ chmod 600 "$APP_DIR/.env"
 systemctl restart "$APP_SERVICE"
 
 log "Installing persistent Quick Tunnel service"
+TUNNEL_WAS_INSTALLED=0
+if systemctl cat "$TUNNEL_SERVICE" >/dev/null 2>&1; then
+  TUNNEL_WAS_INSTALLED=1
+  systemctl stop "$TUNNEL_SERVICE" >/dev/null 2>&1 || true
+fi
 cat > "/etc/systemd/system/$TUNNEL_SERVICE" <<EOF
 [Unit]
 Description=Courier Control Cloudflare Quick Tunnel
@@ -85,9 +126,9 @@ Type=simple
 User=$APP_USER
 Group=$APP_GROUP
 Environment=HOME=$APP_DIR
-ExecStart=/usr/bin/cloudflared tunnel --url http://127.0.0.1:8010
+ExecStart=/usr/bin/cloudflared tunnel --protocol http2 --url http://127.0.0.1:8010 --http-host-header $ORIGIN_HOST
 Restart=always
-RestartSec=5
+RestartSec=20
 TimeoutStopSec=15
 
 [Install]
@@ -95,14 +136,20 @@ WantedBy=multi-user.target
 EOF
 systemctl daemon-reload
 systemctl enable "$TUNNEL_SERVICE" >/dev/null
-systemctl restart "$TUNNEL_SERVICE"
+systemctl reset-failed "$TUNNEL_SERVICE" >/dev/null 2>&1 || true
+if [[ "$TUNNEL_WAS_INSTALLED" -eq 1 ]]; then
+  log "Waiting for the previous account-less tunnel lease to clear"
+  sleep 20
+fi
+TUNNEL_LOG_SINCE="@$(date +%s)"
+systemctl start "$TUNNEL_SERVICE"
 
 log "Waiting for Cloudflare public HTTPS URL"
 URL=""
-for _ in {1..60}; do
-  URL="$(journalctl -u "$TUNNEL_SERVICE" -n 250 --no-pager 2>/dev/null | grep -oE 'https://[a-z0-9-]+\.trycloudflare\.com' | tail -n 1 || true)"
+for _ in {1..120}; do
+  URL="$(journalctl -u "$TUNNEL_SERVICE" --since "$TUNNEL_LOG_SINCE" --no-pager 2>/dev/null | grep -oE 'https://[a-z0-9-]+\.trycloudflare\.com' | tail -n 1 || true)"
   if [[ -n "$URL" ]]; then
-    if curl -fsS --max-time 8 "$URL/healthz/" >/tmp/courier-control-cloudflare-health.json 2>/dev/null; then
+    if curl -fsS --max-time 5 "$URL/healthz/" >/tmp/courier-control-cloudflare-health.json 2>/dev/null; then
       break
     fi
   fi
@@ -111,7 +158,7 @@ for _ in {1..60}; do
 done
 
 if [[ -z "$URL" ]]; then
-  journalctl -u "$TUNNEL_SERVICE" -n 120 --no-pager || true
+  journalctl -u "$TUNNEL_SERVICE" --since "$TUNNEL_LOG_SINCE" --no-pager || true
   fail "Cloudflare Quick Tunnel did not become healthy. Check outbound connectivity to Cloudflare and rerun this script."
 fi
 
@@ -139,8 +186,10 @@ else
 fi
 
 printf '\nCloudflare Quick Tunnel is ready.\n'
+printf 'Portal: control (%s)\n' "$ORIGIN_HOST"
 printf 'Web:    %s/\n' "$URL"
 printf 'Health: %s/healthz/\n' "$URL"
+printf 'Tunnel protocol: HTTP/2\n'
 printf 'Tunnel service: %s\n' "$(systemctl is-active "$TUNNEL_SERVICE" 2>/dev/null || true)"
 printf 'App service:    %s\n' "$(systemctl is-active "$APP_SERVICE" 2>/dev/null || true)"
 printf '\nCurrent URL later: courier-control-url\n'
