@@ -219,3 +219,24 @@ class CourierWorkspaceContractTests(TestCase):
         self.rows[0].status=Delivery.Status.DONE; self.rows[0].completed_at=timezone.now(); self.rows[0].save()
         response=self.client.get(reverse('courier_today'))
         self.assertContains(response,self.rows[0].completed_at.strftime('%H:%M'))
+
+    def test_reorder_swaps_only_two_unfinished_positions(self):
+        self.rows[0].status=Delivery.Status.DONE; self.rows[0].completed_at=timezone.now(); self.rows[0].save()
+        original={row.pk: row.route_order for row in self.rows}
+        response=self.client.post(reverse('courier_reorder',args=[self.rows[2].pk]),{'direction':'up'})
+        self.assertEqual(response.status_code,302)
+        for row in self.rows: row.refresh_from_db()
+        self.assertEqual(self.rows[0].route_order,original[self.rows[0].pk])
+        self.assertEqual(self.rows[1].route_order,original[self.rows[2].pk])
+        self.assertEqual(self.rows[2].route_order,original[self.rows[1].pk])
+        self.assertIn(f'selected={self.rows[2].pk}',response.url)
+
+    def test_reorder_never_moves_completed_or_unrelated_rows(self):
+        extra=DeliveryPoint.objects.create(name='Extra',code='WX',address='Moscow, Extra')
+        extra_delivery=Delivery.objects.create(delivery_date=self.day,courier=self.courier,point=extra,address=extra.address,source_label='Extra',route_order=99)
+        self.rows[1].status=Delivery.Status.DONE; self.rows[1].completed_at=timezone.now(); self.rows[1].save()
+        completed_order=self.rows[1].route_order
+        self.client.post(reverse('courier_reorder',args=[self.rows[2].pk]),{'direction':'up'})
+        self.rows[1].refresh_from_db(); extra_delivery.refresh_from_db()
+        self.assertEqual(self.rows[1].route_order,completed_order)
+        self.assertEqual(extra_delivery.route_order,99)
