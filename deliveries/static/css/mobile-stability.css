@@ -456,3 +456,9 @@ body:not(.dispatcher-ui):not(.courier-ui) main.wrap > .card form .btn { margin-t
 .completed-trips-summary::after{content:"▾";float:right;transition:transform .15s ease}
 .completed-trips[open]>.completed-trips-summary::after{transform:rotate(180deg)}
 .completed-trip-list{border-top:1px solid var(--line,#d9dee7)}
+
+/* Keep quick filters inside the viewport: scroll the strip, not the page. */
+@media (max-width: 768px){
+  .quick-filters{display:flex;max-width:100%;min-width:0;overflow-x:auto;overflow-y:hidden;flex-wrap:nowrap;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain}
+  .quick-filters .filter-chip{flex:0 0 auto}
+}
