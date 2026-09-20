@@ -268,3 +268,24 @@ class MultipleSameDayRouteRunTests(TestCase):
         second=generate_route_run(self.template,self.day,courier=self.courier)
         self.assertEqual(first.pk,second.pk)
         self.assertEqual(RouteRun.objects.filter(route=self.route,run_date=self.day).count(),1)
+
+
+class CourierCompletedTripHistoryTests(TestCase):
+    def setUp(self):
+        self.courier=User.objects.create_user(username='history-courier',password='x',role=User.Role.COURIER)
+        self.route=Route.objects.create(name='History route',default_courier=self.courier)
+        self.template=RouteTemplate.objects.create(route=self.route,kind=RouteTemplate.Kind.WEEKDAY)
+        self.point=DeliveryPoint.objects.create(name='History point',code='H1',address='Old completed address')
+        RouteTemplateItem.objects.create(template=self.template,point=self.point,route_order=1)
+        self.client.force_login(self.courier)
+
+    def test_completed_trip_is_collapsed_below_active_trip(self):
+        day=timezone.localdate()
+        first=generate_route_run(self.template,day,courier=self.courier)
+        old=first.deliveries.get(); old.status=Delivery.Status.DONE; old.completed_at=timezone.now(); old.save(update_fields=['status','completed_at'])
+        second=generate_route_run(self.template,day,courier=self.courier)
+        response=self.client.get(reverse('courier_today'))
+        self.assertContains(response,'Выполненные рейсы сегодня (1)')
+        self.assertContains(response,'completed-trips')
+        self.assertEqual(response.context['active_deliveries'][0].route_run_id,second.pk)
+        self.assertEqual(response.context['completed_deliveries'][0].route_run_id,first.pk)
