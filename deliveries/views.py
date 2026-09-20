@@ -6,6 +6,7 @@ from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
+from django.http import JsonResponse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 from accounts.models import User
@@ -186,6 +187,7 @@ def courier_update(request,pk):
 @require_POST
 def courier_reorder(request,pk):
     delivery=get_object_or_404(Delivery.objects.select_related('route_run__template'),pk=pk,courier=request.user,delivery_date=timezone.localdate()); direction=request.POST.get('direction')
+    wants_json=request.headers.get('x-requested-with')=='XMLHttpRequest'
     if delivery.route_run_id:
         full_items=list(Delivery.objects.filter(route_run_id=delivery.route_run_id,courier=request.user,delivery_date=delivery.delivery_date).order_by('route_order','id')); run=delivery.route_run
     else:
@@ -210,4 +212,8 @@ def courier_reorder(request,pk):
                 after=[item.point_id for item in after_rows if item.point_id]
                 record_courier_order_change(run,request.user,before,after)
         DeliveryEvent.objects.create(delivery=delivery,actor=request.user,action='reordered',note=f'Позиция {old_order} → {other_order}')
+        if wants_json:
+            return JsonResponse({'ok':True,'moved_id':delivery.pk,'other_id':other.pk,'direction':direction,'moved_order':delivery.route_order,'other_order':other.route_order})
+    if wants_json:
+        return JsonResponse({'ok':False,'error':'Точку нельзя переместить дальше'},status=409)
     return redirect(f"{redirect('courier_today').url}?selected={delivery.pk}")
