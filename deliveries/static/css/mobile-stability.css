@@ -484,3 +484,35 @@ body:not(.dispatcher-ui):not(.courier-ui) main.wrap > .card form .btn { margin-t
   .selected-card .big-actions{gap:8px}
   .selected-note-editor{margin:10px 0}
 }
+
+
+/* Selected courier card — reference fidelity pass */
+.courier-head-compact{display:block!important;margin-bottom:12px}
+.courier-head-compact .muted{font-size:16px}
+.selected-note-toggle{justify-content:flex-start;gap:12px}
+.selected-note-toggle::after{margin-left:auto}
+.selected-note-toggle>span:nth-child(2){display:grid;gap:2px;min-width:0}
+.selected-note-toggle small{display:block;color:var(--muted);font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.note-doc-icon{font-size:20px;color:#52657a;line-height:1}
+.selected-phone{background:#fff!important;color:var(--ink)!important;border:1px solid var(--line,#d9dee7)!important;box-shadow:none!important}
+@media(max-width:560px){
+  .courier-head-compact{padding:0 2px!important;margin:0 0 10px!important}
+  .courier-head-compact .muted{font-size:15px!important;line-height:1.3}
+  .selected-card .next-bar{padding:10px 14px!important;font-size:13px!important}
+  .selected-card .next-body{padding:12px 14px 14px!important}
+  .selected-card .address-line{gap:10px!important;margin-bottom:8px!important}
+  .selected-card .address-pin{width:20px!important;min-width:20px!important}
+  .selected-card .next-address{font-size:21px!important;line-height:1.12!important;margin:0!important}
+  .selected-card .lab-caption{font-size:13px!important;margin-top:3px!important}
+  .selected-card .next-meta{margin:8px 0!important}
+  .selected-card .meta-line{font-size:18px!important;gap:8px!important}
+  .selected-card .action-row{margin-top:8px!important;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr)!important}
+  .selected-card .action-row .btn{min-height:58px!important;padding:9px 10px!important;font-size:16px!important;line-height:1.15!important}
+  .selected-card .selected-note-editor{margin:10px 0!important;border-radius:10px!important}
+  .selected-card .selected-note-toggle{min-height:54px;padding:9px 12px!important}
+  .selected-card .selected-note-toggle b{font-size:14px}
+  .selected-card .selected-note-toggle small{font-size:11px}
+  .selected-card .selected-nav .btn{min-height:50px!important;padding:9px 10px!important;font-size:16px!important}
+  .selected-card .big-actions .btn{min-height:54px!important;padding:10px 12px!important;font-size:17px!important}
+  .selected-card .courier-note{margin:9px 0!important;padding:8px 10px!important;font-size:13px!important}
+}
