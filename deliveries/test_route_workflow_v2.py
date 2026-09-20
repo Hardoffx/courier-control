@@ -206,7 +206,8 @@ class CourierWorkspaceContractTests(TestCase):
         self.rows[1].status=Delivery.Status.PROBLEM; self.rows[1].save()
         response=self.client.get(reverse('courier_today'))
         self.assertEqual(response.context['selected_delivery'].pk,self.rows[2].pk)
-        self.assertContains(response,'Выбранная точка')\n        self.assertContains(response,self.rows[2].address)
+        self.assertContains(response,'Выбранная точка')
+        self.assertContains(response,self.rows[2].address)
 
     def test_explicit_selected_point_does_not_change_route_order(self):
         before=list(self.run.deliveries.order_by('route_order').values_list('pk','route_order'))
