@@ -769,3 +769,9 @@ body:not(.dispatcher-ui):not(.courier-ui) main.wrap > .card form .btn { margin-t
  .compact-top-actions>details,
  .compact-top-actions>details>summary{height:46px!important;min-height:46px!important;max-height:46px!important}
 }
+
+
+/* Consistent modern line icons for courier utility actions. */
+.compact-top-actions .action-icon{display:block;width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.compact-top-actions .compact-icon-action>span:first-child:has(.action-icon){color:#3476dc}
+@media(max-width:560px){.compact-top-actions .action-icon{width:18px;height:18px}}
