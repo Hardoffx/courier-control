@@ -775,3 +775,22 @@ body:not(.dispatcher-ui):not(.courier-ui) main.wrap > .card form .btn { margin-t
 .compact-top-actions .action-icon{display:block;width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
 .compact-top-actions .compact-icon-action>span:first-child:has(.action-icon){color:#3476dc}
 @media(max-width:560px){.compact-top-actions .action-icon{width:18px;height:18px}}
+
+
+/* Keep quick-action row stable while phone/note editors are open. */
+.compact-top-actions>details.compact-icon-panel{display:contents!important}
+.compact-top-actions>details.compact-icon-panel>summary{grid-row:1;height:48px!important;min-height:48px!important;max-height:48px!important;margin:0!important}
+.compact-top-actions>details.compact-phone-panel>summary{grid-column:3}
+.compact-top-actions>details.compact-note-panel>summary{grid-column:4}
+.compact-top-actions>details.compact-icon-panel[open]{display:contents!important}
+.compact-top-actions>details.compact-icon-panel[open]>summary{width:72px!important;min-width:72px!important;height:48px!important;min-height:48px!important;max-height:48px!important}
+.compact-top-actions>details.compact-icon-panel>.route-detail-form{grid-column:1/-1;grid-row:2;display:grid!important;grid-template-columns:minmax(0,1fr) auto;gap:8px;width:100%;min-width:0;margin:2px 0 0!important;padding:0!important;box-sizing:border-box}
+.compact-top-actions>details.compact-icon-panel>.route-detail-form input{width:100%;min-width:0;height:44px!important;margin:0!important;box-sizing:border-box}
+.compact-top-actions>details.compact-icon-panel>.route-detail-form .btn{height:44px!important;min-height:44px!important;margin:0!important;padding:7px 12px!important;white-space:nowrap}
+@media(max-width:560px){
+ .compact-top-actions>details.compact-icon-panel>summary,.compact-top-actions>details.compact-icon-panel[open]>summary{width:64px!important;min-width:64px!important;height:46px!important;min-height:46px!important;max-height:46px!important}
+ .compact-top-actions>details.compact-icon-panel>.route-detail-form{gap:6px}
+}
+@media(max-width:390px){
+ .compact-top-actions>details.compact-icon-panel>summary,.compact-top-actions>details.compact-icon-panel[open]>summary{width:58px!important;min-width:58px!important}
+}
