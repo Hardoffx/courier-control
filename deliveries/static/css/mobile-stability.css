@@ -655,3 +655,18 @@ body:not(.dispatcher-ui):not(.courier-ui) main.wrap > .card form .btn { margin-t
   .compact-secondary-actions>.compact-phone-panel>summary{width:100%}
   .compact-secondary-actions>.reorder-actions .btn{font-size:14px!important}
 }
+
+
+/* Empty note/phone controls share one compact utility row. */
+.compact-tool-actions{display:flex;gap:8px;min-width:0}
+.compact-tool-actions:empty{display:none}
+.compact-tool-actions>details{flex:1 1 0;min-width:0}
+.compact-tool-actions>details>summary{width:100%!important;min-width:0;white-space:nowrap;text-align:center;justify-content:center}
+.compact-secondary-actions{grid-template-columns:1fr!important}
+.compact-secondary-actions>.reorder-actions{width:100%}
+.compact-note-add .route-detail-form,.compact-tool-actions .compact-phone-panel .route-detail-form{width:100%;box-sizing:border-box}
+@media(max-width:560px){
+  .compact-tool-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .compact-tool-actions>details:only-child{grid-column:1/-1}
+  .compact-tool-actions>details>summary{font-size:13px!important;padding:8px 6px!important}
+}
