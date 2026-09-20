@@ -620,3 +620,38 @@ body:not(.dispatcher-ui):not(.courier-ui) main.wrap > .card form .btn { margin-t
 .ajax-reorder-form[data-busy="1"] .btn{opacity:.6;pointer-events:none}
 @keyframes reorder-error-shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
 @media(prefers-reduced-motion:reduce){.route-accordion-list .route-item{transition:none!important;animation:none!important}}
+
+
+/* Compact expanded route card — keep every control inside the card. */
+.compact-route-detail{box-sizing:border-box;max-width:100%;overflow:hidden;display:grid;gap:10px;padding:12px 14px!important}
+.compact-route-detail>*{min-width:0;max-width:100%;box-sizing:border-box;margin-top:0!important;margin-bottom:0!important}
+.compact-route-detail .route-select-btn{width:100%;min-height:44px;padding:9px 12px}
+.compact-primary-actions{display:grid!important;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr)!important;gap:8px!important}
+.compact-primary-actions .btn{min-width:0;min-height:48px!important;padding:8px 10px!important;font-size:15px!important;white-space:normal;text-align:center}
+.compact-note-panel,.compact-phone-panel{width:100%;min-width:0}
+.compact-note-panel>summary,.compact-phone-panel>summary{list-style:none;width:100%;min-height:44px;padding:8px 12px!important;font-size:14px!important;box-sizing:border-box}
+.compact-note-panel>summary::-webkit-details-marker,.compact-phone-panel>summary::-webkit-details-marker{display:none}
+.compact-note-panel .route-detail-form,.compact-phone-panel .route-detail-form{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;margin:8px 0 0!important;padding:0!important}
+.compact-note-panel input,.compact-phone-panel input{min-width:0;width:100%;margin:0!important}
+.compact-note-panel .btn,.compact-phone-panel .btn{margin:0!important;min-height:42px!important;padding:8px 11px!important}
+.compact-status-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:start}
+.compact-status-actions .done-form,.compact-status-actions .problem-panel{min-width:0;width:100%;margin:0!important}
+.compact-status-actions>.done-form>.btn,.compact-status-actions>.problem-panel>summary{width:100%;min-height:50px!important;padding:9px 8px!important;font-size:16px!important;box-sizing:border-box}
+.compact-status-actions .problem-panel[open]{grid-column:1/-1}
+.compact-status-actions .problem-panel .route-detail-form{margin:8px 0 0!important}
+.compact-secondary-actions{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px;align-items:start}
+.compact-secondary-actions>.reorder-actions{display:grid!important;grid-template-columns:1fr 1fr!important;gap:8px!important;margin:0!important;min-width:0}
+.compact-secondary-actions>.reorder-actions form{min-width:0;margin:0!important}
+.compact-secondary-actions>.reorder-actions .btn{width:100%;min-width:0;min-height:44px!important;padding:8px 7px!important;font-size:14px!important;white-space:nowrap}
+.compact-secondary-actions>.compact-phone-panel>summary{width:auto;white-space:nowrap}
+@media(max-width:560px){
+  .route-accordion-list{overflow:hidden}
+  .route-accordion-list .route-item{max-width:100%;box-sizing:border-box;overflow:hidden}
+  .compact-route-detail{padding:10px 12px!important;gap:8px!important;width:100%}
+  .compact-primary-actions{grid-template-columns:minmax(0,1.35fr) minmax(0,.9fr)!important}
+  .compact-primary-actions .btn{font-size:14px!important;min-height:46px!important}
+  .compact-status-actions>.done-form>.btn,.compact-status-actions>.problem-panel>summary{min-height:48px!important;font-size:15px!important}
+  .compact-secondary-actions{grid-template-columns:1fr!important}
+  .compact-secondary-actions>.compact-phone-panel>summary{width:100%}
+  .compact-secondary-actions>.reorder-actions .btn{font-size:14px!important}
+}
