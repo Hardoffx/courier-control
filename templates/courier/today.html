@@ -66,10 +66,10 @@
               {% if d.phone %}<a class="btn alt" href="tel:{{ d.phone }}">☎ Позвонить</a>{% endif %}
             </div>
 
-            <details class="compact-note-panel"{% if d.courier_daily_note %} open{% endif %}>
-              <summary class="btn alt">▤ {% if d.courier_daily_note %}Изменить заметку{% else %}Заметка{% endif %}</summary>
+            {% if d.courier_daily_note %}<details class="compact-note-panel" open>
+              <summary class="btn alt">▤ Изменить заметку</summary>
               <form method="post" action="{% url 'courier_update' d.pk %}" class="route-detail-form courier-note-form">{% csrf_token %}<input type="hidden" name="action" value="daily_note"><input aria-label="Заметка" name="courier_daily_note" maxlength="500" value="{{ d.courier_daily_note }}" placeholder="Не забыть отдать расходники / документы"><button class="btn alt" type="submit">Сохранить</button></form>
-            </details>
+            </details>{% endif %}
 
             <div class="compact-status-actions">
               <form class="done-form route-inline-done" method="post" action="{% url 'courier_update' d.pk %}">{% csrf_token %}<input type="hidden" name="action" value="done"><input type="hidden" name="latitude"><input type="hidden" name="longitude"><button class="btn good" type="submit">✓ Выполнено</button></form>
@@ -84,8 +84,11 @@
               </details>
             </div>
 
-            <div class="compact-secondary-actions">
-              {% if not d.phone %}<details class="compact-phone-panel"><summary class="btn alt">☎ Добавить телефон</summary><form method="post" action="{% url 'courier_update' d.pk %}" class="route-detail-form phone-form">{% csrf_token %}<input type="hidden" name="action" value="phone"><input name="phone" inputmode="tel" placeholder="+7 999 123-45-67"><button class="btn alt" type="submit">Сохранить</button></form></details>{% endif %}
+            <div class="compact-secondary-actions{% if not d.courier_daily_note and not d.phone %} has-two-tools{% endif %}">
+              <div class="compact-tool-actions">
+                {% if not d.courier_daily_note %}<details class="compact-note-panel compact-note-add"><summary class="btn alt">▤ + Заметка</summary><form method="post" action="{% url 'courier_update' d.pk %}" class="route-detail-form courier-note-form">{% csrf_token %}<input type="hidden" name="action" value="daily_note"><input aria-label="Заметка" name="courier_daily_note" maxlength="500" placeholder="Не забыть отдать расходники / документы"><button class="btn alt" type="submit">Сохранить</button></form></details>{% endif %}
+                {% if not d.phone %}<details class="compact-phone-panel"><summary class="btn alt">☎ + Телефон</summary><form method="post" action="{% url 'courier_update' d.pk %}" class="route-detail-form phone-form">{% csrf_token %}<input type="hidden" name="action" value="phone"><input name="phone" inputmode="tel" placeholder="+7 999 123-45-67"><button class="btn alt" type="submit">Сохранить</button></form></details>{% endif %}
+              </div>
               <div class="reorder-actions">
                 <form method="post" action="{% url 'courier_reorder' d.pk %}" class="ajax-reorder-form">{% csrf_token %}<input type="hidden" name="direction" value="up"><button class="btn alt" type="submit">↑ Раньше</button></form>
                 <form method="post" action="{% url 'courier_reorder' d.pk %}" class="ajax-reorder-form">{% csrf_token %}<input type="hidden" name="direction" value="down"><button class="btn alt" type="submit">↓ Позже</button></form>
