@@ -151,7 +151,9 @@ def courier_today(request):
         key=d.route_run_id or 0
         run_active[key]=run_active.get(key,False) or d.status!=Delivery.Status.DONE
     deliveries.sort(key=lambda d:(0 if run_active.get(d.route_run_id or 0) else 1, -(d.route_run.created_at.timestamp() if d.route_run_id else 0), d.route_order, d.id))
-    for d in deliveries:\n        d.phone_display=_format_phone(d.phone)\n    done=sum(d.status==Delivery.Status.DONE for d in deliveries)
+    for d in deliveries:
+        d.phone_display=_format_phone(d.phone)
+    done=sum(d.status==Delivery.Status.DONE for d in deliveries)
     unfinished=[d for d in deliveries if d.status!=Delivery.Status.DONE]
     selected_id=request.GET.get('selected','').strip()
     selected_delivery=next((d for d in unfinished if str(d.pk)==selected_id),None)
