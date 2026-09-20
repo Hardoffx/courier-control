@@ -516,3 +516,17 @@ body:not(.dispatcher-ui):not(.courier-ui) main.wrap > .card form .btn { margin-t
   .selected-card .big-actions .btn{min-height:54px!important;padding:10px 12px!important;font-size:17px!important}
   .selected-card .courier-note{margin:9px 0!important;padding:8px 10px!important;font-size:13px!important}
 }
+
+
+/* Courier selected card polish — phone/note controls */
+.selected-phone{display:flex!important;align-items:center;justify-content:center;gap:7px!important;white-space:nowrap!important}
+.phone-icon{width:20px;height:20px;display:inline-flex;color:#2f78ed;flex:none}
+.phone-icon svg{width:100%;height:100%;display:block}
+.note-doc-icon{width:22px;height:22px;display:inline-flex!important;color:#52657a;flex:none}
+.note-doc-icon svg{width:100%;height:100%;display:block}
+@media(max-width:560px){
+  .selected-card .action-row{grid-template-columns:minmax(0,1.7fr) minmax(112px,.8fr)!important}
+  .selected-card .selected-phone{font-size:14px!important;padding:8px 9px!important}
+  .selected-card .selected-phone .phone-icon{width:19px;height:19px}
+  .selected-card .selected-note-toggle{gap:10px!important}
+}
