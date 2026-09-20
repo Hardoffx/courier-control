@@ -54,7 +54,7 @@
 
 /* Selected-point metadata: compact, equal visual spacing. */
 .next-body .address-line{margin:0 0 10px}
-.next-body .next-meta{display:flex;flex-direction:column;gap:10px;margin:0 0 14px}
+.next-body .next-meta{display:flex;flex-direction:column;gap:10px;margin:0 0 10px}
 .next-body .next-meta .meta-line,
 .next-body .next-meta .meta-line + .meta-line,
 .next-body .phone-meta-line,
