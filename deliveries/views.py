@@ -146,7 +146,15 @@ def courier_today(request):
     selected_delivery=next((d for d in unfinished if str(d.pk)==selected_id),None)
     if not selected_delivery:
         selected_delivery=next((d for d in unfinished if d.status!=Delivery.Status.PROBLEM),None) or (unfinished[0] if unfinished else None)
-    selectable=unfinished
+
+    # The selected workspace belongs to one concrete trip. Do not mix progress
+    # or previous/next navigation with an earlier RouteRun from the same day.
+    selected_run_id=selected_delivery.route_run_id if selected_delivery else None
+    current_run_deliveries=[d for d in deliveries if d.route_run_id==selected_run_id] if selected_run_id else ([d for d in deliveries if not d.route_run_id] if selected_delivery else [])
+    current_run_unfinished=[d for d in current_run_deliveries if d.status!=Delivery.Status.DONE]
+    current_run_done=sum(d.status==Delivery.Status.DONE for d in current_run_deliveries)
+    current_run_total=len(current_run_deliveries)
+    selectable=current_run_unfinished
     selected_index=selectable.index(selected_delivery) if selected_delivery in selectable else -1
     previous_delivery=selectable[selected_index-1] if selected_index>0 else None
     next_delivery=selectable[selected_index+1] if 0<=selected_index<len(selectable)-1 else None
@@ -161,7 +169,7 @@ def courier_today(request):
     completed_runs_count=len(completed_run_ids)
     active_runs=[run for run in route_runs if run.pk not in completed_run_ids]
     route_name=' + '.join(run.route.name for run in active_runs) if active_runs else ('Мой маршрут' if completed_deliveries else ('Без маршрута' if deliveries else ''))
-    return render(request,'courier/today.html',{'deliveries':deliveries,'active_deliveries':active_deliveries,'completed_deliveries':completed_deliveries,'completed_runs_count':completed_runs_count,'done':done,'total':len(deliveries),'today':today,'selected_delivery':selected_delivery,'previous_delivery':previous_delivery,'next_delivery':next_delivery,'route_name':route_name,'route_runs':route_runs,'problem_reasons':PROBLEM_REASONS})
+    return render(request,'courier/today.html',{'deliveries':deliveries,'active_deliveries':active_deliveries,'completed_deliveries':completed_deliveries,'completed_runs_count':completed_runs_count,'done':done,'total':len(deliveries),'current_run_done':current_run_done,'current_run_total':current_run_total,'today':today,'selected_delivery':selected_delivery,'previous_delivery':previous_delivery,'next_delivery':next_delivery,'route_name':route_name,'route_runs':route_runs,'problem_reasons':PROBLEM_REASONS})
 
 @login_required
 @require_POST
