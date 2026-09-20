@@ -580,3 +580,34 @@ body:not(.dispatcher-ui):not(.courier-ui) main.wrap > .card form .btn { margin-t
   .selected-card .selected-lpu-label{padding:0 8px!important;font-size:11px!important}
   .selected-card .selected-lpu strong{padding:0 10px!important;font-size:15px!important}
 }
+
+
+/* Unified selected-stop lab badges: CMD / INVITRO match LPU height. */
+.selected-card .selected-labline>.lab-badge{
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  box-sizing:border-box!important;
+  min-height:32px!important;
+  height:32px!important;
+  padding:0 11px!important;
+  border-width:1.5px!important;
+  border-radius:9px!important;
+  font-size:15px!important;
+  font-weight:900!important;
+  line-height:1!important;
+  letter-spacing:.04em!important;
+  white-space:nowrap!important;
+}
+.selected-card .selected-labline>.lab-badge--invitro{padding-left:10px!important;padding-right:10px!important;font-size:14px!important;letter-spacing:.035em!important}
+.selected-card .selected-labline>.selected-lpu{height:32px!important;min-height:32px!important;box-sizing:border-box!important}
+@media(max-width:560px){
+  .selected-card .selected-labline>.lab-badge,
+  .selected-card .selected-labline>.selected-lpu{
+    height:30px!important;
+    min-height:30px!important;
+    border-radius:8px!important;
+  }
+  .selected-card .selected-labline>.lab-badge{padding:0 10px!important;font-size:15px!important}
+  .selected-card .selected-labline>.lab-badge--invitro{padding:0 9px!important;font-size:13px!important}
+}
