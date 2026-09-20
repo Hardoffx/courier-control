@@ -155,8 +155,13 @@ def courier_today(request):
     for delivery in deliveries:
         if delivery.route_run_id and delivery.route_run_id not in seen:
             seen.add(delivery.route_run_id); route_runs.append(delivery.route_run)
-    route_name=' + '.join(run.route.name for run in route_runs) if route_runs else ('Без маршрута' if deliveries else '')
-    return render(request,'courier/today.html',{'deliveries':deliveries,'done':done,'total':len(deliveries),'today':today,'selected_delivery':selected_delivery,'previous_delivery':previous_delivery,'next_delivery':next_delivery,'route_name':route_name,'route_runs':route_runs,'problem_reasons':PROBLEM_REASONS})
+    active_deliveries=[d for d in deliveries if run_active.get(d.route_run_id or 0)]
+    completed_deliveries=[d for d in deliveries if not run_active.get(d.route_run_id or 0)]
+    completed_run_ids={d.route_run_id for d in completed_deliveries if d.route_run_id}
+    completed_runs_count=len(completed_run_ids)
+    active_runs=[run for run in route_runs if run.pk not in completed_run_ids]
+    route_name=' + '.join(run.route.name for run in active_runs) if active_runs else ('Мой маршрут' if completed_deliveries else ('Без маршрута' if deliveries else ''))
+    return render(request,'courier/today.html',{'deliveries':deliveries,'active_deliveries':active_deliveries,'completed_deliveries':completed_deliveries,'completed_runs_count':completed_runs_count,'done':done,'total':len(deliveries),'today':today,'selected_delivery':selected_delivery,'previous_delivery':previous_delivery,'next_delivery':next_delivery,'route_name':route_name,'route_runs':route_runs,'problem_reasons':PROBLEM_REASONS})
 
 @login_required
 @require_POST
