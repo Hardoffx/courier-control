@@ -51,3 +51,8 @@
 .selected-phone-number{font-weight:800;color:#2f73e8;text-decoration:none;font-variant-numeric:tabular-nums;letter-spacing:.01em}
 .action-row.selected-map-only{grid-template-columns:1fr}
 .action-row.selected-map-only>.btn{width:100%}
+
+/* Selected-point metadata breathing room. */
+.selected-card .next-meta{display:grid;gap:12px;margin-top:18px;margin-bottom:18px}
+.selected-card .next-meta .meta-line{margin:0}
+.phone-meta-line{margin-top:2px!important}
