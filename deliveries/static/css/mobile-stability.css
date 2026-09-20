@@ -794,3 +794,10 @@ body:not(.dispatcher-ui):not(.courier-ui) main.wrap > .card form .btn { margin-t
 @media(max-width:390px){
  .compact-top-actions>details.compact-icon-panel>summary,.compact-top-actions>details.compact-icon-panel[open]>summary{width:58px!important;min-width:58px!important}
 }
+
+
+/* Phone/note editor is a true full-width second row. */
+.compact-top-actions .quick-action-editor{grid-column:1/-1!important;grid-row:2!important;display:grid!important;grid-template-columns:minmax(0,1fr) max-content!important;align-items:stretch!important;gap:8px!important;width:100%!important;max-width:100%!important;min-width:0!important;margin:2px 0 0!important;padding:0!important;box-sizing:border-box!important}
+.compact-top-actions .quick-action-editor>input:not([type=hidden]){grid-column:1!important;display:block!important;width:100%!important;max-width:100%!important;min-width:0!important;height:44px!important;min-height:44px!important;margin:0!important;padding:8px 12px!important;box-sizing:border-box!important}
+.compact-top-actions .quick-action-editor>button{grid-column:2!important;width:auto!important;min-width:108px!important;height:44px!important;min-height:44px!important;max-height:44px!important;margin:0!important;padding:8px 12px!important;box-sizing:border-box!important;white-space:nowrap!important}
+@media(max-width:390px){.compact-top-actions .quick-action-editor{gap:6px!important}.compact-top-actions .quick-action-editor>button{min-width:96px!important;padding-left:9px!important;padding-right:9px!important}}
