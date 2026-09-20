@@ -53,6 +53,6 @@
 .action-row.selected-map-only>.btn{width:100%}
 
 /* Selected-point metadata breathing room. */
-.selected-card .next-meta{display:grid;gap:12px;margin-top:18px;margin-bottom:18px}
-.selected-card .next-meta .meta-line{margin:0}
-.phone-meta-line{margin-top:2px!important}
+.next-body .next-meta{display:grid;gap:14px;margin-top:20px;margin-bottom:20px}
+.next-body .next-meta .meta-line{margin:0}
+.next-body .phone-meta-line{margin-top:2px!important}
