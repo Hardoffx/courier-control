@@ -85,8 +85,8 @@
             {% endif %}
 
             <div class="reorder-actions">
-              <form method="post" action="{% url 'courier_reorder' d.pk %}">{% csrf_token %}<input type="hidden" name="direction" value="up"><button class="btn alt" type="submit">↑ Раньше</button></form>
-              <form method="post" action="{% url 'courier_reorder' d.pk %}">{% csrf_token %}<input type="hidden" name="direction" value="down"><button class="btn alt" type="submit">↓ Позже</button></form>
+              <form method="post" action="{% url 'courier_reorder' d.pk %}" class="ajax-reorder-form">{% csrf_token %}<input type="hidden" name="direction" value="up"><button class="btn alt" type="submit">↑ Раньше</button></form>
+              <form method="post" action="{% url 'courier_reorder' d.pk %}" class="ajax-reorder-form">{% csrf_token %}<input type="hidden" name="direction" value="down"><button class="btn alt" type="submit">↓ Позже</button></form>
             </div>
           {% else %}
             <div class="route-complete-note">✓ Точка выполнена{% if d.completed_at %} · {{ d.completed_at|date:"H:i" }}{% endif %}</div>{% if d.courier_daily_note %}<div class="route-detail-note courier-note"><b>Не забыть:</b> {{ d.courier_daily_note }}</div>{% endif %}
@@ -126,6 +126,32 @@ document.querySelectorAll('.done-form').forEach(f=>f.addEventListener('submit',e
 function openDelivery(id,childId){const d=document.getElementById(id);if(!d)return;d.open=true;if(childId){const c=document.getElementById(childId);if(c)c.open=true}}
 document.querySelectorAll('.detail-opener').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();openDelivery(a.dataset.open,a.dataset.openChild)}));
 document.querySelectorAll('.add-phone-toggle').forEach(btn=>btn.addEventListener('click',()=>{const form=document.getElementById(btn.getAttribute('aria-controls'));if(!form)return;const opening=form.hidden;form.hidden=!opening;btn.setAttribute('aria-expanded',opening?'true':'false');if(opening){const input=form.querySelector('input[name=phone]');if(input)setTimeout(()=>input.focus(),0)}}));
+document.querySelectorAll('.ajax-reorder-form').forEach(form=>form.addEventListener('submit',async e=>{
+  e.preventDefault();
+  if(form.dataset.busy==='1')return;
+  const item=form.closest('.route-item');
+  const list=item&&item.parentElement;
+  if(!item||!list)return form.submit();
+  const direction=form.querySelector('input[name=direction]')?.value;
+  const siblings=[...list.children].filter(el=>el.matches('.route-item:not(.done)'));
+  const index=siblings.indexOf(item);
+  const other=direction==='up'?siblings[index-1]:siblings[index+1];
+  if(!other)return;
+  form.dataset.busy='1';
+  item.classList.add('reorder-moving');
+  const first=new Map([...list.children].filter(el=>el.matches('.route-item')).map(el=>[el,el.getBoundingClientRect()]));
+  try{
+    const response=await fetch(form.action,{method:'POST',body:new FormData(form),headers:{'X-Requested-With':'XMLHttpRequest','Accept':'application/json'},credentials:'same-origin'});
+    if(!response.ok)throw new Error((await response.json().catch(()=>({}))).error||'Не удалось изменить порядок');
+    if(direction==='up')list.insertBefore(item,other); else list.insertBefore(other,item);
+    const rows=[...list.children].filter(el=>el.matches('.route-item'));
+    rows.forEach((el,i)=>{const old=first.get(el);if(!old)return;const now=el.getBoundingClientRect();const dx=old.left-now.left,dy=old.top-now.top;if(dx||dy){el.style.transition='none';el.style.transform=`translate(${dx}px,${dy}px)`;requestAnimationFrame(()=>requestAnimationFrame(()=>{el.style.transition='transform 240ms cubic-bezier(.2,.8,.2,1)';el.style.transform=''}))}});
+    setTimeout(()=>rows.forEach(el=>{el.style.transition='';el.style.transform='';el.classList.remove('reorder-moving')}),280);
+  }catch(err){
+    item.classList.add('reorder-error');
+    setTimeout(()=>item.classList.remove('reorder-error'),700);
+  }finally{form.dataset.busy='0';item.classList.remove('reorder-moving')}
+}));
 if(location.hash&&location.hash.startsWith('#delivery-'))openDelivery(location.hash.slice(1));
 </script>
 {% endblock %}
