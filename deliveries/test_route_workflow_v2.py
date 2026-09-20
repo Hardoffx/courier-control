@@ -240,3 +240,30 @@ class CourierWorkspaceContractTests(TestCase):
         self.rows[1].refresh_from_db(); extra_delivery.refresh_from_db()
         self.assertEqual(self.rows[1].route_order,completed_order)
         self.assertEqual(extra_delivery.route_order,99)
+
+
+class MultipleSameDayRouteRunTests(TestCase):
+    def setUp(self):
+        self.courier=User.objects.create_user(username='multi-trip-courier',password='x',role=User.Role.COURIER)
+        self.route=Route.objects.create(name='Multi trip',default_courier=self.courier)
+        self.template=RouteTemplate.objects.create(route=self.route,kind=RouteTemplate.Kind.WEEKDAY)
+        self.point=DeliveryPoint.objects.create(name='Point',code='MT',address='Moscow')
+        RouteTemplateItem.objects.create(template=self.template,point=self.point,route_order=1)
+        self.day=timezone.localdate()
+
+    def test_completed_run_does_not_block_second_run_same_day(self):
+        first=generate_route_run(self.template,self.day,courier=self.courier)
+        first_delivery=first.deliveries.get()
+        first_delivery.status=Delivery.Status.DONE
+        first_delivery.completed_at=timezone.now()
+        first_delivery.save(update_fields=['status','completed_at'])
+        second=generate_route_run(self.template,self.day,courier=self.courier)
+        self.assertNotEqual(first.pk,second.pk)
+        self.assertEqual(RouteRun.objects.filter(route=self.route,run_date=self.day).count(),2)
+        self.assertEqual(second.deliveries.exclude(status=Delivery.Status.DONE).count(),1)
+
+    def test_open_run_is_reused_instead_of_duplicated(self):
+        first=generate_route_run(self.template,self.day,courier=self.courier)
+        second=generate_route_run(self.template,self.day,courier=self.courier)
+        self.assertEqual(first.pk,second.pk)
+        self.assertEqual(RouteRun.objects.filter(route=self.route,run_date=self.day).count(),1)
