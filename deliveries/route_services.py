@@ -35,15 +35,25 @@ def _ordered_for_courier(template, items, courier):
 @transaction.atomic
 def generate_route_run(template, run_date, courier=None, enabled_item_ids=None):
     courier = courier or template.route.default_courier
-    run, _ = RouteRun.objects.get_or_create(
+    # Reuse an open run while it still has work. Once every delivery in the
+    # latest run is completed, a new assignment on the same date becomes a
+    # separate trip instead of silently reopening/reusing the completed run.
+    same_day_runs = RouteRun.objects.select_for_update().filter(
         route=template.route,
         run_date=run_date,
-        defaults={
-            'template': template,
-            'assigned_courier': courier,
-            'status': RouteRun.Status.READY,
-        },
+    ).order_by('-created_at', '-id')
+    run = next(
+        (candidate for candidate in same_day_runs if not candidate.deliveries.exists() or candidate.deliveries.exclude(status=Delivery.Status.DONE).exists()),
+        None,
     )
+    if run is None:
+        run = RouteRun.objects.create(
+            route=template.route,
+            run_date=run_date,
+            template=template,
+            assigned_courier=courier,
+            status=RouteRun.Status.READY,
+        )
     run.template = template
     run.assigned_courier = courier
     if run.status == RouteRun.Status.DRAFT:
