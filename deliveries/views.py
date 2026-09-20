@@ -132,7 +132,14 @@ def import_excel(request):
 def courier_today(request):
     if request.user.is_dispatcher: return redirect('dispatcher_dashboard')
     today=timezone.localdate()
-    deliveries=list(Delivery.objects.filter(delivery_date=today,courier=request.user).select_related('point','route_run__route','route_run__template').order_by('route_run__route__name','route_order','id'))
+    deliveries=list(Delivery.objects.filter(delivery_date=today,courier=request.user).select_related('point','route_run__route','route_run__template').order_by('route_run__created_at','route_order','id'))
+    # Keep each RouteRun contiguous. Active/new trips come first, while fully
+    # completed trips remain below as today's history instead of blocking work.
+    run_active={}
+    for d in deliveries:
+        key=d.route_run_id or 0
+        run_active[key]=run_active.get(key,False) or d.status!=Delivery.Status.DONE
+    deliveries.sort(key=lambda d:(0 if run_active.get(d.route_run_id or 0) else 1, -(d.route_run.created_at.timestamp() if d.route_run_id else 0), d.route_order, d.id))
     done=sum(d.status==Delivery.Status.DONE for d in deliveries)
     unfinished=[d for d in deliveries if d.status!=Delivery.Status.DONE]
     selected_id=request.GET.get('selected','').strip()
