@@ -569,3 +569,14 @@ body:not(.dispatcher-ui):not(.courier-ui) main.wrap > .card form .btn { margin-t
   .selected-card .selected-labline{justify-content:flex-start!important;gap:7px!important}
   .selected-card .selected-labline .selected-lpu{margin-left:0!important;margin-right:auto!important}
 }
+
+
+/* LPU badge legibility at arm's-length / in-car viewing. */
+.selected-lpu{min-height:32px!important;border-width:1.5px!important;border-color:#c8d6e8!important;box-shadow:0 1px 2px rgba(28,52,84,.06)}
+.selected-lpu-label{padding:0 9px!important;font-size:12px!important;font-weight:900!important;color:#536a86!important;letter-spacing:.06em}
+.selected-lpu strong{padding:0 11px!important;font-size:16px!important;font-weight:900!important;color:#1d3150!important;letter-spacing:.02em}
+@media(max-width:560px){
+  .selected-card .selected-lpu{min-height:30px!important;border-radius:8px!important}
+  .selected-card .selected-lpu-label{padding:0 8px!important;font-size:11px!important}
+  .selected-card .selected-lpu strong{padding:0 10px!important;font-size:15px!important}
+}
