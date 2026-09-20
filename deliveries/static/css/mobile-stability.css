@@ -560,3 +560,12 @@ body:not(.dispatcher-ui):not(.courier-ui) main.wrap > .card form .btn { margin-t
   .selected-card .selected-lpu-label{padding:0 6px;font-size:9px}
   .selected-card .selected-lpu strong{padding:0 8px;font-size:12px}
 }
+
+
+/* Keep lab and LPU together as one left-to-right identity group. */
+.selected-labline{justify-content:flex-start!important;width:100%!important}
+.selected-labline .selected-lpu{margin-left:0!important;margin-right:auto!important}
+@media(max-width:560px){
+  .selected-card .selected-labline{justify-content:flex-start!important;gap:7px!important}
+  .selected-card .selected-labline .selected-lpu{margin-left:0!important;margin-right:auto!important}
+}
