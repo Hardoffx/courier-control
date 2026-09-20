@@ -43,7 +43,7 @@
   <section id="route-list" class="route-section">
     <div class="route-title"><h2>Мой маршрут сегодня</h2><span class="muted">{{ total }} точек</span></div>
     <div class="route-list route-accordion-list">
-      {% for d in deliveries %}
+      {% for d in active_deliveries %}
       <details id="delivery-{{ d.pk }}" class="route-item {% if d.status == 'done' %}done{% elif d.status == 'problem' %}problem{% elif selected_delivery and d.pk == selected_delivery.pk %}current{% endif %}" data-delivery-id="{{ d.pk }}">
         <summary class="route-row">
           <span class="route-dot">{% if d.status == 'done' %}✓{% elif d.status == 'problem' %}!{% else %}{{ d.route_order }}{% endif %}</span>
@@ -92,8 +92,30 @@
           {% endif %}
         </div>
       </details>
-      {% empty %}<div style="padding:18px">На сегодня заданий нет.</div>{% endfor %}
+      {% empty %}<div style="padding:18px">Активных заданий сейчас нет.</div>{% endfor %}
     </div>
+    {% if completed_deliveries %}
+    <details class="completed-trips">
+      <summary class="completed-trips-summary">Выполненные рейсы сегодня ({{ completed_runs_count }})</summary>
+      <div class="route-list route-accordion-list completed-trip-list">
+        {% for d in completed_deliveries %}
+        <details id="delivery-{{ d.pk }}" class="route-item done" data-delivery-id="{{ d.pk }}">
+          <summary class="route-row">
+            <span class="route-dot">✓</span>
+            <div class="route-primary"><div class="route-labline">{% include 'includes/lab_badge.html' with delivery=d %}{% if d.lpu_number %}<span class="route-sub route-lpu">ЛПУ {{ d.lpu_number }}</span>{% endif %}</div><div class="route-address">{{ d.address }}</div></div>
+            <div class="route-time">{% if d.completed_at %}{{ d.completed_at|date:"H:i" }}{% else %}Выполнено{% endif %}</div>
+            <span class="route-chevron" aria-hidden="true"></span>
+          </summary>
+          <div class="route-detail-body">
+            <div class="route-complete-note">✓ Точка выполнена{% if d.completed_at %} · {{ d.completed_at|date:"H:i" }}{% endif %}</div>
+            {% if d.courier_daily_note %}<div class="route-detail-note courier-note"><b>Не забыть:</b> {{ d.courier_daily_note }}</div>{% endif %}
+            {% if d.problem_reason %}<div class="route-detail-problem"><b>{{ d.problem_reason }}</b></div>{% endif %}
+          </div>
+        </details>
+        {% endfor %}
+      </div>
+    </details>
+    {% endif %}
   </section>
 </div>
 {% endblock %}

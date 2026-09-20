@@ -2,7 +2,7 @@
 
 Перед разработкой читать этот файл, ROADMAP.md, DESIGN_SPEC.md и PILOT_ACCEPTANCE.md; затем проверять main и CI. После крупного блока обновлять.
 
-Последнее обновление: 2026-09-18. Repo: Hardoffx/courier-control. Branch: main.
+Последнее обновление: 2026-09-20. Repo: Hardoffx/courier-control. Branch: main.
 Стадия: functional MVP complete; internal pilot hardening complete enough for live deployment/acceptance.
 
 ## Continuation
@@ -21,7 +21,9 @@
 - RouteRun detail has route KPIs, current state, attention/problem panel, recent event timeline and existing reorder/template controls.
 - Courier Today has real selected-point state, Previous/Next selection, explicit route context, notes/problems/phone, exact completion time on completed rows, optional GPS and separate reorder controls.
 - Route rows no longer force page scrolling; selection is explicit and never changes route_order.
-- Deferred map monitoring and staging demo-data acceptance remain future work.
+- Courier reorder now swaps only the two affected unfinished positions; completed and unrelated rows keep their exact route_order, preventing list reshuffles. The moved point remains selected after the action.
+- Dispatcher next-stop selection prefers an unfinished non-problem point, matching courier selection semantics.
+- Deferred map monitoring remains explicitly out of scope for the current update.
 
 ## Source of truth
 DESIGN_SPEC.md, docs/ROUTE_CENTRIC_OPERATIONS.md, docs/COURIER_WORKSPACE.md и design/v1/courier-control-v1-reference.png; design/v1/README.md фиксирует continuity rule. Основной сценарий list-first, карта вторична. Courier mobile-first. Dispatcher полноценно работает desktop/tablet/phone. Встроенная operational карта только Yandex Maps.

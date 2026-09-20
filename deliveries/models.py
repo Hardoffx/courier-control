@@ -84,7 +84,7 @@ class RouteRun(models.Model):
     status=models.CharField(max_length=20,choices=Status.choices,default=Status.DRAFT)
     created_at=models.DateTimeField(auto_now_add=True); updated_at=models.DateTimeField(auto_now=True)
     class Meta:
-        ordering=('-run_date','route__name'); constraints=[models.UniqueConstraint(fields=('route','run_date'),name='unique_route_run_per_day')]
+        ordering=('-run_date','-created_at','route__name')
     def __str__(self): return f'{self.run_date} · {self.route}'
 
 

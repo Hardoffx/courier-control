@@ -448,3 +448,17 @@ body:not(.dispatcher-ui):not(.courier-ui) main.wrap > .card form .btn { margin-t
 @media(max-width:560px){.route-board-tools{grid-template-columns:1fr}.route-board-tools label:first-of-type{grid-column:auto}.selected-nav{grid-template-columns:1fr 1fr}.selected-nav .btn{white-space:normal;min-width:0}.selected-card .action-row{grid-template-columns:1fr 1fr}.selected-card .action-row .btn{white-space:normal;overflow-wrap:anywhere}}
 
 .courier-note{border-left:3px solid #f0b429;background:#fff8e6}.courier-note-form{margin:10px 0}.courier-note-form label{margin:0}.courier-note-form input{margin-top:5px}
+
+/* Courier daily history: keep completed trips out of the active work surface. */
+.completed-trips{margin-top:16px;border:1px solid var(--line,#d9dee7);border-radius:14px;background:var(--surface,#fff);overflow:hidden}
+.completed-trips-summary{cursor:pointer;font-weight:700;padding:14px 16px;list-style:none}
+.completed-trips-summary::-webkit-details-marker{display:none}
+.completed-trips-summary::after{content:"▾";float:right;transition:transform .15s ease}
+.completed-trips[open]>.completed-trips-summary::after{transform:rotate(180deg)}
+.completed-trip-list{border-top:1px solid var(--line,#d9dee7)}
+
+/* Keep quick filters fully inside narrow viewports. */
+@media (max-width: 768px){
+  .quick-filters{display:flex;max-width:100%;min-width:0;overflow:visible;flex-wrap:wrap}
+  .quick-filters .filter-chip{flex:0 0 auto;max-width:100%}
+}

@@ -53,7 +53,7 @@ def dispatcher_dashboard(request):
     suggestions={s.run_id:s for s in RouteOrderSuggestion.objects.filter(run__run_date=selected_date,status=RouteOrderSuggestion.Status.PENDING).select_related('courier')}
     runs=[]
     for run in RouteRun.objects.filter(run_date=selected_date).select_related('route','template','assigned_courier').prefetch_related('deliveries').order_by('route__name'):
-        rows=list(run.deliveries.all()); total=len(rows); done=sum(d.status==Delivery.Status.DONE for d in rows); problem=sum(d.status==Delivery.Status.PROBLEM for d in rows); completed=[d for d in rows if d.status==Delivery.Status.DONE and d.completed_at]; last_done=max(completed,key=lambda d:d.completed_at) if completed else None; remaining=total-done; next_stop=next((d for d in sorted(rows,key=lambda x:(x.route_order,x.id)) if d.status!=Delivery.Status.DONE),None); state='completed' if total and done==total else ('attention' if problem or not run.assigned_courier else ('active' if done else 'waiting')); runs.append({'run':run,'total':total,'done':done,'remaining':remaining,'problem':problem,'percent':round(done*100/total) if total else 0,'order_suggestion':suggestions.get(run.pk),'last_done':last_done,'next_stop':next_stop,'state':state})
+        rows=list(run.deliveries.all()); total=len(rows); done=sum(d.status==Delivery.Status.DONE for d in rows); problem=sum(d.status==Delivery.Status.PROBLEM for d in rows); completed=[d for d in rows if d.status==Delivery.Status.DONE and d.completed_at]; last_done=max(completed,key=lambda d:d.completed_at) if completed else None; remaining=total-done; ordered_remaining=[d for d in sorted(rows,key=lambda x:(x.route_order,x.id)) if d.status!=Delivery.Status.DONE]; next_stop=next((d for d in ordered_remaining if d.status!=Delivery.Status.PROBLEM),None) or (ordered_remaining[0] if ordered_remaining else None); state='completed' if total and done==total else ('attention' if problem or not run.assigned_courier else ('active' if done else 'waiting')); runs.append({'run':run,'total':total,'done':done,'remaining':remaining,'problem':problem,'percent':round(done*100/total) if total else 0,'order_suggestion':suggestions.get(run.pk),'last_done':last_done,'next_stop':next_stop,'state':state})
     route_count=len(runs); completed_routes=sum(item['state']=='completed' for item in runs); attention_routes=sum(item['state']=='attention' for item in runs); done_count=counts.get(Delivery.Status.DONE,0); completion_percent=round(done_count*100/base.count()) if base.count() else 0
     visible_runs=runs
     if route_q:
@@ -132,7 +132,14 @@ def import_excel(request):
 def courier_today(request):
     if request.user.is_dispatcher: return redirect('dispatcher_dashboard')
     today=timezone.localdate()
-    deliveries=list(Delivery.objects.filter(delivery_date=today,courier=request.user).select_related('point','route_run__route','route_run__template').order_by('route_run__route__name','route_order','id'))
+    deliveries=list(Delivery.objects.filter(delivery_date=today,courier=request.user).select_related('point','route_run__route','route_run__template').order_by('route_run__created_at','route_order','id'))
+    # Keep each RouteRun contiguous. Active/new trips come first, while fully
+    # completed trips remain below as today's history instead of blocking work.
+    run_active={}
+    for d in deliveries:
+        key=d.route_run_id or 0
+        run_active[key]=run_active.get(key,False) or d.status!=Delivery.Status.DONE
+    deliveries.sort(key=lambda d:(0 if run_active.get(d.route_run_id or 0) else 1, -(d.route_run.created_at.timestamp() if d.route_run_id else 0), d.route_order, d.id))
     done=sum(d.status==Delivery.Status.DONE for d in deliveries)
     unfinished=[d for d in deliveries if d.status!=Delivery.Status.DONE]
     selected_id=request.GET.get('selected','').strip()
@@ -148,8 +155,13 @@ def courier_today(request):
     for delivery in deliveries:
         if delivery.route_run_id and delivery.route_run_id not in seen:
             seen.add(delivery.route_run_id); route_runs.append(delivery.route_run)
-    route_name=' + '.join(run.route.name for run in route_runs) if route_runs else ('Без маршрута' if deliveries else '')
-    return render(request,'courier/today.html',{'deliveries':deliveries,'done':done,'total':len(deliveries),'today':today,'selected_delivery':selected_delivery,'previous_delivery':previous_delivery,'next_delivery':next_delivery,'route_name':route_name,'route_runs':route_runs,'problem_reasons':PROBLEM_REASONS})
+    active_deliveries=[d for d in deliveries if run_active.get(d.route_run_id or 0)]
+    completed_deliveries=[d for d in deliveries if not run_active.get(d.route_run_id or 0)]
+    completed_run_ids={d.route_run_id for d in completed_deliveries if d.route_run_id}
+    completed_runs_count=len(completed_run_ids)
+    active_runs=[run for run in route_runs if run.pk not in completed_run_ids]
+    route_name=' + '.join(run.route.name for run in active_runs) if active_runs else ('Мой маршрут' if completed_deliveries else ('Без маршрута' if deliveries else ''))
+    return render(request,'courier/today.html',{'deliveries':deliveries,'active_deliveries':active_deliveries,'completed_deliveries':completed_deliveries,'completed_runs_count':completed_runs_count,'done':done,'total':len(deliveries),'today':today,'selected_delivery':selected_delivery,'previous_delivery':previous_delivery,'next_delivery':next_delivery,'route_name':route_name,'route_runs':route_runs,'problem_reasons':PROBLEM_REASONS})
 
 @login_required
 @require_POST
@@ -167,20 +179,27 @@ def courier_update(request,pk):
 def courier_reorder(request,pk):
     delivery=get_object_or_404(Delivery.objects.select_related('route_run__template'),pk=pk,courier=request.user,delivery_date=timezone.localdate()); direction=request.POST.get('direction')
     if delivery.route_run_id:
-        items=list(Delivery.objects.filter(route_run_id=delivery.route_run_id,courier=request.user,delivery_date=delivery.delivery_date).exclude(status=Delivery.Status.DONE).order_by('route_order','id')); run=delivery.route_run
+        full_items=list(Delivery.objects.filter(route_run_id=delivery.route_run_id,courier=request.user,delivery_date=delivery.delivery_date).order_by('route_order','id')); run=delivery.route_run
     else:
-        items=list(Delivery.objects.filter(route_run__isnull=True,courier=request.user,delivery_date=delivery.delivery_date).exclude(status=Delivery.Status.DONE).order_by('route_order','id')); run=None
+        full_items=list(Delivery.objects.filter(route_run__isnull=True,courier=request.user,delivery_date=delivery.delivery_date).order_by('route_order','id')); run=None
+    items=[item for item in full_items if item.status!=Delivery.Status.DONE]
     try: index=items.index(delivery)
     except ValueError: return redirect('courier_today')
     target=index-1 if direction=='up' else index+1
+    if direction not in ('up','down'): return redirect('courier_today')
     if 0<=target<len(items):
-        before=[item.point_id for item in items if item.point_id]
-        items[index],items[target]=items[target],items[index]
+        other=items[target]
+        before=[item.point_id for item in full_items if item.point_id]
+        old_order,other_order=delivery.route_order,other.route_order
         with transaction.atomic():
-            for pos,item in enumerate(items,start=1):
-                if item.route_order!=pos: item.route_order=pos; item.save(update_fields=['route_order'])
+            # Swap only the two unfinished positions. Completed rows and every unrelated
+            # delivery keep their exact route_order, so the route cannot "shuffle".
+            delivery.route_order,other.route_order=other_order,old_order
+            delivery.save(update_fields=['route_order'])
+            other.save(update_fields=['route_order'])
             if run:
-                after=[item.point_id for item in items if item.point_id]
+                after_rows=Delivery.objects.filter(route_run_id=run.pk,courier=request.user,delivery_date=delivery.delivery_date).order_by('route_order','id')
+                after=[item.point_id for item in after_rows if item.point_id]
                 record_courier_order_change(run,request.user,before,after)
-        DeliveryEvent.objects.create(delivery=delivery,actor=request.user,action='reordered',note=f'{index+1} → {target+1}')
-    return redirect('courier_today')
+        DeliveryEvent.objects.create(delivery=delivery,actor=request.user,action='reordered',note=f'Позиция {old_order} → {other_order}')
+    return redirect(f"{redirect('courier_today').url}?selected={delivery.pk}")

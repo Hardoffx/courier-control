@@ -12,6 +12,7 @@ from .models import (
     DeliveryPoint,
     Route,
     RouteOrderSuggestion,
+    RouteRun,
     RouteTemplate,
     RouteTemplateItem,
     Delivery,
@@ -111,7 +112,7 @@ class RouteWorkflowV2Tests(TestCase):
             {'direction': 'up'},
         )
 
-        self.assertRedirects(response, reverse('courier_today'))
+        self.assertRedirects(response, f"{reverse('courier_today')}?selected={rows[1].pk}")
         suggestion = RouteOrderSuggestion.objects.get(run=run)
         self.assertEqual(suggestion.status, RouteOrderSuggestion.Status.PENDING)
         self.assertEqual(suggestion.original_point_order, [self.p1.pk, self.p2.pk])
@@ -218,4 +219,73 @@ class CourierWorkspaceContractTests(TestCase):
     def test_completed_row_renders_exact_completion_time(self):
         self.rows[0].status=Delivery.Status.DONE; self.rows[0].completed_at=timezone.now(); self.rows[0].save()
         response=self.client.get(reverse('courier_today'))
-        self.assertContains(response,self.rows[0].completed_at.strftime('%H:%M'))
+        self.assertContains(response,timezone.localtime(self.rows[0].completed_at).strftime('%H:%M'))
+
+    def test_reorder_swaps_only_two_unfinished_positions(self):
+        self.rows[0].status=Delivery.Status.DONE; self.rows[0].completed_at=timezone.now(); self.rows[0].save()
+        original={row.pk: row.route_order for row in self.rows}
+        response=self.client.post(reverse('courier_reorder',args=[self.rows[2].pk]),{'direction':'up'})
+        self.assertEqual(response.status_code,302)
+        for row in self.rows: row.refresh_from_db()
+        self.assertEqual(self.rows[0].route_order,original[self.rows[0].pk])
+        self.assertEqual(self.rows[1].route_order,original[self.rows[2].pk])
+        self.assertEqual(self.rows[2].route_order,original[self.rows[1].pk])
+        self.assertIn(f'selected={self.rows[2].pk}',response.url)
+
+    def test_reorder_never_moves_completed_or_unrelated_rows(self):
+        extra=DeliveryPoint.objects.create(name='Extra',code='WX',address='Moscow, Extra')
+        extra_delivery=Delivery.objects.create(delivery_date=self.day,courier=self.courier,point=extra,address=extra.address,source_label='Extra',route_order=99)
+        self.rows[1].status=Delivery.Status.DONE; self.rows[1].completed_at=timezone.now(); self.rows[1].save()
+        completed_order=self.rows[1].route_order
+        self.client.post(reverse('courier_reorder',args=[self.rows[2].pk]),{'direction':'up'})
+        self.rows[1].refresh_from_db(); extra_delivery.refresh_from_db()
+        self.assertEqual(self.rows[1].route_order,completed_order)
+        self.assertEqual(extra_delivery.route_order,99)
+
+
+class MultipleSameDayRouteRunTests(TestCase):
+    def setUp(self):
+        self.courier=User.objects.create_user(username='multi-trip-courier',password='x',role=User.Role.COURIER)
+        self.route=Route.objects.create(name='Multi trip',default_courier=self.courier)
+        self.template=RouteTemplate.objects.create(route=self.route,kind=RouteTemplate.Kind.WEEKDAY)
+        self.point=DeliveryPoint.objects.create(name='Point',code='MT',address='Moscow')
+        RouteTemplateItem.objects.create(template=self.template,point=self.point,route_order=1)
+        self.day=timezone.localdate()
+
+    def test_completed_run_does_not_block_second_run_same_day(self):
+        first=generate_route_run(self.template,self.day,courier=self.courier)
+        first_delivery=first.deliveries.get()
+        first_delivery.status=Delivery.Status.DONE
+        first_delivery.completed_at=timezone.now()
+        first_delivery.save(update_fields=['status','completed_at'])
+        second=generate_route_run(self.template,self.day,courier=self.courier)
+        self.assertNotEqual(first.pk,second.pk)
+        self.assertEqual(RouteRun.objects.filter(route=self.route,run_date=self.day).count(),2)
+        self.assertEqual(second.deliveries.exclude(status=Delivery.Status.DONE).count(),1)
+
+    def test_open_run_is_reused_instead_of_duplicated(self):
+        first=generate_route_run(self.template,self.day,courier=self.courier)
+        second=generate_route_run(self.template,self.day,courier=self.courier)
+        self.assertEqual(first.pk,second.pk)
+        self.assertEqual(RouteRun.objects.filter(route=self.route,run_date=self.day).count(),1)
+
+
+class CourierCompletedTripHistoryTests(TestCase):
+    def setUp(self):
+        self.courier=User.objects.create_user(username='history-courier',password='x',role=User.Role.COURIER)
+        self.route=Route.objects.create(name='History route',default_courier=self.courier)
+        self.template=RouteTemplate.objects.create(route=self.route,kind=RouteTemplate.Kind.WEEKDAY)
+        self.point=DeliveryPoint.objects.create(name='History point',code='H1',address='Old completed address')
+        RouteTemplateItem.objects.create(template=self.template,point=self.point,route_order=1)
+        self.client.force_login(self.courier)
+
+    def test_completed_trip_is_collapsed_below_active_trip(self):
+        day=timezone.localdate()
+        first=generate_route_run(self.template,day,courier=self.courier)
+        old=first.deliveries.get(); old.status=Delivery.Status.DONE; old.completed_at=timezone.now(); old.save(update_fields=['status','completed_at'])
+        second=generate_route_run(self.template,day,courier=self.courier)
+        response=self.client.get(reverse('courier_today'))
+        self.assertContains(response,'Выполненные рейсы сегодня (1)')
+        self.assertContains(response,'completed-trips')
+        self.assertEqual(response.context['active_deliveries'][0].route_run_id,second.pk)
+        self.assertEqual(response.context['completed_deliveries'][0].route_run_id,first.pk)
