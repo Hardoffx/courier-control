@@ -52,15 +52,10 @@
 .action-row.selected-map-only{grid-template-columns:1fr}
 .action-row.selected-map-only>.btn{width:100%}
 
-/* Selected-point metadata: exact equal baseline spacing address -> time -> phone. */
-.next-body .address-line{margin-bottom:0}
-.next-body .next-meta{display:grid;gap:0;margin:0 0 20px}
-.next-body .next-meta .meta-line{margin:0}
-.next-body .next-meta .meta-line + .meta-line{margin-top:18px}
-.next-body .address-line + .next-meta .meta-line:first-child{margin-top:18px}
-.next-body .phone-meta-line{margin-top:18px!important}
-.next-body .next-meta .meta-line:first-child.phone-meta-line{margin-top:18px!important}
-@media(max-width:430px){
-  .next-body .address-line{margin-bottom:0}
-  .next-body .next-meta{gap:0;margin-top:0}
-}
+/* Selected-point metadata: compact, equal visual spacing. */
+.next-body .address-line{margin:0 0 10px}
+.next-body .next-meta{display:flex;flex-direction:column;gap:10px;margin:0 0 14px}
+.next-body .next-meta .meta-line,
+.next-body .next-meta .meta-line + .meta-line,
+.next-body .phone-meta-line,
+.next-body .next-meta .meta-line:first-child.phone-meta-line{margin:0!important}
