@@ -112,7 +112,7 @@ class RouteWorkflowV2Tests(TestCase):
             {'direction': 'up'},
         )
 
-        self.assertRedirects(response, reverse('courier_today'))
+        self.assertRedirects(response, f"{reverse('courier_today')}?selected={rows[1].pk}")
         suggestion = RouteOrderSuggestion.objects.get(run=run)
         self.assertEqual(suggestion.status, RouteOrderSuggestion.Status.PENDING)
         self.assertEqual(suggestion.original_point_order, [self.p1.pk, self.p2.pk])
@@ -219,7 +219,7 @@ class CourierWorkspaceContractTests(TestCase):
     def test_completed_row_renders_exact_completion_time(self):
         self.rows[0].status=Delivery.Status.DONE; self.rows[0].completed_at=timezone.now(); self.rows[0].save()
         response=self.client.get(reverse('courier_today'))
-        self.assertContains(response,self.rows[0].completed_at.strftime('%H:%M'))
+        self.assertContains(response,timezone.localtime(self.rows[0].completed_at).strftime('%H:%M'))
 
     def test_reorder_swaps_only_two_unfinished_positions(self):
         self.rows[0].status=Delivery.Status.DONE; self.rows[0].completed_at=timezone.now(); self.rows[0].save()
