@@ -51,7 +51,7 @@ class LabIdentityUiTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(html.count(f'id="delivery-{delivery.pk}"'), 1)
         self.assertContains(response, 'class="route-item')
-        self.assertContains(response, 'class="route-detail-body"')
+        self.assertContains(response, 'class="route-detail-body compact-route-detail"')
         self.assertNotContains(response, 'class="card delivery-detail"')
         # ManifestStaticFilesStorage fingerprints production assets, so assert
         # the stable asset stem rather than the unhashed development filename.

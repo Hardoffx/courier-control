@@ -19,6 +19,16 @@ from .route_services import record_courier_order_change
 
 PROBLEM_REASONS=('Нет доступа','Не принимают','Получатель недоступен','Неверный адрес','Нужно вернуться позже','Другая проблема')
 
+def _format_phone(phone):
+    digits=''.join(ch for ch in (phone or '') if ch.isdigit())
+    if len(digits)==11 and digits[0] in '78':
+        digits='7'+digits[1:]
+    elif len(digits)==10:
+        digits='7'+digits
+    if len(digits)==11 and digits[0]=='7':
+        return f'+7 ({digits[1:4]}) {digits[4:7]}-{digits[7:9]}-{digits[9:11]}'
+    return phone or ''
+
 def dispatcher_required(view):
     @wraps(view)
     @login_required
@@ -141,6 +151,8 @@ def courier_today(request):
         key=d.route_run_id or 0
         run_active[key]=run_active.get(key,False) or d.status!=Delivery.Status.DONE
     deliveries.sort(key=lambda d:(0 if run_active.get(d.route_run_id or 0) else 1, -(d.route_run.created_at.timestamp() if d.route_run_id else 0), d.route_order, d.id))
+    for d in deliveries:
+        d.phone_display=_format_phone(d.phone)
     done=sum(d.status==Delivery.Status.DONE for d in deliveries)
     unfinished=[d for d in deliveries if d.status!=Delivery.Status.DONE]
     selected_id=request.GET.get('selected','').strip()
