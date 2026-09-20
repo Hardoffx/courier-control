@@ -10,7 +10,7 @@
 
   {% if selected_delivery %}
   <section class="card next-card selected-card" data-selected-id="{{ selected_delivery.pk }}">
-    <div class="next-bar"><span>Выбранная точка</span><span>№{{ selected_delivery.route_order }} из {{ current_run_total }} · {{ current_run_done }}/{{ current_run_total }} выполнено</span></div>
+    <div class="next-bar"><span>Выбранная точка</span><span>№{{ selected_delivery.route_order }} из {{ current_run_total }}</span></div>
     <div class="next-body">
       <div class="next-lab">{% include 'includes/lab_badge.html' with delivery=selected_delivery %}</div>
       <div class="address-line">
@@ -41,7 +41,7 @@
   {% endif %}
 
   <section id="route-list" class="route-section">
-    <div class="route-title"><h2>Мой маршрут сегодня</h2><span class="muted">{{ total }} точек</span></div>
+    <div class="route-title"><h2>Мой маршрут сегодня</h2><span class="muted">{{ current_run_total }} точек</span></div>
     <div class="route-list route-accordion-list">
       {% for d in active_deliveries %}
       <details id="delivery-{{ d.pk }}" class="route-item {% if d.status == 'done' %}done{% elif d.status == 'problem' %}problem{% elif selected_delivery and d.pk == selected_delivery.pk %}current{% endif %}" data-delivery-id="{{ d.pk }}">
