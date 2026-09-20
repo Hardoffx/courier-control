@@ -462,3 +462,25 @@ body:not(.dispatcher-ui):not(.courier-ui) main.wrap > .card form .btn { margin-t
   .quick-filters{display:flex;max-width:100%;min-width:0;overflow:visible;flex-wrap:wrap}
   .quick-filters .filter-chip{flex:0 0 auto;max-width:100%}
 }
+
+
+/* Selected courier card — compact production layout, 2026-09-20 */
+.selected-note-editor{margin:10px 0;border:1px solid var(--line,#d9dee7);border-radius:12px;background:#fff;overflow:hidden}
+.selected-note-toggle{list-style:none;cursor:pointer;padding:12px 14px;font-weight:800;color:var(--ink);display:flex;align-items:center;justify-content:space-between}
+.selected-note-toggle::-webkit-details-marker{display:none}
+.selected-note-toggle::after{content:"⌄";color:var(--muted);font-size:18px}
+.selected-note-editor[open] .selected-note-toggle::after{transform:rotate(180deg)}
+.selected-note-editor .courier-note-form{margin:0;padding:0 14px 14px}
+.selected-nav.single-nav{grid-template-columns:1fr}
+.selected-nav.single-nav .btn{grid-column:1!important;width:100%}
+@media(max-width:560px){
+  .selected-card .next-body{padding-top:14px;padding-bottom:14px}
+  .selected-card .next-lab{margin-bottom:8px}
+  .selected-card .next-meta{margin-top:10px;margin-bottom:10px}
+  .selected-card .action-row{gap:8px}
+  .selected-card .action-row .btn:first-child{font-weight:850}
+  .selected-card .action-row .btn:last-child{font-weight:750}
+  .selected-card .selected-nav{margin:10px 0}
+  .selected-card .big-actions{gap:8px}
+  .selected-note-editor{margin:10px 0}
+}
