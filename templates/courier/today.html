@@ -12,12 +12,12 @@
   <section class="card next-card selected-card" data-selected-id="{{ selected_delivery.pk }}">
     <div class="next-bar"><span>Выбранная точка</span><span>№{{ selected_delivery.route_order }} из {{ current_run_total }}</span></div>
     <div class="next-body">
-      <div class="next-lab">{% include 'includes/lab_badge.html' with delivery=selected_delivery %}</div>
+      <div class="next-lab selected-labline">{% include 'includes/lab_badge.html' with delivery=selected_delivery %}{% if selected_delivery.lpu_number %}<span class="selected-lpu"><span class="selected-lpu-label">ЛПУ</span><strong>{{ selected_delivery.lpu_number }}</strong></span>{% endif %}</div>
       <div class="address-line">
         <span class="address-pin" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a7 7 0 0 0-7 7c0 5.3 7 13 7 13s7-7.7 7-13a7 7 0 0 0-7-7Zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5Z"/></svg></span>
         <div>
           <h2 class="next-address">{{ selected_delivery.address }}</h2>
-          <div class="lab-caption">{% if selected_delivery.lpu_number %}<strong>ЛПУ {{ selected_delivery.lpu_number }}</strong>{% endif %}</div>
+          <div class="lab-caption"></div>
         </div>
       </div>
       {% if selected_delivery.comment %}<div class="route-detail-note selected-note">{{ selected_delivery.comment }}</div>{% endif %}{% if selected_delivery.problem_reason %}<div class="route-detail-problem"><b>⚠ {{ selected_delivery.problem_reason }}</b></div>{% endif %}<div class="next-meta">
