@@ -611,3 +611,12 @@ body:not(.dispatcher-ui):not(.courier-ui) main.wrap > .card form .btn { margin-t
   .selected-card .selected-labline>.lab-badge{padding:0 10px!important;font-size:15px!important}
   .selected-card .selected-labline>.lab-badge--invitro{padding:0 9px!important;font-size:13px!important}
 }
+
+
+/* Smooth in-place courier reorder */
+.route-accordion-list .route-item{will-change:transform}
+.route-item.reorder-moving{position:relative;z-index:3;box-shadow:0 10px 24px rgba(27,55,92,.14)!important}
+.route-item.reorder-error{animation:reorder-error-shake .32s ease 2}
+.ajax-reorder-form[data-busy="1"] .btn{opacity:.6;pointer-events:none}
+@keyframes reorder-error-shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+@media(prefers-reduced-motion:reduce){.route-accordion-list .route-item{transition:none!important;animation:none!important}}
