@@ -750,3 +750,22 @@ body:not(.dispatcher-ui):not(.courier-ui) main.wrap > .card form .btn { margin-t
  .compact-top-actions .compact-icon-action,.compact-top-actions .route-select-btn{width:58px!important;min-width:58px!important}
  .compact-top-actions .compact-icon-action>span:last-child{font-size:9px!important}
 }
+
+
+/* Align all four quick actions to one visual row. */
+.compact-top-actions{align-items:stretch!important}
+.compact-top-actions .compact-map-action,
+.compact-top-actions .compact-icon-action,
+.compact-top-actions .route-select-btn,
+.compact-top-actions>details,
+.compact-top-actions>details>summary{height:48px!important;min-height:48px!important;max-height:48px!important;box-sizing:border-box!important;margin:0!important}
+.compact-top-actions .compact-map-action{display:flex!important;align-items:center!important;justify-content:center!important;border-radius:12px!important;line-height:1.1!important}
+.compact-top-actions>details{display:block!important}
+.compact-top-actions>details>summary{display:flex!important}
+@media(max-width:560px){
+ .compact-top-actions .compact-map-action,
+ .compact-top-actions .compact-icon-action,
+ .compact-top-actions .route-select-btn,
+ .compact-top-actions>details,
+ .compact-top-actions>details>summary{height:46px!important;min-height:46px!important;max-height:46px!important}
+}
