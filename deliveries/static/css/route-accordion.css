@@ -43,3 +43,11 @@
   .problem-panel>summary{width:100%}
   .problem-panel>summary.btn{display:flex}
 }
+
+/* Selected-point contact row: readable at dashboard distance, without a redundant call button. */
+.modern-meta-icon{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;color:#3979e8;flex:0 0 24px}
+.modern-meta-icon svg{width:22px;height:22px}
+.phone-meta-line{gap:10px}
+.selected-phone-number{font-weight:800;color:#2f73e8;text-decoration:none;font-variant-numeric:tabular-nums;letter-spacing:.01em}
+.action-row.selected-map-only{grid-template-columns:1fr}
+.action-row.selected-map-only>.btn{width:100%}
