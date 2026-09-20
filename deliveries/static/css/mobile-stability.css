@@ -530,3 +530,19 @@ body:not(.dispatcher-ui):not(.courier-ui) main.wrap > .card form .btn { margin-t
   .selected-card .selected-phone .phone-icon{width:19px;height:19px}
   .selected-card .selected-note-toggle{gap:10px!important}
 }
+
+
+/* Selected phone action — compact and functional */
+.selected-phone{appearance:none;cursor:pointer;border-radius:12px!important}
+.selected-phone .phone-label{line-height:1;white-space:nowrap}
+.selected-phone.has-phone{color:#1f5fbf!important;background:#f7fbff!important;border-color:#cfe0f7!important}
+.selected-phone-form{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;margin:8px 0 10px;padding:10px;border:1px solid var(--line,#d9dee7);border-radius:12px;background:#f8fbff}
+.selected-phone-form[hidden]{display:none!important}
+.selected-phone-form input{min-width:0;margin:0!important}
+.selected-phone-form .btn{margin:0!important;min-height:42px!important;padding:8px 12px!important}
+@media(max-width:560px){
+  .selected-card .action-row{grid-template-columns:minmax(0,1fr) auto!important}
+  .selected-card .selected-phone{width:auto!important;min-width:126px!important;min-height:58px!important;padding:8px 14px!important;font-size:15px!important}
+  .selected-card .selected-phone .phone-icon{width:18px;height:18px}
+  .selected-phone-form{grid-template-columns:minmax(0,1fr) auto;padding:8px}
+}
