@@ -546,3 +546,17 @@ body:not(.dispatcher-ui):not(.courier-ui) main.wrap > .card form .btn { margin-t
   .selected-card .selected-phone .phone-icon{width:18px;height:18px}
   .selected-phone-form{grid-template-columns:minmax(0,1fr) auto;padding:8px}
 }
+
+
+/* Selected lab + LPU identity line */
+.selected-labline{display:flex!important;align-items:center;gap:9px;flex-wrap:wrap}
+.selected-lpu{display:inline-flex;align-items:center;min-height:28px;border:1px solid #d8e2ef;border-radius:9px;background:#f7f9fc;overflow:hidden;color:#24364f;font-size:13px;line-height:1}
+.selected-lpu-label{display:inline-flex;align-items:center;align-self:stretch;padding:0 7px;background:#edf2f8;color:#687b93;font-size:10px;font-weight:850;letter-spacing:.07em}
+.selected-lpu strong{padding:0 9px;font-size:13px;font-weight:850;letter-spacing:.01em}
+.selected-card .lab-caption:empty{display:none}
+@media(max-width:560px){
+  .selected-card .selected-labline{margin-bottom:8px!important;gap:7px}
+  .selected-card .selected-lpu{min-height:25px;border-radius:8px}
+  .selected-card .selected-lpu-label{padding:0 6px;font-size:9px}
+  .selected-card .selected-lpu strong{padding:0 8px;font-size:12px}
+}
