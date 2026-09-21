@@ -346,12 +346,21 @@ def _fill(cell):
 def _is_pryadilnaya_service_address(address):
     """Office/warehouse at 2-я Прядильная, 1 is never a courier route point."""
     text = normalize_delivery_address(address).casefold().replace('ё', 'е')
-    # Match by address, not Excel row or source label. Building suffixes such as
-    # стр. 2 are intentionally allowed because exports vary between office/warehouse.
-    has_street = bool(re.search(r'(?iu)\\b(?:ул\\s+)?2[-–—]?я\\s+прядильная\\b|\\bпрядильная\\s+2[-–—]?я\\b', text))
-    has_house_one = bool(re.search(r'(?iu)(?:,|\\s)1(?:\\s|,|к\\d|с\\d|$)', text))
-    return has_street and has_house_one
-
+    # Avoid regex escaping mistakes here: tokenize normalized address and match
+    # the exact service street + house. Other houses on the street remain valid.
+    street = (
+        '2-я прядильная' in text
+        or '2я прядильная' in text
+        or 'прядильная 2-я' in text
+        or 'прядильная 2я' in text
+    )
+    if not street:
+        return False
+    parts = [part.strip() for part in text.split(',') if part.strip()]
+    for part in parts:
+        if part == '1' or part.startswith('1 ') or part.startswith('1с') or part.startswith('1к'):
+            return True
+    return False
 
 def _rows(content, create_points=False):
     wb = _open(content)
