@@ -259,7 +259,9 @@ def normalize_delivery_address(raw_address):
         )
 
     # House marker is unambiguous only when immediately followed by a number.
-    value = re.sub(r'(?iu)(?:\s*,\s*|\s+)\b(?:д|дом)\.?\s*(?:№\s*)?(?=\d)', ' ', value)
+    # Do this after settlement recognition below: in exports like
+    # «Юрлово д, дом № 89», the first «д» means деревня, not дом.
+    house_marker_cleanup_pending = True
 
 
     # Settlement types. Prefix forms are unambiguous because a name follows.
@@ -292,6 +294,9 @@ def normalize_delivery_address(raw_address):
             lambda m, c=canonical: f"{m.group('prefix')}{c} {m.group('name').strip()}",
             value,
         )
+
+    # Now remove actual house markers after settlement forms have been resolved.
+    value = re.sub(r'(?iu)(?:\s*,\s*|\s+)\b(?:д|дом)\.?\s*(?:№\s*)?(?=\d)', ' ', value)
 
     # City marker: display city name without redundant «г/город».
     value = re.sub(
