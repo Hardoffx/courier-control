@@ -124,43 +124,40 @@ const doneAt=Number(sessionStorage.getItem('courierDoneAt')||0);
 if(doneAt&&Date.now()-doneAt<1800){const wait=1800-(Date.now()-doneAt);const b=document.querySelector('.selected-card .done-form button');if(b){b.disabled=true;setTimeout(()=>{b.disabled=false},wait)}const card=document.querySelector('.selected-card');if(card){card.classList.add('just-advanced');setTimeout(()=>card.classList.remove('just-advanced'),1750)}const point=sessionStorage.getItem('courierDonePoint')||'';const toast=document.createElement('div');toast.className='courier-toast';toast.textContent='✓ '+(point?'Точка '+point.replace('№','').split(' ')[0]+' выполнена':'Точка выполнена');document.body.appendChild(toast);setTimeout(()=>toast.classList.add('show'),20);setTimeout(()=>{toast.classList.remove('show');setTimeout(()=>toast.remove(),220)},1500)}
 const routeItems=[...document.querySelectorAll('#route-list > .route-list > .route-item')];
 let accordionBusy=false;
+function nextFrame(){return new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))}
 async function animateRouteItem(item,open){
   const body=item.querySelector(':scope > .route-detail-body'); if(!body)return;
-  if(open)item.open=true;
-  body.getAnimations().forEach(anim=>anim.cancel());
-  const start=body.getBoundingClientRect().height;
-  const end=open?body.scrollHeight:0;
   body.style.overflow='hidden';
-  body.style.height=start+'px';
-  body.style.opacity=open?'0':'1';
-  body.style.transform=open?'translate3d(0,-3px,0)':'translate3d(0,0,0)';
-  // Force one committed start frame. Safari otherwise occasionally collapses
-  // <details> layout between frames and produces 2–3 visible height jumps.
-  body.getBoundingClientRect();
-  const anim=body.animate([
-    {height:start+'px',opacity:open?0:1,transform:open?'translate3d(0,-3px,0)':'translate3d(0,0,0)'},
-    {height:end+'px',opacity:open?1:0,transform:open?'translate3d(0,0,0)':'translate3d(0,-3px,0)'}
-  ],{duration:280,easing:'cubic-bezier(.22,.61,.36,1)',fill:'forwards'});
-  try{await anim.finished}catch(e){}
-  anim.cancel();
+  body.style.transition='none';
+  if(open){
+    item.open=true;
+    body.style.height='0px';
+    body.style.opacity='0';
+    await nextFrame();
+    const target=body.scrollHeight;
+    body.style.transition='height 520ms cubic-bezier(.25,.1,.25,1), opacity 360ms ease';
+    body.style.height=target+'px';
+    body.style.opacity='1';
+  }else{
+    body.style.height=body.getBoundingClientRect().height+'px';
+    body.style.opacity='1';
+    await nextFrame();
+    body.style.transition='height 520ms cubic-bezier(.25,.1,.25,1), opacity 360ms ease';
+    body.style.height='0px';
+    body.style.opacity='0';
+  }
+  await new Promise(resolve=>setTimeout(resolve,540));
+  body.style.transition='';
   body.style.height='';
   body.style.opacity='';
-  body.style.transform='';
   body.style.overflow='';
   if(!open)item.open=false;
 }
 routeItems.forEach(item=>{const summary=item.querySelector(':scope > summary');if(!summary)return;summary.addEventListener('click',async e=>{
   e.preventDefault();if(accordionBusy)return;accordionBusy=true;
   const opening=!item.open;const current=routeItems.find(other=>other!==item&&other.open);
-  if(current&&opening){
-    // Close the previous row and open the tapped row together. Sequential
-    // animations made the list visibly jump on mobile Safari.
-    await Promise.all([animateRouteItem(current,false),animateRouteItem(item,true)]);
-  }else if(opening){
-    await animateRouteItem(item,true);
-  }else{
-    await animateRouteItem(item,false);
-  }
+  if(current)await animateRouteItem(current,false);
+  if(opening)await animateRouteItem(item,true); else if(item.open)await animateRouteItem(item,false);
   accordionBusy=false;
 })});
 
