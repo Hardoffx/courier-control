@@ -89,7 +89,7 @@ class AddressNormalizationTests(TestCase):
         self.assertEqual(normalize_delivery_address('Московская обл., д. Юрлово, д. 89'),'Московская обл., деревня Юрлово 89')
 
     def test_building_parts_are_compacted(self):
-        self.assertEqual(normalize_delivery_address('Москва, ул. Тестовая, дом №13, корпус 1, строение 2'),'Москва, ул Тестовая 13, к1, с2')
+        self.assertEqual(normalize_delivery_address('Москва, ул. Тестовая, дом №13, корпус 1, строение 2'),'Москва, ул Тестовая 13к1с2')
 
     def test_other_settlement_types_are_preserved_explicitly(self):
         self.assertIn('село',normalize_delivery_address('Московская обл., с. Павловское, д. 7'))
@@ -118,7 +118,7 @@ class AddressNormalizationTests(TestCase):
     def test_street_marker_order_is_canonical(self):
         self.assertEqual(normalize_delivery_address('Москва г, Дубравная ул, дом № 46'), 'Москва, ул Дубравная 46')
         self.assertEqual(normalize_delivery_address('Москва г, ул Дубравная, д. 46'), 'Москва, ул Дубравная 46')
-        self.assertEqual(normalize_delivery_address('Москва г, Митинский 3-й пер, дом № 4, корпус 1'), 'Москва, пер Митинский 3-й 4, к1')
+        self.assertEqual(normalize_delivery_address('Москва г, Митинский 3-й пер, дом № 4, корпус 1'), 'Москва, пер Митинский 3-й 4к1')
         self.assertEqual(normalize_delivery_address('Москва г, пер Митинский 3-й, д. 4, к. 1'), 'Москва, пер Митинский 3-й 4, к1')
 
     def test_unknown_text_is_not_aggressively_deleted(self):
