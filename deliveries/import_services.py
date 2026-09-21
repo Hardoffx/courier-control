@@ -343,6 +343,16 @@ def _fill(cell):
     return ''
 
 
+def _is_pryadilnaya_service_address(address):
+    """Office/warehouse at 2-я Прядильная, 1 is never a courier route point."""
+    text = normalize_delivery_address(address).casefold().replace('ё', 'е')
+    # Match by address, not Excel row or source label. Building suffixes such as
+    # стр. 2 are intentionally allowed because exports vary between office/warehouse.
+    has_street = bool(re.search(r'(?iu)\\b(?:ул\\s+)?2[-–—]?я\\s+прядильная\\b|\\bпрядильная\\s+2[-–—]?я\\b', text))
+    has_house_one = bool(re.search(r'(?iu)(?:,|\\s)1(?:\\s|,|к\\d|с\\d|$)', text))
+    return has_street and has_house_one
+
+
 def _rows(content, create_points=False):
     wb = _open(content)
     ws = wb.active
@@ -364,6 +374,12 @@ def _rows(content, create_points=False):
 
         address = normalize_delivery_address(raw_address)
         if not address:
+            continue
+
+        # Permanent business rule: the office/warehouse at 2-я Прядильная, 1
+        # is service infrastructure, never a courier delivery. Its row position
+        # and source label are irrelevant.
+        if _is_pryadilnaya_service_address(address):
             continue
 
         source = _cell_text(values.get('source_label'))
