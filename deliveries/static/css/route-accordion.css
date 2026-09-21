@@ -59,3 +59,61 @@
 .next-body .next-meta .meta-line + .meta-line,
 .next-body .phone-meta-line,
 .next-body .next-meta .meta-line:first-child.phone-meta-line{margin:0!important}
+
+
+/* Courier interaction polish — 2026-09-21 */
+.btn,button,.route-row,.selected-note-toggle{transition:transform .11s ease,filter .11s ease,background-color .14s ease,border-color .14s ease,box-shadow .14s ease}
+.btn:active,button:active,.route-row:active,.selected-note-toggle:active{transform:scale(.975);filter:brightness(.97)}
+button:disabled,.btn:disabled{opacity:.68;cursor:wait;pointer-events:none}
+
+/* Keep selected-point controls in work order: note -> map -> done/problem -> navigation. */
+.selected-card .next-body{display:flex;flex-direction:column}
+.selected-card .next-lab{order:1}
+.selected-card .address-line{order:2}
+.selected-card .selected-note,.selected-card>.route-detail-problem{order:3}
+.selected-card .next-meta{order:4}
+.selected-card .courier-note{order:5}
+.selected-card .selected-note-editor{order:6}
+.selected-card .action-row{order:7;margin-top:10px}
+.selected-card .selected-phone-form{order:7}
+.selected-card .big-actions{order:8}
+.selected-card .selected-nav{order:9;margin-top:12px}
+.selected-card .selected-nav .btn{background:#edf5ff!important;border:1px solid #a9c9f7!important;color:#1f65c8!important;box-shadow:0 2px 7px rgba(47,116,238,.10)}
+
+/* Stable, modern disclosure chevron for selected note. */
+.selected-note-toggle{position:relative;padding-right:38px!important}
+.selected-note-toggle::after{content:"";position:absolute;right:15px;top:50%;width:9px;height:9px;border-right:2px solid #60758f;border-bottom:2px solid #60758f;transform:translateY(-65%) rotate(45deg);transition:transform .18s ease}
+.selected-note-editor[open]>.selected-note-toggle::after{transform:translateY(-35%) rotate(225deg)}
+.selected-note-toggle::-webkit-details-marker{display:none}
+.selected-note-toggle{list-style:none}
+
+/* Problem control fills its action cell and actually reveals its form locally. */
+.selected-problem-panel{margin:0!important;min-width:0}
+.selected-problem-panel>summary{width:100%!important;box-sizing:border-box}
+.selected-problem-panel[open]{grid-column:1/-1}
+.selected-problem-panel .route-detail-form{margin-top:9px}
+
+/* Existing phone: call by tapping number, edit with a tiny pencil. */
+.phone-meta-line{display:flex;align-items:center}
+.phone-edit-pencil{border:0;background:transparent;color:#6e84a0;font-size:18px;line-height:1;padding:6px 8px;margin-left:2px;border-radius:8px}
+.phone-edit-pencil.is-active{color:#2875e8;background:#edf5ff}
+
+/* External laboratory: keep purple tube and put its name in the same badge. */
+.lab-badge--other{display:inline-flex!important;align-items:center!important;gap:5px!important;width:auto!important;max-width:100%!important;padding:4px 8px!important;color:#7756c7!important;background:#f3efff!important;border:1px solid #d9ccff!important;border-radius:8px!important;font-weight:850!important}
+.lab-badge--other svg{width:16px!important;height:16px!important;flex:0 0 16px!important}
+.lab-badge--other span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* Secondary quick actions should be visible without competing with Yandex Maps. */
+.compact-top-actions .compact-icon-action,.compact-top-actions .route-select-btn{background:#eef5ff!important;border-color:#b9d2f5!important;box-shadow:0 2px 6px rgba(39,104,196,.10)!important}
+.compact-top-actions .compact-icon-action:hover,.compact-top-actions .route-select-btn:hover{background:#e6f0ff!important}
+.compact-top-actions .compact-icon-action.is-active{background:#dceaff!important;border-color:#72a6ef!important;box-shadow:0 0 0 2px rgba(52,120,238,.10)!important}
+
+/* Note editor: give the hint more room on narrow phones. */
+.compact-top-actions>.note-inline-editor{grid-template-columns:minmax(0,1fr) 94px!important}
+.compact-top-actions>.note-inline-editor>.note-inline-save{width:94px!important;min-width:94px!important}
+.note-inline-field>input{font-size:14px!important;padding-left:8px!important;padding-right:6px!important}
+@media(max-width:390px){
+ .compact-top-actions>.note-inline-editor{grid-template-columns:minmax(0,1fr) 82px!important}
+ .compact-top-actions>.note-inline-editor>.note-inline-save{width:82px!important;min-width:82px!important;font-size:13px!important;padding-left:6px!important;padding-right:6px!important}
+ .note-inline-field>input{font-size:13px!important}
+}
