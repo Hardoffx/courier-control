@@ -16,7 +16,7 @@
 .route-item.problem .route-dot{background:var(--red);color:#fff}
 .route-chevron{width:9px;height:9px;border-right:2px solid #8795a9;border-bottom:2px solid #8795a9;transform:rotate(45deg);transition:transform .18s ease;margin-right:2px;margin-top:-4px}
 .route-item[open] .route-chevron{transform:rotate(225deg);margin-top:4px}
-.route-detail-body{padding:14px 14px 16px 49px;background:linear-gradient(180deg,#fbfdff 0%,#fff 100%);animation:routeDetailIn .16s ease-out}
+.route-detail-body{padding:14px 14px 16px 49px;background:linear-gradient(180deg,#fbfdff 0%,#fff 100%);contain:layout paint}
 @keyframes routeDetailIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
 .route-detail-actions{margin-top:0}
 .route-detail-note{padding:10px 12px;margin-bottom:10px;border-radius:9px;background:#f4f7fb;color:#40516b;font-size:13px;line-height:1.4}
