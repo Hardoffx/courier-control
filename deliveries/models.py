@@ -162,7 +162,9 @@ class Delivery(models.Model):
     def lab_kind(self): return self.lab_identity['kind']
 
     @property
-    def lpu_number(self): return self.lab_identity['code'] if self.lab_identity['kind']==DeliveryPoint.Kind.CMD else ''
+    def lpu_number(self):
+        if self.lab_identity['kind']!=DeliveryPoint.Kind.CMD: return ''
+        return self.lab_identity['code'].split('/',1)[0].strip()
 
     @property
     def lab_name(self): return self.lab_identity['label']
