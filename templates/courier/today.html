@@ -127,16 +127,40 @@ let accordionBusy=false;
 async function animateRouteItem(item,open){
   const body=item.querySelector(':scope > .route-detail-body'); if(!body)return;
   if(open)item.open=true;
-  const h=body.scrollHeight;
-  const anim=body.animate(open?[{height:'0px',opacity:0,transform:'translateY(-5px)'},{height:h+'px',opacity:1,transform:'translateY(0)'}]:[{height:h+'px',opacity:1,transform:'translateY(0)'},{height:'0px',opacity:0,transform:'translateY(-5px)'}],{duration:200,easing:'cubic-bezier(.2,.8,.2,1)'});
+  body.getAnimations().forEach(anim=>anim.cancel());
+  const start=body.getBoundingClientRect().height;
+  const end=open?body.scrollHeight:0;
+  body.style.overflow='hidden';
+  body.style.height=start+'px';
+  body.style.opacity=open?'0':'1';
+  body.style.transform=open?'translate3d(0,-3px,0)':'translate3d(0,0,0)';
+  // Force one committed start frame. Safari otherwise occasionally collapses
+  // <details> layout between frames and produces 2–3 visible height jumps.
+  body.getBoundingClientRect();
+  const anim=body.animate([
+    {height:start+'px',opacity:open?0:1,transform:open?'translate3d(0,-3px,0)':'translate3d(0,0,0)'},
+    {height:end+'px',opacity:open?1:0,transform:open?'translate3d(0,0,0)':'translate3d(0,-3px,0)'}
+  ],{duration:280,easing:'cubic-bezier(.22,.61,.36,1)',fill:'forwards'});
   try{await anim.finished}catch(e){}
+  anim.cancel();
+  body.style.height='';
+  body.style.opacity='';
+  body.style.transform='';
+  body.style.overflow='';
   if(!open)item.open=false;
 }
 routeItems.forEach(item=>{const summary=item.querySelector(':scope > summary');if(!summary)return;summary.addEventListener('click',async e=>{
   e.preventDefault();if(accordionBusy)return;accordionBusy=true;
   const opening=!item.open;const current=routeItems.find(other=>other!==item&&other.open);
-  if(current)await animateRouteItem(current,false);
-  if(opening)await animateRouteItem(item,true); else if(item.open)await animateRouteItem(item,false);
+  if(current&&opening){
+    // Close the previous row and open the tapped row together. Sequential
+    // animations made the list visibly jump on mobile Safari.
+    await Promise.all([animateRouteItem(current,false),animateRouteItem(item,true)]);
+  }else if(opening){
+    await animateRouteItem(item,true);
+  }else{
+    await animateRouteItem(item,false);
+  }
   accordionBusy=false;
 })});
 
