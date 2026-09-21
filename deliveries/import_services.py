@@ -245,16 +245,16 @@ def normalize_delivery_address(raw_address):
     # House marker is unambiguous only when immediately followed by a number.
     value = re.sub(r'(?iu)(?:\s*,\s*|\s+)\b(?:д|дом)\.?\s*(?:№\s*)?(?=\d)', ' ', value)
 
-    # Expand the most common abbreviated settlement prefixes before generic
-    # processing. They are safe only as complete comma-separated components.
-    direct_settlements = (
-        (r'д\\.', 'деревня'), (r'с\\.', 'село'), (r'пос\\.?', 'посёлок'),
-        (r'рп\\.?', 'рабочий посёлок'), (r'пгт\\.?', 'пгт'), (r'х\\.', 'хутор'),
-    )
-    for marker, canonical in direct_settlements:
+    # Expand common abbreviated settlement prefixes. Keep these regexes
+    # intentionally simple: comma/start + marker + human-readable name.
+    for marker, canonical in (
+        ('д.', 'деревня'), ('с.', 'село'), ('пос.', 'посёлок'),
+        ('рп', 'рабочий посёлок'), ('пгт', 'пгт'), ('х.', 'хутор'),
+    ):
+        escaped = re.escape(marker)
         value = re.sub(
-            rf'(?iu)(?P<prefix>^|,\\s*)(?:{marker})\\s+(?P<name>[^,;\\d]{{2,80}}?)(?=\\s*(?:,|$))',
-            lambda m, c=canonical: f"{m.group('prefix')}{c} {m.group('name').strip()}",
+            rf'(?iu)(^|,\s*){escaped}\s+([^,;\d]{{2,80}}?)(?=\s*(?:,|$))',
+            lambda m, c=canonical: f"{m.group(1)}{c} {m.group(2).strip()}",
             value,
         )
 
@@ -301,13 +301,13 @@ def normalize_delivery_address(raw_address):
         value,
     )
 
-    # Dotted street abbreviations need explicit handling because a dot is not
-    # a word character and generic word-boundary regexes are easy to get wrong.
-    value = re.sub(r'(?iu)(?<![А-ЯЁа-яёA-Za-z])ул\\.(?=\\s)', 'ул', value)
-    value = re.sub(r'(?iu)(?<![А-ЯЁа-яёA-Za-z])пер\\.(?=\\s)', 'пер', value)
-    value = re.sub(r'(?iu)(?<![А-ЯЁа-яёA-Za-z])наб\\.(?=\\s)', 'наб', value)
-    value = re.sub(r'(?iu)(?<![А-ЯЁа-яёA-Za-z])пл\\.(?=\\s)', 'пл', value)
-    value = re.sub(r'(?iu)(?<![А-ЯЁа-яёA-Za-z])ш\\.(?=\\s)', 'ш', value)
+    # Dotted street abbreviations.
+    for marker, canonical in (('ул.', 'ул'), ('пер.', 'пер'), ('наб.', 'наб'), ('пл.', 'пл'), ('ш.', 'ш')):
+        value = re.sub(
+            rf'(?iu)(?<![А-ЯЁа-яёA-Za-z]){re.escape(marker)}(?=\s)',
+            canonical,
+            value,
+        )
 
     # Street words: normalize spelling but do not reorder uncertain components.
     street_aliases = (
