@@ -123,6 +123,33 @@ class PryadilnayaImportFilterTests(TestCase):
         self.assertFalse(any('Прядильная' in a and (' 1,' in a or a.endswith(' 1') or ' 1с' in a) for a in addresses))
 
 
+class HeaderlessRealExportImportTests(TestCase):
+    def test_detects_real_five_column_export_and_filters_service_rows(self):
+        wb=Workbook(); ws=wb.active
+        rows=[
+            [1,'Склад','105037, Москва г, ул 2-я Прядильная, д. 1, стр. 2','', '09:30'],
+            [2,'458','Москва г, Дубравная ул, дом № 46','', '11:00-13:00'],
+            [3,'','','',''],
+            [4,'МО Митино-1','Москва г, пер 3-й Митинский, д. 7','', '12:30-16:00'],
+            [5,'5827/5958/6113','Московская обл, Солнечногорский р-н, Юрлово д, дом № 89','', '14:00-16:00'],
+            [6,'В+ДОМ','Москва г, ул Вишнёвая, д. 13, к. 1, стр. 1','', '17:00-19:00'],
+            [7,'МО Яна Райниса 10','Москва г, б-р Яна Райниса, д. 10','', '17:30-20:00'],
+            [8,'Склад','105037, Москва г, ул 2-я Прядильная, д. 1, стр. 2','', '-'],
+        ]
+        for row in rows: ws.append(row)
+        stream=BytesIO(); wb.save(stream)
+        summary=preview_workbook(stream.getvalue())
+
+        self.assertEqual(summary.total_rows,5)
+        self.assertEqual([item['label'] for item in summary.preview],
+                         ['458','МО Митино-1','5827/5958/6113','В+ДОМ','МО Яна Райниса 10'])
+        self.assertEqual([item['time_window'] for item in summary.preview],
+                         ['11:00-13:00','12:30-16:00','14:00-16:00','17:00-19:00','17:30-20:00'])
+        self.assertTrue(any('деревня Юрлово 89' in item['address'] for item in summary.preview))
+        self.assertTrue(any(item['address']=='Москва, б-р Яна Райниса 10' for item in summary.preview))
+        self.assertFalse(any('Прядильная' in item['address'] for item in summary.preview))
+
+
 class RouteTemplateTests(TestCase):
     def setUp(self):
         self.dispatcher=User.objects.create_user(username='route-dispatcher',password='pass',role=User.Role.DISPATCHER); self.primary=User.objects.create_user(username='primary',role=User.Role.COURIER); self.reserve=User.objects.create_user(username='reserve',role=User.Role.COURIER,is_reserve_courier=True); self.route=Route.objects.create(name='Маршрут 1',default_courier=self.primary); self.weekday=RouteTemplate.objects.create(route=self.route,kind=RouteTemplate.Kind.WEEKDAY); self.weekend=RouteTemplate.objects.create(route=self.route,kind=RouteTemplate.Kind.WEEKEND); self.a=DeliveryPoint.objects.create(name='458',code='458',address='Москва, A',kind=DeliveryPoint.Kind.CMD); self.b=DeliveryPoint.objects.create(name='ИНВИТРО B',address='Москва, B',kind=DeliveryPoint.Kind.INVITRO); RouteTemplateItem.objects.create(template=self.weekday,point=self.a,route_order=1,time_window='09:00'); RouteTemplateItem.objects.create(template=self.weekday,point=self.b,route_order=2,time_window='11:00'); RouteTemplateItem.objects.create(template=self.weekend,point=self.b,route_order=1,time_window='14:00')
