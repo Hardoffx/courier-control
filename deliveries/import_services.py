@@ -344,23 +344,25 @@ def _fill(cell):
 
 
 def _is_pryadilnaya_service_address(address):
-    """Office/warehouse at 2-я Прядильная, 1 is never a courier route point."""
+    """Office/warehouse at 2-я Прядильная, house 1 is never a route point."""
     text = normalize_delivery_address(address).casefold().replace('ё', 'е')
-    # Avoid regex escaping mistakes here: tokenize normalized address and match
-    # the exact service street + house. Other houses on the street remain valid.
+    compact = re.sub(r'[^0-9a-zа-я]+', ' ', text).strip()
     street = (
-        '2-я прядильная' in text
-        or '2я прядильная' in text
-        or 'прядильная 2-я' in text
-        or 'прядильная 2я' in text
+        '2 я прядильная' in compact
+        or '2я прядильная' in compact
+        or 'прядильная 2 я' in compact
+        or 'прядильная 2я' in compact
     )
     if not street:
         return False
-    parts = [part.strip() for part in text.split(',') if part.strip()]
-    for part in parts:
-        if part == '1' or part.startswith('1 ') or part.startswith('1с') or part.startswith('1к'):
-            return True
-    return False
+
+    # After normalization house markers are removed, while corpus/building are
+    # compacted. The house number follows the street component in our exports.
+    match = re.search(
+        r'(?:2\s*я\s+прядильная|прядильная\s+2\s*я)(?:\s+ул)?\s+(\d+)(?:\b|(?=[кс]\d))',
+        compact,
+    )
+    return bool(match and match.group(1) == '1')
 
 def _rows(content, create_points=False):
     wb = _open(content)
