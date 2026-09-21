@@ -127,43 +127,33 @@ let accordionBusy=false;
 function nextFrame(){return new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))}
 async function animateRouteItem(item,open){
   const body=item.querySelector(':scope > .route-detail-body'); if(!body)return;
-  body.style.overflow='hidden';
-  body.style.transition='none';
-  if(open){
-    item.open=true;
-    body.style.boxSizing='border-box';
-    body.style.height='0px';
-    body.style.paddingTop='0px';
-    body.style.paddingBottom='0px';
-    body.style.opacity='0';
-    await nextFrame();
-    const target=body.scrollHeight;
-    body.style.transition='height 520ms cubic-bezier(.25,.1,.25,1), padding 520ms cubic-bezier(.25,.1,.25,1), opacity 480ms ease';
-    body.style.height=target+'px';
-    body.style.paddingTop='14px';
-    body.style.paddingBottom='16px';
-    body.style.opacity='1';
-  }else{
-    body.style.boxSizing='border-box';
-    body.style.height=body.getBoundingClientRect().height+'px';
-    body.style.paddingTop='14px';
-    body.style.paddingBottom='16px';
-    body.style.opacity='1';
-    await nextFrame();
-    body.style.transition='height 520ms cubic-bezier(.25,.1,.25,1), padding 520ms cubic-bezier(.25,.1,.25,1), opacity 480ms ease';
-    body.style.height='0px';
-    body.style.paddingTop='0px';
-    body.style.paddingBottom='0px';
-    body.style.opacity='0';
-  }
+  if(open)item.open=true;
+
+  // Animate the whole <details>, not only its body. On iOS Safari a native
+  // <details> keeps an intermediate layout box while its child reaches zero,
+  // which is the empty strip seen during collapse.
+  const summary=item.querySelector(':scope > summary');
+  const summaryHeight=summary?summary.getBoundingClientRect().height:0;
+  const startHeight=item.getBoundingClientRect().height;
+  const endHeight=open?(summaryHeight+body.scrollHeight):summaryHeight;
+
+  item.style.overflow='hidden';
+  item.style.height=startHeight+'px';
+  item.style.transition='none';
+  body.style.opacity=open?'0':'1';
+  await nextFrame();
+
+  item.style.transition='height 520ms cubic-bezier(.25,.1,.25,1)';
+  body.style.transition='opacity 440ms ease';
+  item.style.height=endHeight+'px';
+  body.style.opacity=open?'1':'0';
+
   await new Promise(resolve=>setTimeout(resolve,540));
+  item.style.transition='';
+  item.style.height='';
+  item.style.overflow='';
   body.style.transition='';
-  body.style.height='';
   body.style.opacity='';
-  body.style.paddingTop='';
-  body.style.paddingBottom='';
-  body.style.boxSizing='';
-  body.style.overflow='';
   if(!open)item.open=false;
 }
 routeItems.forEach(item=>{const summary=item.querySelector(':scope > summary');if(!summary)return;summary.addEventListener('click',async e=>{
