@@ -12,7 +12,7 @@ from django.views.decorators.http import require_POST
 from accounts.models import User
 from .forms import DeliveryForm
 from .models import Delivery, DeliveryEvent, DeliveryPoint, RouteOrderSuggestion, RouteRun
-from .import_services import import_workbook, preview_workbook, validate_upload
+from .import_services import import_workbook, preview_workbook, validate_upload, normalize_delivery_address
 from .import_staging import stage_upload, consume_upload
 from .point_matching import canonical_delivery_values, resolve_point
 from .route_services import record_courier_order_change
@@ -102,7 +102,7 @@ def dispatcher_bulk_assign(request):
 @dispatcher_required
 @require_POST
 def dispatcher_quick_edit(request,pk):
-    delivery=get_object_or_404(Delivery,pk=pk); changed=[]; label=request.POST.get('source_label','').strip()[:255]; address=request.POST.get('address','').strip()[:500]; phone=request.POST.get('phone','').strip()[:64]
+    delivery=get_object_or_404(Delivery,pk=pk); changed=[]; label=request.POST.get('source_label','').strip()[:255]; address=normalize_delivery_address(request.POST.get('address',''))[:500]; phone=request.POST.get('phone','').strip()[:64]
     if not address: messages.error(request,'Адрес не может быть пустым'); return redirect('dispatcher_dashboard')
     match=resolve_point(label,address,phone,create=True); canonical=canonical_delivery_values(match.point,label,address,phone); values={'point':match.point,'source_label':canonical['source_label'],'address':canonical['address'],'time_window':request.POST.get('time_window','').strip()[:64],'phone':canonical['phone'],'row_color':request.POST.get('row_color','')}; allowed_colors={v for v,_ in Delivery.RowColor.choices}
     if values['row_color'] not in allowed_colors: values['row_color']=''
