@@ -301,6 +301,14 @@ def normalize_delivery_address(raw_address):
         value,
     )
 
+    # Dotted street abbreviations need explicit handling because a dot is not
+    # a word character and generic word-boundary regexes are easy to get wrong.
+    value = re.sub(r'(?iu)(?<![А-ЯЁа-яёA-Za-z])ул\\.(?=\\s)', 'ул', value)
+    value = re.sub(r'(?iu)(?<![А-ЯЁа-яёA-Za-z])пер\\.(?=\\s)', 'пер', value)
+    value = re.sub(r'(?iu)(?<![А-ЯЁа-яёA-Za-z])наб\\.(?=\\s)', 'наб', value)
+    value = re.sub(r'(?iu)(?<![А-ЯЁа-яёA-Za-z])пл\\.(?=\\s)', 'пл', value)
+    value = re.sub(r'(?iu)(?<![А-ЯЁа-яёA-Za-z])ш\\.(?=\\s)', 'ш', value)
+
     # Street words: normalize spelling but do not reorder uncertain components.
     street_aliases = (
         (r'улица|ул\.', 'ул'), (r'бульвар|б-р', 'б-р'),
