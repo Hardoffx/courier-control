@@ -248,25 +248,29 @@ button:disabled,.btn:disabled{opacity:.68;cursor:wait;pointer-events:none}
   box-shadow:0 3px 9px rgba(35,75,122,.11),inset 0 1px 0 #fff!important;
 }
 
-/* One continuous neon fade: avoid visible stepping between multiple shadow keyframes. */
+/* Next-point confirmation: keep a crisp outline and animate only compositor opacity.
+   A solid translucent overlay avoids Safari's stepped box-shadow rendering. */
 .selected-card.just-advanced{
   position:relative;
+  isolation:isolate;
   animation:none!important;
+  outline:3px solid #168bff;
+  outline-offset:2px;
 }
 .selected-card.just-advanced::after{
   content:"";
   position:absolute;
-  inset:-2px;
-  z-index:3;
+  inset:0;
+  z-index:2;
   pointer-events:none;
-  border:2px solid rgba(0,167,255,.98);
   border-radius:inherit;
-  box-shadow:0 0 14px rgba(0,153,255,.88),0 0 32px rgba(0,128,255,.54);
+  background:rgba(22,139,255,.16);
   opacity:1;
+  transform:translateZ(0);
   will-change:opacity;
-  animation:nextPointNeonFade 1.75s linear forwards;
+  animation:nextPointOverlayFade 1.75s linear forwards;
 }
-@keyframes nextPointNeonFade{
+@keyframes nextPointOverlayFade{
   from{opacity:1}
   to{opacity:0}
 }
