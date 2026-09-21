@@ -337,6 +337,11 @@ def normalize_delivery_address(raw_address):
     )
 
     value = re.sub(r'\s*№\s*(?=\d)', ' ', value)
+    # Compact building suffixes into the house token: 17, к4 -> 17к4;
+    # 13, к1, стр1 -> 13к1с1. This is the canonical display/matching form.
+    value = re.sub(r'(?iu)(\d+[А-ЯЁA-ZА-Яа-яёA-Za-z]?)\s*,\s*к\s*(\d+[А-ЯЁA-ZА-Яа-яёA-Za-z]?)', r'\1к\2', value)
+    value = re.sub(r'(?iu)(\d+[А-ЯЁA-ZА-Яа-яёA-Za-z]?(?:к\d+[А-ЯЁA-ZА-Яа-яёA-Za-z]?)?)\s*,\s*с(?:тр)?\s*(\d+[А-ЯЁA-ZА-Яа-яёA-Za-z]?)', r'\1с\2', value)
+
     value = re.sub(r'\s*,\s*', ', ', value)
     value = re.sub(r'\s+', ' ', value).strip(' ,;')
     return value
