@@ -131,25 +131,38 @@ async function animateRouteItem(item,open){
   body.style.transition='none';
   if(open){
     item.open=true;
+    body.style.boxSizing='border-box';
     body.style.height='0px';
+    body.style.paddingTop='0px';
+    body.style.paddingBottom='0px';
     body.style.opacity='0';
     await nextFrame();
     const target=body.scrollHeight;
-    body.style.transition='height 520ms cubic-bezier(.25,.1,.25,1), opacity 360ms ease';
+    body.style.transition='height 520ms cubic-bezier(.25,.1,.25,1), padding 520ms cubic-bezier(.25,.1,.25,1), opacity 480ms ease';
     body.style.height=target+'px';
+    body.style.paddingTop='14px';
+    body.style.paddingBottom='16px';
     body.style.opacity='1';
   }else{
+    body.style.boxSizing='border-box';
     body.style.height=body.getBoundingClientRect().height+'px';
+    body.style.paddingTop='14px';
+    body.style.paddingBottom='16px';
     body.style.opacity='1';
     await nextFrame();
-    body.style.transition='height 520ms cubic-bezier(.25,.1,.25,1), opacity 360ms ease';
+    body.style.transition='height 520ms cubic-bezier(.25,.1,.25,1), padding 520ms cubic-bezier(.25,.1,.25,1), opacity 480ms ease';
     body.style.height='0px';
+    body.style.paddingTop='0px';
+    body.style.paddingBottom='0px';
     body.style.opacity='0';
   }
   await new Promise(resolve=>setTimeout(resolve,540));
   body.style.transition='';
   body.style.height='';
   body.style.opacity='';
+  body.style.paddingTop='';
+  body.style.paddingBottom='';
+  body.style.boxSizing='';
   body.style.overflow='';
   if(!open)item.open=false;
 }
