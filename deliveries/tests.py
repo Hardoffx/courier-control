@@ -99,6 +99,18 @@ class AddressNormalizationTests(TestCase):
     def test_interior_details_are_removed(self):
         self.assertEqual(normalize_delivery_address('Москва, ул Тестовая, д. 10, офис 17'),'Москва, ул Тестовая 10')
 
+    def test_bare_p_settlement_marker_is_expanded(self):
+        self.assertEqual(
+            normalize_delivery_address('г Красногорск, п Отрадное, ул Кленовая, д. 3'),
+            'Красногорск, посёлок Отрадное, ул Кленовая 3',
+        )
+
+    def test_street_marker_order_is_canonical(self):
+        self.assertEqual(normalize_delivery_address('Москва г, Дубравная ул, дом № 46'), 'Москва, ул Дубравная 46')
+        self.assertEqual(normalize_delivery_address('Москва г, ул Дубравная, д. 46'), 'Москва, ул Дубравная 46')
+        self.assertEqual(normalize_delivery_address('Москва г, Митинский 3-й пер, дом № 4, корпус 1'), 'Москва, пер Митинский 3-й 4, к1')
+        self.assertEqual(normalize_delivery_address('Москва г, пер Митинский 3-й, д. 4, к. 1'), 'Москва, пер Митинский 3-й 4, к1')
+
     def test_unknown_text_is_not_aggressively_deleted(self):
         raw='Московская обл., территория Новая, участок А-7'
         self.assertIn('территория Новая',normalize_delivery_address(raw))
