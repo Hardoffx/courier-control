@@ -119,7 +119,7 @@ class AddressNormalizationTests(TestCase):
         self.assertEqual(normalize_delivery_address('Москва г, Дубравная ул, дом № 46'), 'Москва, ул Дубравная 46')
         self.assertEqual(normalize_delivery_address('Москва г, ул Дубравная, д. 46'), 'Москва, ул Дубравная 46')
         self.assertEqual(normalize_delivery_address('Москва г, Митинский 3-й пер, дом № 4, корпус 1'), 'Москва, пер Митинский 3-й 4к1')
-        self.assertEqual(normalize_delivery_address('Москва г, пер Митинский 3-й, д. 4, к. 1'), 'Москва, пер Митинский 3-й 4, к1')
+        self.assertEqual(normalize_delivery_address('Москва г, пер Митинский 3-й, д. 4, к. 1'), 'Москва, пер Митинский 3-й 4к1')
 
     def test_unknown_text_is_not_aggressively_deleted(self):
         raw='Московская обл., территория Новая, участок А-7'
