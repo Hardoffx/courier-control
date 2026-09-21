@@ -228,10 +228,12 @@ def _detect_layout(ws):
 
 def normalize_delivery_address(raw_address):
     """
-    Convert an imported address to a conservative building-level form.
+    Conservative Russian building-address normalizer.
 
-    Interior details are removed because routing needs the building, not a room
-    or floor. The function intentionally does not geocode or invent geography.
+    It removes presentation noise and interior details, but preserves geographic
+    meaning. In particular, «д.» is interpreted contextually: before a building
+    number it means «дом» and is removed; next to a settlement name it is kept
+    and expanded to the unambiguous «деревня».
     """
     value = _cell_text(raw_address).replace('\xa0', ' ')
     value = re.sub(r'[\r\n\t]+', ' ', value)
@@ -239,13 +241,36 @@ def normalize_delivery_address(raw_address):
     if interior:
         value = value[:interior.start()]
 
-    # Remove the house marker together with the separator before it. Doing this
-    # before compacting corpus/structure avoids leaving «ул, 10» behind.
+    # Normalize common city marker without damaging settlement/building tokens.
+    value = re.sub(r'(?iu)^\s*(?:г(?:ород)?\.?\s*)?(Москва)\s*(?:г\.)?(?=\s*[,;]|\s*$)', r'\1', value)
+
+    # «д.» is ambiguous in Russian addresses. A marker followed by a number is
+    # definitely a building: «д. 10», «дом №10» -> «10».
     value = re.sub(
         r'(?iu)\s*,?\s*\b(?:д|дом)\.?\s*(?:№\s*)?(?=\d)',
         ' ',
         value,
     )
+
+    # Settlement use: «Юрлово д.» / «Юрлово, д.» -> «деревня Юрлово».
+    # Restrict the rule to a named comma-separated component so an uncertain
+    # token is preserved rather than aggressively deleted.
+    settlement_tail = re.compile(
+        r'(?iu)(?P<prefix>^|,\s*)'
+        r'(?P<name>[А-ЯЁA-Z][А-ЯЁа-яёA-Za-z0-9 .\'\-]{1,80}?)'
+        r'\s*,?\s+д\.(?=\s*(?:,|$))'
+    )
+    value = settlement_tail.sub(
+        lambda m: f"{m.group('prefix')}деревня {m.group('name').strip()}",
+        value,
+    )
+    # Prefix form is already unambiguous when a name follows it.
+    value = re.sub(
+        r'(?iu)(?P<prefix>^|,\s*)д\.\s+(?P<name>[А-ЯЁA-Z][^,;\d]{1,80})(?=\s*(?:,|$))',
+        lambda m: f"{m.group('prefix')}деревня {m.group('name').strip()}",
+        value,
+    )
+
     value = CORPUS_RE.sub(lambda match: f'к{match.group(1)}', value)
     value = BUILDING_RE.sub(lambda match: f'с{match.group(1)}', value)
     value = re.sub(r'\s*№\s*(?=\d)', ' ', value)
