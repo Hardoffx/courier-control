@@ -212,9 +212,12 @@ def _infer_columns(ws, sample_rows=80):
         if i not in excluded and stats[i]['source_hits'] > 0
     ]
     if source_candidates:
+        # Real headerless exports often have a numeric row-number column directly
+        # before the actual point/code column. Prefer the source-like column nearest
+        # to the address; use hit counts only after proximity.
         columns['source_label'] = max(
             source_candidates,
-            key=lambda i: (stats[i]['source_hits'], stats[i]['nonempty'], -abs(i - address_index)),
+            key=lambda i: (-abs(i - address_index), stats[i]['source_hits'], stats[i]['nonempty']),
         )
     return 0, columns
 
