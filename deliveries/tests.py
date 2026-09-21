@@ -96,6 +96,16 @@ class AddressNormalizationTests(TestCase):
         self.assertIn('посёлок',normalize_delivery_address('Московская обл., пос. Лесной, дом 4'))
         self.assertIn('пгт',normalize_delivery_address('Московская обл., пгт Нахабино, д. 5'))
 
+    def test_building_suffixes_attach_to_house_number(self):
+        self.assertEqual(
+            normalize_delivery_address('Москва г, ул Митинская, д. 17, к. 4'),
+            'Москва, ул Митинская 17к4',
+        )
+        self.assertEqual(
+            normalize_delivery_address('Москва г, ул Вишнёвая, д. 13, к. 1, стр. 1'),
+            'Москва, ул Вишнёвая 13к1с1',
+        )
+
     def test_interior_details_are_removed(self):
         self.assertEqual(normalize_delivery_address('Москва, ул Тестовая, д. 10, офис 17'),'Москва, ул Тестовая 10')
 
