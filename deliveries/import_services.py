@@ -328,6 +328,14 @@ def normalize_delivery_address(raw_address):
     for pattern, canonical in street_aliases:
         value = re.sub(rf'(?iu)\b(?:{pattern})\b\.?', canonical, value)
 
+    # Canonical street order: marker first, so equivalent source forms converge.
+    street_markers = r'ул|пер|б-р|пр-т|ш|наб|пл|проезд'
+    value = re.sub(
+        rf"(?iu)(?P<prefix>^|,\s*)(?P<name>[А-ЯЁA-Z][А-ЯЁа-яёA-Za-z0-9 .'-]*?)\s+(?P<marker>{street_markers})(?=\s+\d|\s*,|$)",
+        lambda m: f"{m.group('prefix')}{m.group('marker')} {m.group('name').strip()}",
+        value,
+    )
+
     value = re.sub(r'\s*№\s*(?=\d)', ' ', value)
     value = re.sub(r'\s*,\s*', ', ', value)
     value = re.sub(r'\s+', ' ', value).strip(' ,;')
