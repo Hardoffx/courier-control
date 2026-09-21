@@ -248,13 +248,25 @@ button:disabled,.btn:disabled{opacity:.68;cursor:wait;pointer-events:none}
   box-shadow:0 3px 9px rgba(35,75,122,.11),inset 0 1px 0 #fff!important;
 }
 
-/* Fast recognition, then a longer soft electric-blue fade. */
-.selected-card.just-advanced{animation:nextPointNeonLong 1.75s cubic-bezier(.16,.82,.24,1)}
-@keyframes nextPointNeonLong{
-  0%{border-color:#cfe2ff;box-shadow:0 10px 30px rgba(8,119,249,.08)}
-  13%{border-color:#00a7ff;box-shadow:0 0 0 2px rgba(0,167,255,.98),0 0 14px rgba(0,153,255,.88),0 0 32px rgba(0,128,255,.54)}
-  28%{border-color:#0a9cff;box-shadow:0 0 0 2px rgba(10,156,255,.92),0 0 13px rgba(0,153,255,.78),0 0 29px rgba(0,128,255,.47)}
-  55%{border-color:#168bff;box-shadow:0 0 0 2px rgba(22,139,255,.60),0 0 10px rgba(0,153,255,.48),0 0 23px rgba(0,128,255,.30)}
-  78%{border-color:#68b4ff;box-shadow:0 0 0 1px rgba(22,139,255,.28),0 0 7px rgba(0,153,255,.22),0 0 16px rgba(0,128,255,.13)}
-  100%{border-color:#cfe2ff;box-shadow:0 10px 30px rgba(8,119,249,.08)}
+/* One continuous neon fade: avoid visible stepping between multiple shadow keyframes. */
+.selected-card.just-advanced{
+  position:relative;
+  animation:none!important;
+}
+.selected-card.just-advanced::after{
+  content:"";
+  position:absolute;
+  inset:-2px;
+  z-index:3;
+  pointer-events:none;
+  border:2px solid rgba(0,167,255,.98);
+  border-radius:inherit;
+  box-shadow:0 0 14px rgba(0,153,255,.88),0 0 32px rgba(0,128,255,.54);
+  opacity:1;
+  will-change:opacity;
+  animation:nextPointNeonFade 1.75s linear forwards;
+}
+@keyframes nextPointNeonFade{
+  from{opacity:1}
+  to{opacity:0}
 }
