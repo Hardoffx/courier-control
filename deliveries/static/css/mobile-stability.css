@@ -838,3 +838,51 @@ body:not(.dispatcher-ui):not(.courier-ui) main.wrap > .card form .btn { margin-t
 .note-inline-field>input::placeholder{color:#8a98aa!important;opacity:1!important}
 .compact-top-actions>.note-inline-editor>.note-inline-save{width:116px!important;min-width:116px!important;height:44px!important;min-height:44px!important;margin:0!important;padding:7px 10px!important;border:0!important;border-radius:11px!important;background:#3478ee!important;color:#fff!important;font-weight:800!important;box-shadow:0 2px 7px rgba(47,116,238,.16)!important;white-space:nowrap!important}
 @media(max-width:390px){.compact-top-actions>.note-inline-editor{grid-template-columns:minmax(0,1fr) 102px!important;gap:6px!important}.compact-top-actions>.note-inline-editor>.note-inline-save{width:102px!important;min-width:102px!important;font-size:14px!important}}
+
+
+/* Shared modern action language — courier + dispatcher. Loaded last intentionally. */
+.dispatcher-ui .btn,.courier-ui .btn,
+.dispatcher-ui .filter-chip,.dispatcher-ui .mobile-menu,
+.courier-ui .logout{
+  border-radius:11px;
+  transition:transform .11s ease,box-shadow .14s ease,filter .14s ease,background-color .14s ease,border-color .14s ease;
+  -webkit-tap-highlight-color:transparent;
+}
+.dispatcher-ui .btn{
+  border:1px solid #1768dc;
+  background:linear-gradient(180deg,#3d8cff,#2876ed);
+  box-shadow:0 4px 11px rgba(38,112,225,.18),inset 0 1px 0 rgba(255,255,255,.18);
+}
+.dispatcher-ui .btn.alt{
+  color:#24466f;background:linear-gradient(180deg,#fff,#f0f6fd);
+  border-color:#c2d2e5;box-shadow:0 3px 8px rgba(31,62,101,.09),inset 0 1px 0 #fff;
+}
+.dispatcher-ui .btn.good{
+  border-color:#2da95f;background:linear-gradient(180deg,#58c77e,#42b66c);
+  box-shadow:0 4px 11px rgba(39,166,91,.18),inset 0 1px 0 rgba(255,255,255,.18);
+}
+.dispatcher-ui .btn.bad{
+  border-color:#e34250;background:linear-gradient(180deg,#fa6670,#ed505c);
+  box-shadow:0 4px 11px rgba(224,63,78,.17),inset 0 1px 0 rgba(255,255,255,.16);
+}
+.dispatcher-ui .filter-chip,.dispatcher-ui .mobile-menu{
+  background:linear-gradient(180deg,#fff,#f3f7fc);border:1px solid #c9d7e7;
+  box-shadow:0 2px 7px rgba(31,62,101,.08),inset 0 1px 0 #fff;
+}
+.dispatcher-ui .filter-chip.active{
+  color:#fff;border-color:#1768dc;background:linear-gradient(180deg,#3d8cff,#2876ed);
+  box-shadow:0 4px 10px rgba(38,112,225,.18);
+}
+.dispatcher-ui .side-logout{background:rgba(255,255,255,.055);border-color:rgba(255,255,255,.18);box-shadow:none}
+.courier-ui .logout{
+  border:1px solid #d4dfec!important;background:linear-gradient(180deg,#fff,#f5f8fc)!important;
+  box-shadow:0 2px 7px rgba(31,62,101,.07)!important;padding:8px 12px!important;
+}
+.dispatcher-ui .btn:active,.courier-ui .btn:active,
+.dispatcher-ui .filter-chip:active,.dispatcher-ui .mobile-menu:active,.courier-ui .logout:active{
+  transform:translateY(1px) scale(.97)!important;filter:brightness(.98);
+  box-shadow:0 1px 3px rgba(25,65,115,.12)!important;
+}
+.dispatcher-ui button:disabled,.courier-ui button:disabled{
+  opacity:.58!important;cursor:not-allowed!important;box-shadow:none!important;transform:none!important;
+}
