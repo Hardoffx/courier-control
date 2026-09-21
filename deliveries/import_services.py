@@ -412,6 +412,9 @@ def _rows(content, create_points=False):
         point = match.point
         created = match.created
         canonical = canonical_delivery_values(point, source, address, phone)
+        # Existing DeliveryPoint records may contain legacy/raw addresses from
+        # older imports. Never let that bypass the current normalization rules.
+        canonical['address'] = normalize_delivery_address(canonical.get('address') or address)
 
         raw_order = values.get('route_order')
         route_order = int(raw_order) if isinstance(raw_order, (int, float)) else len(rows) + 1
