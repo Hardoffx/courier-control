@@ -11,7 +11,7 @@ from accounts.models import User
 from .models import Delivery, DeliveryEvent, DeliveryPoint, Route, RouteRun, RouteTemplate, RouteTemplateItem
 from .route_services import generate_route_run, reassign_route_run, learn_template_from_run
 from .point_matching import match_point
-from .import_services import import_workbook, preview_workbook, validate_upload
+from .import_services import import_workbook, preview_workbook, validate_upload, normalize_delivery_address
 from .import_staging import stage_upload, consume_upload
 
 class PilotShellTests(TestCase):
@@ -78,6 +78,31 @@ class PointImportTests(TestCase):
         with ZipFile(stream,'w',ZIP_DEFLATED) as archive:
             archive.writestr('[Content_Types].xml','x'); archive.writestr('xl/worksheets/sheet1.xml','0'*(51*1024*1024))
         with self.assertRaises(ValueError): validate_upload('route.xlsx',stream.getvalue())
+
+class AddressNormalizationTests(TestCase):
+    def test_requested_moscow_examples(self):
+        self.assertEqual(normalize_delivery_address('Москва г, ул Вишнёвая 13к1с1'),'Москва, ул Вишнёвая 13к1с1')
+        self.assertEqual(normalize_delivery_address('Москва г, б-р Яна Райниса, д. 10'),'Москва, б-р Яна Райниса 10')
+
+    def test_village_is_not_confused_with_house(self):
+        self.assertEqual(normalize_delivery_address('Московская обл., Солнечногорский р-н, Юрлово д., 89'),'Московская обл., Солнечногорский р-н, деревня Юрлово, 89')
+        self.assertEqual(normalize_delivery_address('Московская обл., д. Юрлово, д. 89'),'Московская обл., деревня Юрлово 89')
+
+    def test_building_parts_are_compacted(self):
+        self.assertEqual(normalize_delivery_address('Москва, ул. Тестовая, дом №13, корпус 1, строение 2'),'Москва, ул Тестовая 13, к1, с2')
+
+    def test_other_settlement_types_are_preserved_explicitly(self):
+        self.assertIn('село',normalize_delivery_address('Московская обл., с. Павловское, д. 7'))
+        self.assertIn('посёлок',normalize_delivery_address('Московская обл., пос. Лесной, дом 4'))
+        self.assertIn('пгт',normalize_delivery_address('Московская обл., пгт Нахабино, д. 5'))
+
+    def test_interior_details_are_removed(self):
+        self.assertEqual(normalize_delivery_address('Москва, ул Тестовая, д. 10, офис 17'),'Москва, ул Тестовая 10')
+
+    def test_unknown_text_is_not_aggressively_deleted(self):
+        raw='Московская обл., территория Новая, участок А-7'
+        self.assertIn('территория Новая',normalize_delivery_address(raw))
+
 
 class RouteTemplateTests(TestCase):
     def setUp(self):
