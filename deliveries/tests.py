@@ -104,6 +104,25 @@ class AddressNormalizationTests(TestCase):
         self.assertIn('территория Новая',normalize_delivery_address(raw))
 
 
+class PryadilnayaImportFilterTests(TestCase):
+    def test_filter_is_independent_of_row_and_label(self):
+        wb=Workbook(); ws=wb.active
+        ws.append(['Код','Адрес','Время','№'])
+        ws.append(['458','Москва г, Дубравная ул, дом № 46','11:00',1])
+        ws.append(['Любое название','105037, Москва г, ул 2-я Прядильная, д. 1, стр. 2','12:00',2])
+        ws.append(['5827/5958/6113','Московская обл, Солнечногорский р-н, Юрлово д, дом № 89','14:00',3])
+        ws.append(['Другая точка','Москва г, ул 2-я Прядильная, д. 17','15:00',4])
+        ws.append(['Склад','Москва г, 2-я Прядильная ул, дом № 1','16:00',5])
+        stream=BytesIO(); wb.save(stream)
+        summary=preview_workbook(stream.getvalue())
+        addresses=[item['address'] for item in summary.preview]
+        self.assertEqual(summary.total_rows,3)
+        self.assertTrue(any('Дубравная' in a for a in addresses))
+        self.assertTrue(any('Юрлово' in a for a in addresses))
+        self.assertTrue(any('Прядильная' in a and '17' in a for a in addresses))
+        self.assertFalse(any('Прядильная' in a and (' 1,' in a or a.endswith(' 1') or ' 1с' in a) for a in addresses))
+
+
 class RouteTemplateTests(TestCase):
     def setUp(self):
         self.dispatcher=User.objects.create_user(username='route-dispatcher',password='pass',role=User.Role.DISPATCHER); self.primary=User.objects.create_user(username='primary',role=User.Role.COURIER); self.reserve=User.objects.create_user(username='reserve',role=User.Role.COURIER,is_reserve_courier=True); self.route=Route.objects.create(name='Маршрут 1',default_courier=self.primary); self.weekday=RouteTemplate.objects.create(route=self.route,kind=RouteTemplate.Kind.WEEKDAY); self.weekend=RouteTemplate.objects.create(route=self.route,kind=RouteTemplate.Kind.WEEKEND); self.a=DeliveryPoint.objects.create(name='458',code='458',address='Москва, A',kind=DeliveryPoint.Kind.CMD); self.b=DeliveryPoint.objects.create(name='ИНВИТРО B',address='Москва, B',kind=DeliveryPoint.Kind.INVITRO); RouteTemplateItem.objects.create(template=self.weekday,point=self.a,route_order=1,time_window='09:00'); RouteTemplateItem.objects.create(template=self.weekday,point=self.b,route_order=2,time_window='11:00'); RouteTemplateItem.objects.create(template=self.weekend,point=self.b,route_order=1,time_window='14:00')
