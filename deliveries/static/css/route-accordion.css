@@ -215,3 +215,46 @@ button:disabled,.btn:disabled{opacity:.68;cursor:wait;pointer-events:none}
   background:linear-gradient(180deg,#fbfdff,#f1f5fa)!important;
   box-shadow:0 3px 8px rgba(35,58,88,.08),inset 0 1px 0 #fff!important;
 }
+
+
+/* Visual intensity tuning — richer, still restrained. */
+.courier-ui .btn{
+  border-color:#0f5fd3!important;
+  background:linear-gradient(180deg,#3688ff 0%,#176be8 100%)!important;
+  box-shadow:0 5px 14px rgba(25,103,224,.27),inset 0 1px 0 rgba(255,255,255,.22)!important;
+}
+.courier-ui .btn.good{
+  border-color:#229b53!important;
+  background:linear-gradient(180deg,#48c575 0%,#2faf61 100%)!important;
+  box-shadow:0 5px 14px rgba(34,164,83,.25),inset 0 1px 0 rgba(255,255,255,.20)!important;
+}
+.courier-ui .btn.bad{
+  border-color:#db3545!important;
+  background:linear-gradient(180deg,#f65b67 0%,#e74653 100%)!important;
+  box-shadow:0 5px 14px rgba(220,53,69,.24),inset 0 1px 0 rgba(255,255,255,.18)!important;
+}
+.courier-ui .btn.alt,
+.courier-ui .compact-top-actions .compact-icon-action,
+.courier-ui .compact-top-actions .route-select-btn{
+  color:#173e70!important;
+  border-color:#8fb9ed!important;
+  background:linear-gradient(180deg,#f3f9ff 0%,#e4f0ff 100%)!important;
+  box-shadow:0 4px 11px rgba(35,96,171,.15),inset 0 1px 0 #fff!important;
+}
+.courier-ui .compact-reorder-actions .btn{
+  color:#405d80!important;
+  border-color:#b5c9df!important;
+  background:linear-gradient(180deg,#f8fbff,#eaf1f9)!important;
+  box-shadow:0 3px 9px rgba(35,75,122,.11),inset 0 1px 0 #fff!important;
+}
+
+/* Fast recognition, then a longer soft electric-blue fade. */
+.selected-card.just-advanced{animation:nextPointNeonLong 1.75s cubic-bezier(.16,.82,.24,1)}
+@keyframes nextPointNeonLong{
+  0%{border-color:#cfe2ff;box-shadow:0 10px 30px rgba(8,119,249,.08)}
+  13%{border-color:#00a7ff;box-shadow:0 0 0 2px rgba(0,167,255,.98),0 0 14px rgba(0,153,255,.88),0 0 32px rgba(0,128,255,.54)}
+  28%{border-color:#0a9cff;box-shadow:0 0 0 2px rgba(10,156,255,.92),0 0 13px rgba(0,153,255,.78),0 0 29px rgba(0,128,255,.47)}
+  55%{border-color:#168bff;box-shadow:0 0 0 2px rgba(22,139,255,.60),0 0 10px rgba(0,153,255,.48),0 0 23px rgba(0,128,255,.30)}
+  78%{border-color:#68b4ff;box-shadow:0 0 0 1px rgba(22,139,255,.28),0 0 7px rgba(0,153,255,.22),0 0 16px rgba(0,128,255,.13)}
+  100%{border-color:#cfe2ff;box-shadow:0 10px 30px rgba(8,119,249,.08)}
+}
