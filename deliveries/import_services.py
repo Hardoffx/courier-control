@@ -280,7 +280,7 @@ def normalize_delivery_address(raw_address):
     # Only accept it as a complete comma-separated component. Never guess on
     # an ambiguous token embedded in a street/building component.
     postfixes = (
-        (r'д\.', 'деревня'), (r'с\.', 'село'), (r'пос\.?', 'посёлок'),
+        (r'д\.?' , 'деревня'), (r'с\.?' , 'село'), (r'пос\.?' , 'посёлок'),
         (r'рп', 'рабочий посёлок'), (r'пгт', 'пгт'), (r'х\.', 'хутор'),
     )
     for marker, canonical in postfixes:
