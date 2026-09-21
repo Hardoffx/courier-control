@@ -242,9 +242,6 @@ def normalize_delivery_address(raw_address):
     value = re.sub(r'(?iu)\b(?:строение|стр\.?)\s*№?\s*(\d+[а-яa-z]?)\b', r'с\1', value)
     value = re.sub(r'(?iu)\b(?:владение|вл\.?)\s*№?\s*(\d+[а-яa-z]?)\b', r'вл\1', value)
 
-    # House marker is unambiguous only when immediately followed by a number.
-    value = re.sub(r'(?iu)(?:\s*,\s*|\s+)\b(?:д|дом)\.?\s*(?:№\s*)?(?=\d)', ' ', value)
-
     # Expand common abbreviated settlement prefixes. Keep these regexes
     # intentionally simple: comma/start + marker + human-readable name.
     for marker, canonical in (
@@ -257,6 +254,10 @@ def normalize_delivery_address(raw_address):
             lambda m, c=canonical: f"{m.group(1)}{c} {m.group(2).strip()}",
             value,
         )
+
+    # House marker is unambiguous only when immediately followed by a number.
+    value = re.sub(r'(?iu)(?:\s*,\s*|\s+)\b(?:д|дом)\.?\s*(?:№\s*)?(?=\d)', ' ', value)
+
 
     # Settlement types. Prefix forms are unambiguous because a name follows.
     settlement_prefixes = (
