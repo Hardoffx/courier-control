@@ -121,6 +121,33 @@ class AddressNormalizationTests(TestCase):
         self.assertEqual(normalize_delivery_address('Москва г, Митинский 3-й пер, дом № 4, корпус 1'), 'Москва, пер Митинский 3-й 4к1')
         self.assertEqual(normalize_delivery_address('Москва г, пер Митинский 3-й, д. 4, к. 1'), 'Москва, пер Митинский 3-й 4к1')
 
+    def test_clean_addresses_are_idempotent(self):
+        clean_addresses = [
+            'Москва, ул Митинская 17к4',
+            'Москва, ул Дубравная 46',
+            'Москва, пер Митинский 3-й 4к1',
+            'Красногорск, посёлок Отрадное, ул Кленовая 3',
+            'Московская обл, Солнечногорский р-н, деревня Юрлово 89',
+            'Москва, ул Вишнёвая 13к1с1',
+        ]
+        for address in clean_addresses:
+            with self.subTest(address=address):
+                self.assertEqual(normalize_delivery_address(address), address)
+
+    def test_normalization_is_idempotent_for_dirty_addresses(self):
+        dirty_addresses = [
+            'Москва г, ул Митинская, д. 17, к. 4',
+            'Москва г, Дубравная ул, дом № 46',
+            'Москва г, Митинский 3-й пер, дом № 4, корпус 1',
+            'г Красногорск, п Отрадное, ул Кленовая, д. 3',
+            'Московская обл, Солнечногорский р-н, Юрлово д, дом № 89',
+            'Москва г, ул Вишнёвая, д. 13, к. 1, стр. 1',
+        ]
+        for address in dirty_addresses:
+            with self.subTest(address=address):
+                once = normalize_delivery_address(address)
+                self.assertEqual(normalize_delivery_address(once), once)
+
     def test_unknown_text_is_not_aggressively_deleted(self):
         raw='Московская обл., территория Новая, участок А-7'
         self.assertIn('территория Новая',normalize_delivery_address(raw))
