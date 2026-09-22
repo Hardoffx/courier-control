@@ -147,38 +147,64 @@ async function animateRouteItem(item,open){
   const body=item.querySelector(':scope > .route-detail-body'),summary=item.querySelector(':scope > summary');
   if(!body||!summary)return;
   item.classList.add('motion-accordion');
+
+  // Measure the closed and open states explicitly. Native <details> is only
+  // used to expose content for measurement; visual state is owned by Motion.
+  const startHeight=item.getBoundingClientRect().height;
   if(open)item.open=true;
-  const summaryHeight=summary.getBoundingClientRect().height,startHeight=item.getBoundingClientRect().height,endHeight=open?summaryHeight+body.scrollHeight:summaryHeight;
-  item.style.overflow='hidden';item.style.height=startHeight+'px';
-  if(reduceMotion){item.style.height='';item.style.overflow='';if(!open)item.open=false;return}
+  const summaryHeight=summary.getBoundingClientRect().height;
+  const endHeight=open?(summaryHeight+body.scrollHeight):summaryHeight;
+
+  item.style.overflow='hidden';
+  item.style.height=startHeight+'px';
+  if(reduceMotion){
+    if(!open)item.open=false;
+    item.style.height='';item.style.overflow='';
+    return;
+  }
+
   try{
-    // Motion's animate() returns AnimationPlaybackControls, not a Promise.
-    // Await the documented .finished promise so the accordion lock is always released.
     const heightMotion=animate(item,{height:[startHeight+'px',endHeight+'px']},{duration:MOTION.accordion,ease:MOTION.ease});
     const bodyMotion=animate(body,{opacity:open?[0,1]:[1,0],transform:open?['translateY(-4px)','translateY(0px)']:['translateY(0px)','translateY(-3px)']},{duration:open?.30:.22,delay:open?.055:0,ease:MOTION.ease});
     await Promise.all([heightMotion.finished,bodyMotion.finished]);
-    item.style.height=endHeight+'px';
-    if(!open)item.open=false;
-    await new Promise(resolve=>requestAnimationFrame(resolve));
   }finally{
-    item.style.height='';item.style.overflow='';body.style.opacity='';body.style.transform='';
+    // Crucial on iOS Safari: commit the semantic <details> state before
+    // releasing the animated height, otherwise the browser can leave every
+    // row logically open even though it looked collapsed.
+    item.open=open;
+    body.style.opacity='';
+    body.style.transform='';
+    item.style.height='';
+    item.style.overflow='';
   }
 }
-routeItems.forEach(item=>{const summary=item.querySelector(':scope > summary');if(!summary)return;summary.classList.add('motion-managed');summary.addEventListener('click',async e=>{
-  e.preventDefault();if(accordionBusy)return;accordionBusy=true;
-  try{
-    const opening=!item.open,current=routeItems.find(other=>other!==item&&other.open);
-    if(opening&&current){
-      await Promise.all([animateRouteItem(current,false),animateRouteItem(item,true)]);
-    }else if(opening){
-      await animateRouteItem(item,true);
-    }else if(item.open){
-      await animateRouteItem(item,false);
+
+routeItems.forEach(item=>{
+  const summary=item.querySelector(':scope > summary');if(!summary)return;
+  summary.classList.add('motion-managed');
+  summary.addEventListener('click',async e=>{
+    e.preventDefault();
+    if(accordionBusy)return;
+    accordionBusy=true;
+    try{
+      const opening=!item.open;
+      const others=routeItems.filter(other=>other!==item&&other.open);
+      if(opening){
+        // Heal any stale native-open rows as well as animate the visible one.
+        const jobs=others.map(other=>animateRouteItem(other,false));
+        jobs.push(animateRouteItem(item,true));
+        await Promise.all(jobs);
+      }else{
+        await animateRouteItem(item,false);
+      }
+    }finally{
+      // Enforce the invariant even if Safari/Motion cancels an animation.
+      routeItems.forEach(other=>{if(other!==item&&other.open)other.open=false});
+      accordionBusy=false;
     }
-  }finally{
-    accordionBusy=false;
-  }
-})});
+  });
+});
+
 document.querySelectorAll('.btn,.route-row').forEach(el=>{el.classList.add('motion-managed');if(reduceMotion)return;press(el,target=>{animate(target,{transform:'scale(.985)',filter:'brightness(.94)'},{duration:MOTION.press,ease:MOTION.ease});return()=>animate(target,{transform:'scale(1)',filter:'brightness(1)'},{duration:MOTION.micro,ease:MOTION.ease})})});
 
 function openDelivery(id,childId){const d=document.getElementById(id);if(!d)return;d.open=true;if(childId){const c=document.getElementById(childId);if(c)c.open=true}}
