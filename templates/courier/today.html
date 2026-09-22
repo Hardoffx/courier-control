@@ -4,10 +4,6 @@
 {% block head %}<link rel="stylesheet" href="{% static 'css/route-accordion.css' %}">
 <style>
 .motion-managed:active{filter:none!important;transform:none!important;opacity:1!important}
-/* The project stylesheet gives route-detail-body a display value, which can
-   override the browser's default [hidden] rule. Make controlled accordion
-   visibility explicit and authoritative. */
-.route-item>.route-detail-body[hidden]{display:none!important}
 .route-item.motion-accordion{will-change:height}
 .route-item.motion-accordion>.route-detail-body{will-change:opacity,transform}
 @media (prefers-reduced-motion:reduce){.route-item.motion-accordion,.route-item.motion-accordion>.route-detail-body{will-change:auto}}
@@ -55,8 +51,8 @@
     <div class="route-title"><h2>Мой маршрут сегодня</h2><span class="muted">{{ current_run_total }} точек</span></div>
     <div class="route-list route-accordion-list">
       {% for d in active_deliveries %}
-      <div id="delivery-{{ d.pk }}" class="route-item {% if d.status == 'done' %}done{% elif d.status == 'problem' %}problem{% elif selected_delivery and d.pk == selected_delivery.pk %}current{% endif %}" data-delivery-id="{{ d.pk }}" data-expanded="false">
-        <button type="button" class="route-row" aria-expanded="false" aria-controls="route-detail-{{ d.pk }}">
+      <details id="delivery-{{ d.pk }}" class="route-item {% if d.status == 'done' %}done{% elif d.status == 'problem' %}problem{% elif selected_delivery and d.pk == selected_delivery.pk %}current{% endif %}" data-delivery-id="{{ d.pk }}">
+        <summary class="route-row">
           <span class="route-dot">{% if d.status == 'done' %}✓{% elif d.status == 'problem' %}!{% else %}{{ d.route_order }}{% endif %}</span>
           <div class="route-primary">
             <div class="route-labline">{% include 'includes/lab_badge.html' with delivery=d %}{% if d.lpu_number %}<span class="route-sub route-lpu">ЛПУ {{ d.lpu_number }}</span>{% endif %}</div>
@@ -64,9 +60,9 @@
           </div>
           <div class="route-time">{{ d.time_window|default:d.get_status_display }}</div>
           <span class="route-chevron" aria-hidden="true"></span>
-        </button>
+        </summary>
 
-        <div id="route-detail-{{ d.pk }}" class="route-detail-body compact-route-detail" hidden>
+        <div class="route-detail-body compact-route-detail">
           {% if d.comment %}<div class="route-detail-note">{{ d.comment }}</div>{% endif %}
           {% if d.courier_daily_note %}<div class="route-detail-note courier-note compact-note-display"><b>Не забыть:</b> {{ d.courier_daily_note }}<details class="note-inline-editor"><summary>Изменить</summary><form method="post" action="{% url 'courier_update' d.pk %}" class="route-detail-form courier-note-form quick-action-editor">{% csrf_token %}<input type="hidden" name="action" value="daily_note"><input aria-label="Заметка" name="courier_daily_note" maxlength="500" value="{{ d.courier_daily_note }}"><button class="btn alt" type="submit">Сохранить</button></form></details></div>{% endif %}
           {% if d.problem_reason %}<div class="route-detail-problem"><b>{{ d.problem_reason }}</b></div>{% endif %}
@@ -94,7 +90,7 @@
             <div class="route-complete-note">✓ Точка выполнена{% if d.completed_at %} · {{ d.completed_at|date:"H:i" }}{% endif %}</div>
           {% endif %}
         </div>
-      </div>
+      </details>
       {% empty %}<div style="padding:18px">Активных заданий сейчас нет.</div>{% endfor %}
     </div>
     {% if completed_deliveries %}
@@ -147,74 +143,32 @@ if(doneAt&&Date.now()-doneAt<1800){
 }
 const routeItems=[...document.querySelectorAll('#route-list > .route-list > .route-item')];
 let accordionBusy=false;
-function setRouteExpanded(item,expanded){
-  const summary=item.querySelector(':scope > .route-row'),body=item.querySelector(':scope > .route-detail-body');
-  if(!summary||!body)return;
-  item.dataset.expanded=expanded?'true':'false';
-  summary.setAttribute('aria-expanded',expanded?'true':'false');
-  body.hidden=!expanded;
-}
-
 async function animateRouteItem(item,open){
-  const summary=item.querySelector(':scope > .route-row'),body=item.querySelector(':scope > .route-detail-body');
-  if(!summary||!body)return;
+  const body=item.querySelector(':scope > .route-detail-body'),summary=item.querySelector(':scope > summary');
+  if(!body||!summary)return;
   item.classList.add('motion-accordion');
-  const startHeight=item.getBoundingClientRect().height;
-
-  // Reveal before measuring, but pin the outer card to its old geometry so
-  // there is no intermediate layout flash on any browser.
-  if(open)body.hidden=false;
-  const summaryHeight=summary.getBoundingClientRect().height;
-  const styles=getComputedStyle(body);
-  const bodyHeight=body.scrollHeight+parseFloat(styles.marginTop||0)+parseFloat(styles.marginBottom||0);
-  const endHeight=open?summaryHeight+bodyHeight:summaryHeight;
-
-  item.dataset.expanded=open?'true':'false';
-  summary.setAttribute('aria-expanded',open?'true':'false');
-  item.style.overflow='hidden';
-  item.style.height=startHeight+'px';
-
-  if(reduceMotion){
-    setRouteExpanded(item,open);
-    item.style.height='';item.style.overflow='';
-    body.style.opacity='';body.style.transform='';
-    return;
-  }
-
-  try{
-    await new Promise(resolve=>requestAnimationFrame(resolve));
-    const heightMotion=animate(item,{height:[startHeight+'px',endHeight+'px']},{duration:MOTION.accordion,ease:MOTION.ease});
-    const bodyMotion=animate(body,{opacity:open?[0,1]:[1,0],transform:open?['translateY(-4px)','translateY(0px)']:['translateY(0px)','translateY(-3px)']},{duration:open?.30:.22,delay:open?.055:0,ease:MOTION.ease});
-    await Promise.all([heightMotion.finished,bodyMotion.finished]);
-  }finally{
-    setRouteExpanded(item,open);
-    item.style.height='';item.style.overflow='';
-    body.style.opacity='';body.style.transform='';
-  }
+  if(open)item.open=true;
+  const summaryHeight=summary.getBoundingClientRect().height,startHeight=item.getBoundingClientRect().height,endHeight=open?summaryHeight+body.scrollHeight:summaryHeight;
+  item.style.overflow='hidden';item.style.height=startHeight+'px';
+  if(reduceMotion){item.style.height='';item.style.overflow='';if(!open)item.open=false;return}
+  const heightMotion=animate(item,{height:[startHeight+'px',endHeight+'px']},{duration:MOTION.accordion,ease:MOTION.ease});
+  const bodyMotion=animate(body,{opacity:open?[0,1]:[1,0],transform:open?['translateY(-4px)','translateY(0px)']:['translateY(0px)','translateY(-3px)']},{duration:open?.30:.22,delay:open?.055:0,ease:MOTION.ease});
+  await Promise.all([heightMotion,bodyMotion]);
+  item.style.height=endHeight+'px';
+  if(!open)item.open=false;
+  await new Promise(resolve=>requestAnimationFrame(resolve));
+  item.style.height='';item.style.overflow='';body.style.opacity='';body.style.transform='';
 }
-
-routeItems.forEach(item=>{
-  const summary=item.querySelector(':scope > .route-row'),body=item.querySelector(':scope > .route-detail-body');
-  if(!summary||!body)return;
-  setRouteExpanded(item,false);
-  summary.classList.add('motion-managed');
-  summary.addEventListener('click',async e=>{
-    e.preventDefault();if(accordionBusy)return;accordionBusy=true;
-    try{
-      const opening=item.dataset.expanded!=='true';
-      const current=routeItems.find(other=>other!==item&&other.dataset.expanded==='true');
-      if(opening&&current)await Promise.all([animateRouteItem(current,false),animateRouteItem(item,true)]);
-      else await animateRouteItem(item,opening);
-    }finally{
-      routeItems.forEach(other=>{if(other!==item&&other.dataset.expanded==='true')setRouteExpanded(other,false)});
-      accordionBusy=false;
-    }
-  });
-});
-
+routeItems.forEach(item=>{const summary=item.querySelector(':scope > summary');if(!summary)return;summary.classList.add('motion-managed');summary.addEventListener('click',async e=>{
+  e.preventDefault();if(accordionBusy)return;accordionBusy=true;
+  const opening=!item.open,current=routeItems.find(other=>other!==item&&other.open);
+  if(current)await animateRouteItem(current,false);
+  if(opening)await animateRouteItem(item,true);else if(item.open)await animateRouteItem(item,false);
+  accordionBusy=false;
+})});
 document.querySelectorAll('.btn,.route-row').forEach(el=>{el.classList.add('motion-managed');if(reduceMotion)return;press(el,target=>{animate(target,{transform:'scale(.985)',filter:'brightness(.94)'},{duration:MOTION.press,ease:MOTION.ease});return()=>animate(target,{transform:'scale(1)',filter:'brightness(1)'},{duration:MOTION.micro,ease:MOTION.ease})})});
 
-function openDelivery(id,childId){const d=document.getElementById(id);if(!d)return;if(d.matches('.route-item[data-expanded]'))setRouteExpanded(d,true);else d.open=true;if(childId){const c=document.getElementById(childId);if(c)c.open=true}}
+function openDelivery(id,childId){const d=document.getElementById(id);if(!d)return;d.open=true;if(childId){const c=document.getElementById(childId);if(c)c.open=true}}
 document.querySelectorAll('.detail-opener').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();openDelivery(a.dataset.open,a.dataset.openChild)}));
 document.querySelectorAll('.add-phone-toggle,.phone-editor-toggle,.note-editor-toggle').forEach(btn=>btn.addEventListener('click',()=>{const form=document.getElementById(btn.getAttribute('aria-controls'));if(!form)return;const opening=form.hidden;const scope=btn.closest('.compact-top-actions')||btn.closest('.selected-card');if(opening&&scope){scope.querySelectorAll('.phone-inline-editor,.note-inline-editor,.selected-phone-form').forEach(other=>{if(other!==form)other.hidden=true});scope.querySelectorAll('.phone-editor-toggle,.note-editor-toggle,.add-phone-toggle').forEach(other=>{if(other!==btn){other.setAttribute('aria-expanded','false');other.classList.remove('is-active')}})}form.hidden=!opening;btn.setAttribute('aria-expanded',opening?'true':'false');btn.classList.toggle('is-active',opening);if(opening){const input=form.querySelector('input:not([type=hidden])');if(input)setTimeout(()=>input.focus(),0)}}));
 document.querySelectorAll('.ajax-reorder-form').forEach(form=>form.addEventListener('submit',async e=>{
