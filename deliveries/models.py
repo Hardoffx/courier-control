@@ -15,7 +15,7 @@ class DeliveryPoint(models.Model):
     latitude=models.DecimalField(max_digits=9,decimal_places=6,null=True,blank=True); longitude=models.DecimalField(max_digits=9,decimal_places=6,null=True,blank=True); geocode_status=models.CharField(max_length=16,choices=GeocodeStatus.choices,default=GeocodeStatus.PENDING); geocoded_address=models.CharField(max_length=500,blank=True); geocoded_at=models.DateTimeField(null=True,blank=True)
     created_at=models.DateTimeField(auto_now_add=True); updated_at=models.DateTimeField(auto_now=True)
     class Meta:
-        ordering=('kind','name'); constraints=[models.UniqueConstraint(fields=('code','address'),name='unique_point_code_address')]
+        ordering=('kind','name'); constraints=[models.UniqueConstraint(fields=('code','address'),condition=~models.Q(code=''),name='unique_point_code_address')]
     def __str__(self): return self.name or self.code or self.address
     def save(self,*args,**kwargs):
         if self.pk:
