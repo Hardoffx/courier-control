@@ -202,7 +202,8 @@ document.querySelectorAll('.done-form').forEach(f=>f.addEventListener('submit',e
   const point=card?.querySelector('.next-bar span:last-child,.route-dot')?.textContent?.trim()||'';
   sessionStorage.setItem('courierDonePoint',point);
   const deliveryId=card?.dataset.selectedId||card?.dataset.deliveryId||'';
-  if(deliveryId)sessionStorage.setItem('courierDoneId',deliveryId);\n  sessionStorage.setItem('courierDoneUrl',f.action);
+  if(deliveryId)sessionStorage.setItem('courierDoneId',deliveryId);
+  sessionStorage.setItem('courierDoneUrl',f.action);
   if(btn){btn.disabled=true;const label=btn.querySelector('.hold-label');if(label)label.textContent='✓ Сохраняю…';else btn.textContent='✓ Сохраняю…'}
 }));
 
