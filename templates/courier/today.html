@@ -143,45 +143,44 @@ if(doneAt&&Date.now()-doneAt<1800){
 }
 const routeItems=[...document.querySelectorAll('#route-list > .route-list > .route-item')];
 let accordionBusy=false;
-async function animateRouteItem(item,open){
-  const body=item.querySelector(':scope > .route-detail-body'),summary=item.querySelector(':scope > summary');
-  if(!body||!summary)return;
-  item.classList.add('motion-accordion');
-
-  // Measure the closed and open states explicitly. Native <details> is only
-  // used to expose content for measurement; visual state is owned by Motion.
-  const startHeight=item.getBoundingClientRect().height;
-  if(open)item.open=true;
+function routeHeights(item){
+  const summary=item.querySelector(':scope > summary'),body=item.querySelector(':scope > .route-detail-body');
+  if(!summary||!body)return null;
   const summaryHeight=summary.getBoundingClientRect().height;
-  // Once <details> is opened, measure the actual rendered row. scrollHeight on
-  // the body is unreliable in iOS Safari during the same native state change.
-  const openHeight=item.getBoundingClientRect().height;
-  const endHeight=open?openHeight:summaryHeight;
+  // Do not ask Safari to measure a just-opened <details>. Measure the content
+  // itself; its scrollHeight remains stable even while native details is closed.
+  const styles=getComputedStyle(body);
+  const bodyHeight=body.scrollHeight+parseFloat(styles.marginTop||0)+parseFloat(styles.marginBottom||0);
+  return {summary,body,summaryHeight,openHeight:summaryHeight+bodyHeight};
+}
 
-  // Opening the native details immediately expands layout. Pin it back to its
-  // pre-click height before the next paint so Motion has a real start frame.
+async function animateRouteItem(item,open){
+  const parts=routeHeights(item);if(!parts)return;
+  const {body,summaryHeight,openHeight}=parts;
+  item.classList.add('motion-accordion');
+  const startHeight=item.getBoundingClientRect().height;
+
+  // Expose the body before animation, but keep the row visually pinned to the
+  // old height. This avoids iOS Safari's native <details> measurement race.
+  if(open)item.open=true;
   item.style.overflow='hidden';
   item.style.height=startHeight+'px';
+
   if(reduceMotion){
-    if(!open)item.open=false;
-    item.style.height='';item.style.overflow='';
-    return;
+    item.open=open;item.style.height='';item.style.overflow='';
+    body.style.opacity='';body.style.transform='';return;
   }
 
+  const endHeight=open?openHeight:summaryHeight;
   try{
     await new Promise(resolve=>requestAnimationFrame(resolve));
     const heightMotion=animate(item,{height:[startHeight+'px',endHeight+'px']},{duration:MOTION.accordion,ease:MOTION.ease});
     const bodyMotion=animate(body,{opacity:open?[0,1]:[1,0],transform:open?['translateY(-4px)','translateY(0px)']:['translateY(0px)','translateY(-3px)']},{duration:open?.30:.22,delay:open?.055:0,ease:MOTION.ease});
     await Promise.all([heightMotion.finished,bodyMotion.finished]);
   }finally{
-    // Crucial on iOS Safari: commit the semantic <details> state before
-    // releasing the animated height, otherwise the browser can leave every
-    // row logically open even though it looked collapsed.
     item.open=open;
-    body.style.opacity='';
-    body.style.transform='';
-    item.style.height='';
-    item.style.overflow='';
+    item.style.height='';item.style.overflow='';
+    body.style.opacity='';body.style.transform='';
   }
 }
 
@@ -189,23 +188,15 @@ routeItems.forEach(item=>{
   const summary=item.querySelector(':scope > summary');if(!summary)return;
   summary.classList.add('motion-managed');
   summary.addEventListener('click',async e=>{
-    e.preventDefault();
-    if(accordionBusy)return;
-    accordionBusy=true;
+    e.preventDefault();if(accordionBusy)return;accordionBusy=true;
     try{
       const opening=!item.open;
-      const others=routeItems.filter(other=>other!==item&&other.open);
-      if(opening){
-        // Heal any stale native-open rows as well as animate the visible one.
-        const jobs=others.map(other=>animateRouteItem(other,false));
-        jobs.push(animateRouteItem(item,true));
-        await Promise.all(jobs);
-      }else{
-        await animateRouteItem(item,false);
-      }
+      const current=routeItems.find(other=>other!==item&&other.open);
+      if(opening&&current)await Promise.all([animateRouteItem(current,false),animateRouteItem(item,true)]);
+      else if(opening)await animateRouteItem(item,true);
+      else await animateRouteItem(item,false);
     }finally{
-      // Enforce the invariant even if Safari/Motion cancels an animation.
-      routeItems.forEach(other=>{if(other!==item&&other.open)other.open=false});
+      routeItems.forEach(other=>{if(other!==item)other.open=false});
       accordionBusy=false;
     }
   });
