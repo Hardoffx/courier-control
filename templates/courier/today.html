@@ -203,7 +203,7 @@ document.querySelectorAll('.done-form').forEach(f=>f.addEventListener('submit',e
   sessionStorage.setItem('courierDonePoint',point);
   const deliveryId=card?.dataset.selectedId||card?.dataset.deliveryId||'';
   if(deliveryId)sessionStorage.setItem('courierDoneId',deliveryId);
-  sessionStorage.setItem('courierDoneUrl',f.action);
+  sessionStorage.setItem('courierDoneUrl',f.getAttribute('action')||f.action);
   if(btn){btn.disabled=true;const label=btn.querySelector('.hold-label');if(label)label.textContent='✓ Сохраняю…';else btn.textContent='✓ Сохраняю…'}
 }));
 
@@ -233,7 +233,7 @@ if(doneAt&&Date.now()-doneAt<1800){
       const token=document.querySelector('[name=csrfmiddlewaretoken]')?.value||'';
       sessionStorage.removeItem('courierDoneAt');sessionStorage.removeItem('courierDonePoint');sessionStorage.removeItem('courierDoneId');sessionStorage.removeItem('courierDoneUrl');
       const form=document.createElement('form');
-      form.method='post';form.action=completedUrl;form.hidden=true;
+      form.method='post';form.action=new URL(completedUrl,window.location.href).href;form.hidden=true;
       const csrf=document.createElement('input');csrf.type='hidden';csrf.name='csrfmiddlewaretoken';csrf.value=token;
       const action=document.createElement('input');action.type='hidden';action.name='action';action.value='reopen';
       form.append(csrf,action);document.body.appendChild(form);form.submit();
