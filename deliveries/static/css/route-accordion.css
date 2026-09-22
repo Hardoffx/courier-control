@@ -63,7 +63,9 @@
 
 /* Courier interaction polish — 2026-09-21 */
 .btn,button,.route-row,.selected-note-toggle{transition:transform .11s ease,filter .11s ease,background-color .14s ease,border-color .14s ease,box-shadow .14s ease}
-.btn:active,button:active,.route-row:active,.selected-note-toggle:active{transform:scale(.975);filter:brightness(.97)}
+.btn:not(.motion-managed):active,button:not(.motion-managed):active,.route-row:not(.motion-managed):active,.selected-note-toggle:not(.motion-managed):active{transform:scale(.975);filter:brightness(.97)}
+.motion-managed{transition-property:background-color,border-color,box-shadow!important;-webkit-tap-highlight-color:transparent}
+.route-item.motion-accordion .route-chevron{transition:none!important}
 button:disabled,.btn:disabled{opacity:.68;cursor:wait;pointer-events:none}
 
 /* Keep selected-point controls in work order: note -> map -> done/problem -> navigation. */
@@ -197,7 +199,7 @@ button:disabled,.btn:disabled{opacity:.68;cursor:wait;pointer-events:none}
   background:linear-gradient(180deg,#f9fcff,#edf5ff)!important;
   box-shadow:0 3px 8px rgba(32,74,124,.10),inset 0 1px 0 #fff!important;
 }
-.courier-ui .btn:active{
+.courier-ui .btn:not(.motion-managed):active{
   transform:translateY(1px) scale(.97)!important;
   box-shadow:0 1px 3px rgba(25,65,115,.13)!important;filter:brightness(.98)!important;
 }
