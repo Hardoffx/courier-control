@@ -4,6 +4,10 @@
 {% block head %}<link rel="stylesheet" href="{% static 'css/route-accordion.css' %}">
 <style>
 .motion-managed:active{filter:none!important;transform:none!important;opacity:1!important}
+/* The project stylesheet gives route-detail-body a display value, which can
+   override the browser's default [hidden] rule. Make controlled accordion
+   visibility explicit and authoritative. */
+.route-item>.route-detail-body[hidden]{display:none!important}
 .route-item.motion-accordion{will-change:height}
 .route-item.motion-accordion>.route-detail-body{will-change:opacity,transform}
 @media (prefers-reduced-motion:reduce){.route-item.motion-accordion,.route-item.motion-accordion>.route-detail-body{will-change:auto}}
