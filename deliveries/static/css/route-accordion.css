@@ -282,7 +282,7 @@ button:disabled,.btn:disabled{opacity:.68;cursor:wait;pointer-events:none}
 .hold-done{position:relative;overflow:hidden;isolation:isolate;touch-action:none;user-select:none;-webkit-user-select:none}
 .hold-done .hold-fill{position:absolute;inset:0;z-index:-1;transform:scaleX(0);transform-origin:left center;background:rgba(0,96,42,.28);pointer-events:none}
 .hold-done .hold-label{position:relative;z-index:1}
-.hold-done.is-holding{transform:scale(.985)}
+.hold-done.is-holding{filter:brightness(.97)}
 .hold-done.hold-complete{filter:brightness(.94)}
 .reopen-form{margin-top:10px}
 .reopen-btn{width:100%}
@@ -299,3 +299,5 @@ button:disabled,.btn:disabled{opacity:.68;cursor:wait;pointer-events:none}
 .courier-toast{opacity:0;transform:translate(-50%,8px);transition:opacity .24s ease,transform .28s cubic-bezier(.22,1,.36,1)}
 .courier-toast.show{opacity:1;transform:translate(-50%,0)}
 @media (prefers-reduced-motion:reduce){.selected-card.completion-highlight,.courier-toast{transition:none!important}}
+
+.hold-done.motion-managed.is-holding{transform:none!important}
