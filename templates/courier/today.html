@@ -143,29 +143,71 @@ if(doneAt&&Date.now()-doneAt<1800){
 }
 const routeItems=[...document.querySelectorAll('#route-list > .route-list > .route-item')];
 let accordionBusy=false;
-async function animateRouteItem(item,open){
-  const body=item.querySelector(':scope > .route-detail-body'),summary=item.querySelector(':scope > summary');
-  if(!body||!summary)return;
-  item.classList.add('motion-accordion');
-  if(open)item.open=true;
-  const summaryHeight=summary.getBoundingClientRect().height,startHeight=item.getBoundingClientRect().height,endHeight=open?summaryHeight+body.scrollHeight:summaryHeight;
-  item.style.overflow='hidden';item.style.height=startHeight+'px';
-  if(reduceMotion){item.style.height='';item.style.overflow='';if(!open)item.open=false;return}
-  const heightMotion=animate(item,{height:[startHeight+'px',endHeight+'px']},{duration:MOTION.accordion,ease:MOTION.ease});
-  const bodyMotion=animate(body,{opacity:open?[0,1]:[1,0],transform:open?['translateY(-4px)','translateY(0px)']:['translateY(0px)','translateY(-3px)']},{duration:open?.30:.22,delay:open?.055:0,ease:MOTION.ease});
-  await Promise.all([heightMotion,bodyMotion]);
-  item.style.height=endHeight+'px';
-  if(!open)item.open=false;
-  await new Promise(resolve=>requestAnimationFrame(resolve));
-  item.style.height='';item.style.overflow='';body.style.opacity='';body.style.transform='';
+
+class CourierAccordion {
+  constructor(items){
+    this.items=items;
+    this.current=items.find(item=>item.open)||null;
+    items.forEach(item=>this.bind(item));
+  }
+  bind(item){
+    const summary=item.querySelector(':scope > summary');
+    if(!summary)return;
+    summary.classList.add('motion-managed');
+    summary.addEventListener('click',e=>this.onClick(e,item));
+  }
+  async onClick(e,item){
+    e.preventDefault();
+    if(accordionBusy)return;
+    accordionBusy=true;
+    try{
+      if(item===this.current&&item.open){
+        await this.close(item);
+        this.current=null;
+        return;
+      }
+      const previous=this.current&&this.current.open?this.current:this.items.find(other=>other!==item&&other.open);
+      if(previous){
+        // Close first on the proven native-details path, then open the target.
+        // State remains single-owner here; no CSS/native race is allowed.
+        await this.close(previous);
+      }
+      await this.open(item);
+      this.current=item;
+      this.items.forEach(other=>{if(other!==item&&other.open)other.open=false});
+    }finally{
+      accordionBusy=false;
+    }
+  }
+  async open(item){return this.animate(item,true)}
+  async close(item){return this.animate(item,false)}
+  async animate(item,open){
+    const body=item.querySelector(':scope > .route-detail-body'),summary=item.querySelector(':scope > summary');
+    if(!body||!summary)return;
+    item.classList.add('motion-accordion');
+    if(open)item.open=true;
+    const summaryHeight=summary.getBoundingClientRect().height;
+    const startHeight=item.getBoundingClientRect().height;
+    const endHeight=open?(summaryHeight+body.scrollHeight):summaryHeight;
+    item.style.overflow='hidden';
+    item.style.height=startHeight+'px';
+    if(reduceMotion){
+      item.open=open;item.style.height='';item.style.overflow='';return;
+    }
+    try{
+      await new Promise(resolve=>requestAnimationFrame(resolve));
+      const h=animate(item,{height:[startHeight+'px',endHeight+'px']},{duration:MOTION.accordion,ease:MOTION.ease});
+      const c=animate(body,{opacity:open?[0,1]:[1,0],transform:open?['translateY(-4px)','translateY(0px)']:['translateY(0px)','translateY(-3px)']},{duration:open?.30:.22,delay:open?.055:0,ease:MOTION.ease});
+      await Promise.all([h.finished,c.finished]);
+    }finally{
+      item.open=open;
+      item.style.height='';item.style.overflow='';
+      body.style.opacity='';body.style.transform='';
+    }
+  }
 }
-routeItems.forEach(item=>{const summary=item.querySelector(':scope > summary');if(!summary)return;summary.classList.add('motion-managed');summary.addEventListener('click',async e=>{
-  e.preventDefault();if(accordionBusy)return;accordionBusy=true;
-  const opening=!item.open,current=routeItems.find(other=>other!==item&&other.open);
-  if(current)await animateRouteItem(current,false);
-  if(opening)await animateRouteItem(item,true);else if(item.open)await animateRouteItem(item,false);
-  accordionBusy=false;
-})});
+const courierAccordion=new CourierAccordion(routeItems);
+
 document.querySelectorAll('.btn,.route-row').forEach(el=>{el.classList.add('motion-managed');if(reduceMotion)return;press(el,target=>{animate(target,{transform:'scale(.985)',filter:'brightness(.94)'},{duration:MOTION.press,ease:MOTION.ease});return()=>animate(target,{transform:'scale(1)',filter:'brightness(1)'},{duration:MOTION.micro,ease:MOTION.ease})})});
 
 function openDelivery(id,childId){const d=document.getElementById(id);if(!d)return;d.open=true;if(childId){const c=document.getElementById(childId);if(c)c.open=true}}
