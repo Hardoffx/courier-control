@@ -197,7 +197,9 @@ def courier_update(request,pk):
     elif action=='phone': delivery.phone=request.POST.get('phone','').strip()[:64]; note=f'Телефон: {delivery.phone}'
     elif action=='daily_note': delivery.courier_daily_note=request.POST.get('courier_daily_note','').strip()[:500]; note=('Заметка на сегодня: '+delivery.courier_daily_note) if delivery.courier_daily_note else 'Заметка на сегодня удалена'
     else: raise PermissionDenied
-    delivery.save(); DeliveryEvent.objects.create(delivery=delivery,actor=request.user,action=action,note=note); return redirect('courier_today')
+    delivery.save(); DeliveryEvent.objects.create(delivery=delivery,actor=request.user,action=action,note=note)
+    if request.headers.get('x-requested-with')=='XMLHttpRequest': return JsonResponse({'ok':True,'delivery_id':delivery.pk,'action':action,'status':delivery.status})
+    return redirect('courier_today')
 
 @login_required
 @require_POST
