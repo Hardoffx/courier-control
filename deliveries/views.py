@@ -190,6 +190,9 @@ def courier_update(request,pk):
     delivery=get_object_or_404(Delivery,pk=pk,courier=request.user); action=request.POST.get('action')
     if action=='done' and delivery.status==Delivery.Status.DONE: return redirect('courier_today')
     if action=='done': delivery.status=Delivery.Status.DONE; delivery.completed_at=timezone.now(); delivery.completed_latitude=request.POST.get('latitude') or None; delivery.completed_longitude=request.POST.get('longitude') or None; delivery.problem_reason=''; note='Выполнено' + (' · GPS получен' if delivery.completed_latitude and delivery.completed_longitude else ' · без GPS')
+    elif action=='reopen':
+        if delivery.status!=Delivery.Status.DONE: return redirect('courier_today')
+        delivery.status=Delivery.Status.PENDING; delivery.completed_at=None; delivery.completed_latitude=None; delivery.completed_longitude=None; delivery.problem_reason=''; note='Возвращено в работу'
     elif action=='problem': reason=request.POST.get('problem_reason','').strip(); comment=request.POST.get('problem_comment','').strip()[:255]; reason=reason if reason in PROBLEM_REASONS else 'Другая проблема'; delivery.status=Delivery.Status.PROBLEM; delivery.problem_reason=(f'{reason}: {comment}' if comment else reason)[:255]; note=delivery.problem_reason
     elif action=='phone': delivery.phone=request.POST.get('phone','').strip()[:64]; note=f'Телефон: {delivery.phone}'
     elif action=='daily_note': delivery.courier_daily_note=request.POST.get('courier_daily_note','').strip()[:500]; note=('Заметка на сегодня: '+delivery.courier_daily_note) if delivery.courier_daily_note else 'Заметка на сегодня удалена'
