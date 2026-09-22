@@ -232,7 +232,7 @@ if(doneAt&&Date.now()-doneAt<1800){
       undo.disabled=true;undo.textContent='…';
       const token=document.querySelector('[name=csrfmiddlewaretoken]')?.value||'';
       const body=new URLSearchParams({action:'reopen',csrfmiddlewaretoken:token});
-      const response=await fetch(completedUrl,{method:'POST',body,headers:{'X-CSRFToken':token,'X-Requested-With':'XMLHttpRequest'},credentials:'same-origin',redirect:'follow'});
+      const response=await fetch(completedUrl,{method:'POST',body,headers:{'X-CSRFToken':token,'X-Requested-With':'XMLHttpRequest'},credentials:'same-origin'});
       if(response.ok){sessionStorage.removeItem('courierDoneAt');sessionStorage.removeItem('courierDonePoint');sessionStorage.removeItem('courierDoneId');sessionStorage.removeItem('courierDoneUrl');location.reload()}else{undo.disabled=false;undo.textContent='Ошибка'}
     });
   }else undo.remove();
