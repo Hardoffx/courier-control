@@ -7,7 +7,7 @@ def clear_generated_point_codes(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-    dependencies = [('deliveries', '0005_courier_daily_note')]
+    dependencies = [('deliveries', '0005_delivery_courier_daily_note')]
 
     operations = [
         migrations.RemoveConstraint(
