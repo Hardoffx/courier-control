@@ -153,8 +153,13 @@ async function animateRouteItem(item,open){
   const startHeight=item.getBoundingClientRect().height;
   if(open)item.open=true;
   const summaryHeight=summary.getBoundingClientRect().height;
-  const endHeight=open?(summaryHeight+body.scrollHeight):summaryHeight;
+  // Once <details> is opened, measure the actual rendered row. scrollHeight on
+  // the body is unreliable in iOS Safari during the same native state change.
+  const openHeight=item.getBoundingClientRect().height;
+  const endHeight=open?openHeight:summaryHeight;
 
+  // Opening the native details immediately expands layout. Pin it back to its
+  // pre-click height before the next paint so Motion has a real start frame.
   item.style.overflow='hidden';
   item.style.height=startHeight+'px';
   if(reduceMotion){
@@ -164,6 +169,7 @@ async function animateRouteItem(item,open){
   }
 
   try{
+    await new Promise(resolve=>requestAnimationFrame(resolve));
     const heightMotion=animate(item,{height:[startHeight+'px',endHeight+'px']},{duration:MOTION.accordion,ease:MOTION.ease});
     const bodyMotion=animate(body,{opacity:open?[0,1]:[1,0],transform:open?['translateY(-4px)','translateY(0px)']:['translateY(0px)','translateY(-3px)']},{duration:open?.30:.22,delay:open?.055:0,ease:MOTION.ease});
     await Promise.all([heightMotion.finished,bodyMotion.finished]);
