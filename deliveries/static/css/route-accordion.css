@@ -290,3 +290,12 @@ button:disabled,.btn:disabled{opacity:.68;cursor:wait;pointer-events:none}
 .toast-undo{border:0;background:transparent;color:#8fc1ff;font:inherit;font-weight:900;padding:2px 0;cursor:pointer}
 .toast-undo:disabled{opacity:.6}
 @media (prefers-reduced-motion:reduce){.hold-done .hold-fill{transition:none!important}}
+
+/* Completion feedback is intentionally calm: one toast fade and one steady focus ring. */
+.selected-card.completion-highlight{
+  box-shadow:0 0 0 4px rgba(0,122,255,.72),0 8px 28px rgba(0,122,255,.16)!important;
+  transition:box-shadow .32s cubic-bezier(.22,1,.36,1)!important
+}
+.courier-toast{opacity:0;transform:translate(-50%,8px);transition:opacity .24s ease,transform .28s cubic-bezier(.22,1,.36,1)}
+.courier-toast.show{opacity:1;transform:translate(-50%,0)}
+@media (prefers-reduced-motion:reduce){.selected-card.completion-highlight,.courier-toast{transition:none!important}}
