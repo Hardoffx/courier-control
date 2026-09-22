@@ -202,7 +202,7 @@ document.querySelectorAll('.done-form').forEach(f=>f.addEventListener('submit',e
   const point=card?.querySelector('.next-bar span:last-child,.route-dot')?.textContent?.trim()||'';
   sessionStorage.setItem('courierDonePoint',point);
   const deliveryId=card?.dataset.selectedId||card?.dataset.deliveryId||'';
-  if(deliveryId)sessionStorage.setItem('courierDoneId',deliveryId);
+  if(deliveryId)sessionStorage.setItem('courierDoneId',deliveryId);\n  sessionStorage.setItem('courierDoneUrl',f.action);
   if(btn){btn.disabled=true;const label=btn.querySelector('.hold-label');if(label)label.textContent='✓ Сохраняю…';else btn.textContent='✓ Сохраняю…'}
 }));
 
@@ -240,7 +240,7 @@ if(doneAt&&Date.now()-doneAt<1800){
       undo.disabled=true;undo.textContent='…';
       const token=document.querySelector('[name=csrfmiddlewaretoken]')?.value||'';
       const body=new URLSearchParams({action:'reopen',csrfmiddlewaretoken:token});
-      const response=await fetch(`/courier/update/${completedId}/`,{method:'POST',body,headers:{'X-Requested-With':'XMLHttpRequest'},credentials:'same-origin'});
+      const response=await fetch(completedUrl,{method:'POST',body,headers:{'X-Requested-With':'XMLHttpRequest'},credentials:'same-origin'});
       if(response.ok)location.reload();else{undo.disabled=false;undo.textContent='Ошибка'}
     });
   }else undo.remove();
