@@ -222,7 +222,7 @@ if(doneAt&&Date.now()-doneAt<1800){
         '0 0 0 3px rgba(22,139,255,.48),0 0 20px rgba(22,139,255,.22)',
         '0 0 0 0 rgba(22,139,255,0)'
       ]
-    },{duration:.72,ease:MOTION.ease});
+    },{duration:1.8,ease:MOTION.ease});
     void animateElement(card,{transform:['translateY(3px)','translateY(0px)'],opacity:[.9,1]},{duration:MOTION.layout,ease:MOTION.ease});
   }
 
@@ -263,7 +263,7 @@ if(doneAt&&Date.now()-doneAt<1800){
       transform:['translate(-50%,0px)','translate(-50%,6px)']
     },{duration:MOTION.micro,ease:MOTION.ease});
     toast.remove();
-  },1500);
+  },5000);
 }
 
 const routeItems=[...document.querySelectorAll('#route-list > .route-list > .route-item')];
