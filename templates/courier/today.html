@@ -39,7 +39,7 @@
       <div class="selected-nav{% if not previous_delivery or not next_delivery %} single-nav{% endif %}">{% if previous_delivery %}<a class="btn alt" href="?selected={{ previous_delivery.pk }}">← Предыдущая</a>{% endif %}{% if next_delivery %}<a class="btn alt" href="?selected={{ next_delivery.pk }}">Следующая →</a>{% endif %}</div><div class="big-actions">
         <form class="done-form" method="post" action="{% url 'courier_update' selected_delivery.pk %}">
           {% csrf_token %}<input type="hidden" name="action" value="done"><input type="hidden" name="latitude"><input type="hidden" name="longitude">
-          <button class="btn good" type="submit">✓ Выполнено</button>
+          <button class="btn good hold-done" type="submit"><span class="hold-fill" aria-hidden="true"></span><span class="hold-label">✓ Выполнено</span></button>
         </form>
         <details class="problem-panel selected-problem-panel"><summary class="btn bad">⚠ Проблема</summary><form method="post" action="{% url 'courier_update' selected_delivery.pk %}" class="route-detail-form">{% csrf_token %}<input type="hidden" name="action" value="problem"><label>Причина<select name="problem_reason">{% for reason in problem_reasons %}<option>{{ reason }}</option>{% endfor %}</select></label><label>Комментарий<input name="problem_comment" placeholder="Что произошло / когда вернуться"></label><button class="btn bad" type="submit">Сохранить проблему</button></form></details>
       </div>
@@ -78,7 +78,7 @@
                           </div>
 
             <div class="compact-status-actions">
-              <form class="done-form route-inline-done" method="post" action="{% url 'courier_update' d.pk %}">{% csrf_token %}<input type="hidden" name="action" value="done"><input type="hidden" name="latitude"><input type="hidden" name="longitude"><button class="btn good" type="submit">✓ Выполнено</button></form>
+              <form class="done-form route-inline-done" method="post" action="{% url 'courier_update' d.pk %}">{% csrf_token %}<input type="hidden" name="action" value="done"><input type="hidden" name="latitude"><input type="hidden" name="longitude"><button class="btn good hold-done" type="submit"><span class="hold-fill" aria-hidden="true"></span><span class="hold-label">✓ Выполнено</span></button></form>
               <details id="problem-{{ d.pk }}" class="problem-panel"><summary class="btn bad">⚠ Проблема</summary><form method="post" action="{% url 'courier_update' d.pk %}" class="route-detail-form">{% csrf_token %}<input type="hidden" name="action" value="problem"><label>Причина<select name="problem_reason">{% for reason in problem_reasons %}<option>{{ reason }}</option>{% endfor %}</select></label><label>Комментарий<input name="problem_comment" placeholder="Что произошло / когда вернуться"></label><button class="btn bad" type="submit">Сохранить проблему</button></form></details>
             </div>
 
@@ -107,6 +107,7 @@
           </summary>
           <div class="route-detail-body">
             <div class="route-complete-note">✓ Точка выполнена{% if d.completed_at %} · {{ d.completed_at|date:"H:i" }}{% endif %}</div>
+            <form method="post" action="{% url 'courier_update' d.pk %}" class="reopen-form">{% csrf_token %}<input type="hidden" name="action" value="reopen"><button class="btn alt reopen-btn" type="submit">↶ Вернуть в работу</button></form>
             {% if d.courier_daily_note %}<div class="route-detail-note courier-note"><b>Не забыть:</b> {{ d.courier_daily_note }}</div>{% endif %}
             {% if d.problem_reason %}<div class="route-detail-problem"><b>{{ d.problem_reason }}</b></div>{% endif %}
           </div>
@@ -130,6 +131,45 @@ import {
 } from "{% static 'js/motion-ui.js' %}";
 
 void warmMotion();
+
+const HOLD_MS=600;
+document.querySelectorAll('.hold-done').forEach(btn=>{
+  const form=btn.closest('.done-form');
+  if(!form)return;
+  let timer=null,start=0,armed=false,pointerId=null;
+  const fill=btn.querySelector('.hold-fill');
+  const reset=()=>{
+    if(timer){clearTimeout(timer);timer=null}
+    armed=false;start=0;pointerId=null;
+    btn.classList.remove('is-holding');
+    if(fill){fill.style.transition='none';fill.style.transform='scaleX(0)';requestAnimationFrame(()=>{fill.style.transition=''})}
+  };
+  const begin=e=>{
+    if(btn.disabled||form.dataset.submitting==='1')return;
+    if(e.type==='pointerdown'&&e.button!==0)return;
+    e.preventDefault();
+    pointerId=e.pointerId;
+    try{btn.setPointerCapture(pointerId)}catch(_){}
+    start=performance.now();armed=false;
+    btn.classList.add('is-holding');
+    if(fill){fill.style.transition=`transform ${HOLD_MS}ms linear`;requestAnimationFrame(()=>{fill.style.transform='scaleX(1)'})}
+    timer=setTimeout(()=>{
+      timer=null;armed=true;btn.classList.add('hold-complete');
+      if(navigator.vibrate)navigator.vibrate(25);
+      form.requestSubmit(btn);
+    },HOLD_MS);
+  };
+  const cancel=e=>{
+    if(pointerId!==null&&e.pointerId!==undefined&&e.pointerId!==pointerId)return;
+    if(!armed)reset();
+  };
+  btn.addEventListener('pointerdown',begin);
+  btn.addEventListener('pointerup',cancel);
+  btn.addEventListener('pointercancel',cancel);
+  btn.addEventListener('lostpointercapture',cancel);
+  btn.addEventListener('click',e=>{if(!armed)e.preventDefault()});
+  btn.addEventListener('contextmenu',e=>e.preventDefault());
+});
 
 document.querySelectorAll('.done-form').forEach(f=>f.addEventListener('submit',e=>{
   const btn=f.querySelector('button[type=submit]');
@@ -161,7 +201,9 @@ document.querySelectorAll('.done-form').forEach(f=>f.addEventListener('submit',e
   const card=f.closest('.selected-card,.route-item');
   const point=card?.querySelector('.next-bar span:last-child,.route-dot')?.textContent?.trim()||'';
   sessionStorage.setItem('courierDonePoint',point);
-  if(btn){btn.disabled=true;btn.textContent='✓ Сохраняю…'}
+  const deliveryId=card?.dataset.selectedId||card?.dataset.deliveryId||'';
+  if(deliveryId)sessionStorage.setItem('courierDoneId',deliveryId);
+  if(btn){btn.disabled=true;const label=btn.querySelector('.hold-label');if(label)label.textContent='✓ Сохраняю…';else btn.textContent='✓ Сохраняю…'}
 }));
 
 const doneAt=Number(sessionStorage.getItem('courierDoneAt')||0);
@@ -186,8 +228,22 @@ if(doneAt&&Date.now()-doneAt<1800){
   const point=sessionStorage.getItem('courierDonePoint')||'';
   const toast=document.createElement('div');
   toast.className='courier-toast';
-  toast.textContent='✓ '+(point?'Точка '+point.replace('№','').split(' ')[0]+' выполнена':'Точка выполнена');
+  const text=document.createElement('span');
+  text.textContent='✓ '+(point?'Точка '+point.replace('№','').split(' ')[0]+' выполнена':'Точка выполнена');
+  const undo=document.createElement('button');
+  undo.type='button';undo.className='toast-undo';undo.textContent='Отменить';
+  toast.append(text,undo);
   document.body.appendChild(toast);
+  const completedId=sessionStorage.getItem('courierDoneId');
+  if(completedId){
+    undo.addEventListener('click',async()=>{
+      undo.disabled=true;undo.textContent='…';
+      const token=document.querySelector('[name=csrfmiddlewaretoken]')?.value||'';
+      const body=new URLSearchParams({action:'reopen',csrfmiddlewaretoken:token});
+      const response=await fetch(`/courier/update/${completedId}/`,{method:'POST',body,headers:{'X-Requested-With':'XMLHttpRequest'},credentials:'same-origin'});
+      if(response.ok)location.reload();else{undo.disabled=false;undo.textContent='Ошибка'}
+    });
+  }else undo.remove();
 
   if(reduceMotion){
     toast.classList.add('show');
