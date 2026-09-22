@@ -209,21 +209,11 @@ document.querySelectorAll('.done-form').forEach(f=>f.addEventListener('submit',e
 
 const doneAt=Number(sessionStorage.getItem('courierDoneAt')||0);
 if(doneAt&&Date.now()-doneAt<1800){
-  const wait=1800-(Date.now()-doneAt);
-  const b=document.querySelector('.selected-card .done-form button');
-  if(b){b.disabled=true;setTimeout(()=>{b.disabled=false},wait)}
-
   const card=document.querySelector('.selected-card');
   if(card&&!reduceMotion){
     card.classList.remove('just-advanced');
-    void animateElement(card,{
-      boxShadow:[
-        '0 0 0 0 rgba(22,139,255,0)',
-        '0 0 0 3px rgba(22,139,255,.52),0 0 18px rgba(22,139,255,.18)',
-        '0 0 0 3px rgba(22,139,255,.52),0 0 18px rgba(22,139,255,.18)',
-        '0 0 0 0 rgba(22,139,255,0)'
-      ]
-    },{duration:2.8,ease:MOTION.ease});
+    card.classList.add('completion-highlight');
+    setTimeout(()=>card.classList.remove('completion-highlight'),3200);
   }
 
   const point=sessionStorage.getItem('courierDonePoint')||'';
@@ -247,22 +237,10 @@ if(doneAt&&Date.now()-doneAt<1800){
     });
   }else undo.remove();
 
-  if(reduceMotion){
-    toast.classList.add('show');
-  }else{
-    void animateElement(toast,{
-      opacity:[0,1],
-      transform:['translate(-50%,12px)','translate(-50%,0px)']
-    },{duration:MOTION.micro,ease:MOTION.ease});
-  }
-
-  setTimeout(async()=>{
-    if(reduceMotion){toast.remove();return}
-    await animateElement(toast,{
-      opacity:[1,0],
-      transform:['translate(-50%,0px)','translate(-50%,6px)']
-    },{duration:MOTION.micro,ease:MOTION.ease});
-    toast.remove();
+  requestAnimationFrame(()=>toast.classList.add('show'));
+  setTimeout(()=>{
+    toast.classList.remove('show');
+    setTimeout(()=>toast.remove(),260);
   },5000);
 }
 
