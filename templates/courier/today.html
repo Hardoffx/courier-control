@@ -219,11 +219,11 @@ if(doneAt&&Date.now()-doneAt<1800){
     void animateElement(card,{
       boxShadow:[
         '0 0 0 0 rgba(22,139,255,0)',
-        '0 0 0 3px rgba(22,139,255,.48),0 0 20px rgba(22,139,255,.22)',
+        '0 0 0 3px rgba(22,139,255,.52),0 0 18px rgba(22,139,255,.18)',
+        '0 0 0 3px rgba(22,139,255,.52),0 0 18px rgba(22,139,255,.18)',
         '0 0 0 0 rgba(22,139,255,0)'
       ]
-    },{duration:1.8,ease:MOTION.ease});
-    void animateElement(card,{transform:['translateY(3px)','translateY(0px)'],opacity:[.9,1]},{duration:MOTION.layout,ease:MOTION.ease});
+    },{duration:2.8,ease:MOTION.ease});
   }
 
   const point=sessionStorage.getItem('courierDonePoint')||'';
@@ -242,8 +242,8 @@ if(doneAt&&Date.now()-doneAt<1800){
       undo.disabled=true;undo.textContent='…';
       const token=document.querySelector('[name=csrfmiddlewaretoken]')?.value||'';
       const body=new URLSearchParams({action:'reopen',csrfmiddlewaretoken:token});
-      const response=await fetch(completedUrl,{method:'POST',body,headers:{'X-Requested-With':'XMLHttpRequest'},credentials:'same-origin'});
-      if(response.ok)location.reload();else{undo.disabled=false;undo.textContent='Ошибка'}
+      const response=await fetch(completedUrl,{method:'POST',body,headers:{'X-CSRFToken':token,'X-Requested-With':'XMLHttpRequest'},credentials:'same-origin',redirect:'follow'});
+      if(response.ok){sessionStorage.removeItem('courierDoneAt');sessionStorage.removeItem('courierDonePoint');sessionStorage.removeItem('courierDoneId');sessionStorage.removeItem('courierDoneUrl');location.reload()}else{undo.disabled=false;undo.textContent='Ошибка'}
     });
   }else undo.remove();
 
