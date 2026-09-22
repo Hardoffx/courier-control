@@ -228,12 +228,15 @@ if(doneAt&&Date.now()-doneAt<1800){
   const completedId=sessionStorage.getItem('courierDoneId');
   const completedUrl=sessionStorage.getItem('courierDoneUrl');
   if(completedId&&completedUrl){
-    undo.addEventListener('click',async()=>{
-      undo.disabled=true;undo.textContent='…';
+    undo.addEventListener('click',()=>{
+      undo.disabled=true;undo.textContent='Возвращаю…';
       const token=document.querySelector('[name=csrfmiddlewaretoken]')?.value||'';
-      const body=new URLSearchParams({action:'reopen',csrfmiddlewaretoken:token});
-      const response=await fetch(completedUrl,{method:'POST',body,headers:{'X-CSRFToken':token,'X-Requested-With':'XMLHttpRequest'},credentials:'same-origin'});
-      if(response.ok){sessionStorage.removeItem('courierDoneAt');sessionStorage.removeItem('courierDonePoint');sessionStorage.removeItem('courierDoneId');sessionStorage.removeItem('courierDoneUrl');location.reload()}else{undo.disabled=false;undo.textContent='Ошибка'}
+      sessionStorage.removeItem('courierDoneAt');sessionStorage.removeItem('courierDonePoint');sessionStorage.removeItem('courierDoneId');sessionStorage.removeItem('courierDoneUrl');
+      const form=document.createElement('form');
+      form.method='post';form.action=completedUrl;form.hidden=true;
+      const csrf=document.createElement('input');csrf.type='hidden';csrf.name='csrfmiddlewaretoken';csrf.value=token;
+      const action=document.createElement('input');action.type='hidden';action.name='action';action.value='reopen';
+      form.append(csrf,action);document.body.appendChild(form);form.submit();
     });
   }else undo.remove();
 
@@ -247,7 +250,7 @@ if(doneAt&&Date.now()-doneAt<1800){
 const routeItems=[...document.querySelectorAll('#route-list > .route-list > .route-item')];
 const courierAccordion=new SingleAccordion(routeItems);
 
-void bindPressables(document.querySelectorAll('.btn,.route-row'));
+void bindPressables(document.querySelectorAll('.btn:not(.hold-done),.route-row'));
 
 function openDelivery(id,childId){
   const d=document.getElementById(id);
