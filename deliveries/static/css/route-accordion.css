@@ -276,3 +276,17 @@ button:disabled,.btn:disabled{opacity:.68;cursor:wait;pointer-events:none}
   from{opacity:1}
   to{opacity:0}
 }
+
+
+/* Hold-to-complete: deliberate mobile action with visible 600 ms progress. */
+.hold-done{position:relative;overflow:hidden;isolation:isolate;touch-action:none;user-select:none;-webkit-user-select:none}
+.hold-done .hold-fill{position:absolute;inset:0;z-index:-1;transform:scaleX(0);transform-origin:left center;background:rgba(0,96,42,.28);pointer-events:none}
+.hold-done .hold-label{position:relative;z-index:1}
+.hold-done.is-holding{transform:scale(.985)}
+.hold-done.hold-complete{filter:brightness(.94)}
+.reopen-form{margin-top:10px}
+.reopen-btn{width:100%}
+.courier-toast{display:flex;align-items:center;gap:14px;pointer-events:auto}
+.toast-undo{border:0;background:transparent;color:#8fc1ff;font:inherit;font-weight:900;padding:2px 0;cursor:pointer}
+.toast-undo:disabled{opacity:.6}
+@media (prefers-reduced-motion:reduce){.hold-done .hold-fill{transition:none!important}}
