@@ -119,126 +119,192 @@
 </div>
 {% endblock %}
 {% block scripts %}
-<script>
+<script type="module">
+import {
+  MOTION,
+  reduceMotion,
+  animateElement,
+  bindPressables,
+  SingleAccordion,
+  warmMotion,
+} from "{% static 'js/motion-ui.js' %}";
+
+void warmMotion();
+
 document.querySelectorAll('.done-form').forEach(f=>f.addEventListener('submit',e=>{
   const btn=f.querySelector('button[type=submit]');
   if(f.dataset.submitting==='1'){e.preventDefault();return}
-  if(f.dataset.geo!=='1'&&navigator.geolocation){e.preventDefault();if(f.dataset.locating==='1')return;f.dataset.locating='1';if(btn){btn.disabled=true;btn.textContent='✓ Сохраняю…'}navigator.geolocation.getCurrentPosition(p=>{f.querySelector('[name=latitude]').value=p.coords.latitude;f.querySelector('[name=longitude]').value=p.coords.longitude;f.dataset.geo='1';f.dataset.locating='0';f.requestSubmit()},()=>{f.dataset.geo='1';f.dataset.locating='0';f.requestSubmit()},{enableHighAccuracy:true,timeout:4000});return}
-  f.dataset.submitting='1';sessionStorage.setItem('courierDoneAt',String(Date.now()));const card=f.closest('.selected-card,.route-item');const point=card?.querySelector('.next-bar span:last-child,.route-dot')?.textContent?.trim()||'';sessionStorage.setItem('courierDonePoint',point);if(btn){btn.disabled=true;btn.textContent='✓ Сохраняю…'}
+  if(f.dataset.geo!=='1'&&navigator.geolocation){
+    e.preventDefault();
+    if(f.dataset.locating==='1')return;
+    f.dataset.locating='1';
+    if(btn){btn.disabled=true;btn.textContent='✓ Сохраняю…'}
+    navigator.geolocation.getCurrentPosition(
+      p=>{
+        f.querySelector('[name=latitude]').value=p.coords.latitude;
+        f.querySelector('[name=longitude]').value=p.coords.longitude;
+        f.dataset.geo='1';
+        f.dataset.locating='0';
+        f.requestSubmit();
+      },
+      ()=>{
+        f.dataset.geo='1';
+        f.dataset.locating='0';
+        f.requestSubmit();
+      },
+      {enableHighAccuracy:true,timeout:4000}
+    );
+    return;
+  }
+  f.dataset.submitting='1';
+  sessionStorage.setItem('courierDoneAt',String(Date.now()));
+  const card=f.closest('.selected-card,.route-item');
+  const point=card?.querySelector('.next-bar span:last-child,.route-dot')?.textContent?.trim()||'';
+  sessionStorage.setItem('courierDonePoint',point);
+  if(btn){btn.disabled=true;btn.textContent='✓ Сохраняю…'}
 }));
+
 const doneAt=Number(sessionStorage.getItem('courierDoneAt')||0);
 if(doneAt&&Date.now()-doneAt<1800){
-  const wait=1800-(Date.now()-doneAt),b=document.querySelector('.selected-card .done-form button');
+  const wait=1800-(Date.now()-doneAt);
+  const b=document.querySelector('.selected-card .done-form button');
   if(b){b.disabled=true;setTimeout(()=>{b.disabled=false},wait)}
+
   const card=document.querySelector('.selected-card');
   if(card&&!reduceMotion){
     card.classList.remove('just-advanced');
-    animate(card,{boxShadow:['0 0 0 0 rgba(39,174,96,0)','0 0 0 3px rgba(39,174,96,.42)','0 0 0 0 rgba(39,174,96,0)']},{duration:.72,ease:MOTION.ease});
-    animate(card,{transform:['translateY(3px)','translateY(0px)'],opacity:[.88,1]},{duration:MOTION.layout,ease:MOTION.ease});
+    void animateElement(card,{
+      boxShadow:[
+        '0 0 0 0 rgba(22,139,255,0)',
+        '0 0 0 3px rgba(22,139,255,.48),0 0 20px rgba(22,139,255,.22)',
+        '0 0 0 0 rgba(22,139,255,0)'
+      ]
+    },{duration:.72,ease:MOTION.ease});
+    void animateElement(card,{transform:['translateY(3px)','translateY(0px)'],opacity:[.9,1]},{duration:MOTION.layout,ease:MOTION.ease});
   }
-  const point=sessionStorage.getItem('courierDonePoint')||'',toast=document.createElement('div');
-  toast.className='courier-toast';toast.textContent='✓ '+(point?'Точка '+point.replace('№','').split(' ')[0]+' выполнена':'Точка выполнена');document.body.appendChild(toast);
-  if(reduceMotion)toast.classList.add('show');else animate(toast,{opacity:[0,1],transform:['translateY(10px)','translateY(0px)']},{duration:MOTION.micro,ease:MOTION.ease});
-  setTimeout(()=>{if(reduceMotion)toast.remove();else animate(toast,{opacity:[1,0],transform:['translateY(0px)','translateY(6px)']},{duration:MOTION.micro}).then(()=>toast.remove())},1500)
+
+  const point=sessionStorage.getItem('courierDonePoint')||'';
+  const toast=document.createElement('div');
+  toast.className='courier-toast';
+  toast.textContent='✓ '+(point?'Точка '+point.replace('№','').split(' ')[0]+' выполнена':'Точка выполнена');
+  document.body.appendChild(toast);
+
+  if(reduceMotion){
+    toast.classList.add('show');
+  }else{
+    void animateElement(toast,{
+      opacity:[0,1],
+      transform:['translate(-50%,12px)','translate(-50%,0px)']
+    },{duration:MOTION.micro,ease:MOTION.ease});
+  }
+
+  setTimeout(async()=>{
+    if(reduceMotion){toast.remove();return}
+    await animateElement(toast,{
+      opacity:[1,0],
+      transform:['translate(-50%,0px)','translate(-50%,6px)']
+    },{duration:MOTION.micro,ease:MOTION.ease});
+    toast.remove();
+  },1500);
 }
+
 const routeItems=[...document.querySelectorAll('#route-list > .route-list > .route-item')];
-let accordionBusy=false;
+const courierAccordion=new SingleAccordion(routeItems);
 
-class CourierAccordion {
-  constructor(items){
-    this.items=items;
-    this.current=items.find(item=>item.open)||null;
-    items.forEach(item=>this.bind(item));
-  }
-  bind(item){
-    const summary=item.querySelector(':scope > summary');
-    if(!summary)return;
-    summary.classList.add('motion-managed');
-    summary.addEventListener('click',e=>this.onClick(e,item));
-  }
-  async onClick(e,item){
-    e.preventDefault();
-    if(accordionBusy)return;
-    accordionBusy=true;
-    try{
-      if(item===this.current&&item.open){
-        await this.close(item);
-        this.current=null;
-        return;
-      }
-      const previous=this.current&&this.current.open?this.current:this.items.find(other=>other!==item&&other.open);
-      if(previous){
-        // Close first on the proven native-details path, then open the target.
-        // State remains single-owner here; no CSS/native race is allowed.
-        await this.close(previous);
-      }
-      await this.open(item);
-      this.current=item;
-      this.items.forEach(other=>{if(other!==item&&other.open)other.open=false});
-    }finally{
-      accordionBusy=false;
-    }
-  }
-  async open(item){return this.animate(item,true)}
-  async close(item){return this.animate(item,false)}
-  async animate(item,open){
-    const body=item.querySelector(':scope > .route-detail-body'),summary=item.querySelector(':scope > summary');
-    if(!body||!summary)return;
-    item.classList.add('motion-accordion');
-    if(open)item.open=true;
-    const summaryHeight=summary.getBoundingClientRect().height;
-    const startHeight=item.getBoundingClientRect().height;
-    const endHeight=open?(summaryHeight+body.scrollHeight):summaryHeight;
-    item.style.overflow='hidden';
-    item.style.height=startHeight+'px';
-    if(reduceMotion){
-      item.open=open;item.style.height='';item.style.overflow='';return;
-    }
-    try{
-      await new Promise(resolve=>requestAnimationFrame(resolve));
-      const h=animate(item,{height:[startHeight+'px',endHeight+'px']},{duration:MOTION.accordion,ease:MOTION.ease});
-      const c=animate(body,{opacity:open?[0,1]:[1,0],transform:open?['translateY(-4px)','translateY(0px)']:['translateY(0px)','translateY(-3px)']},{duration:open?.30:.22,delay:open?.055:0,ease:MOTION.ease});
-      await Promise.all([h.finished,c.finished]);
-    }finally{
-      item.open=open;
-      item.style.height='';item.style.overflow='';
-      body.style.opacity='';body.style.transform='';
-    }
+void bindPressables(document.querySelectorAll('.btn,.route-row'));
+
+function openDelivery(id,childId){
+  const d=document.getElementById(id);
+  if(!d)return;
+  if(routeItems.includes(d))courierAccordion.openInstant(d);
+  else d.open=true;
+  if(childId){
+    const c=document.getElementById(childId);
+    if(c)c.open=true;
   }
 }
-const courierAccordion=new CourierAccordion(routeItems);
+document.querySelectorAll('.detail-opener').forEach(a=>a.addEventListener('click',e=>{
+  e.preventDefault();
+  openDelivery(a.dataset.open,a.dataset.openChild);
+}));
 
-document.querySelectorAll('.btn,.route-row').forEach(el=>{el.classList.add('motion-managed');if(reduceMotion)return;press(el,target=>{animate(target,{transform:'scale(.985)',filter:'brightness(.94)'},{duration:MOTION.press,ease:MOTION.ease});return()=>animate(target,{transform:'scale(1)',filter:'brightness(1)'},{duration:MOTION.micro,ease:MOTION.ease})})});
+document.querySelectorAll('.add-phone-toggle,.phone-editor-toggle,.note-editor-toggle').forEach(btn=>btn.addEventListener('click',()=>{
+  const form=document.getElementById(btn.getAttribute('aria-controls'));
+  if(!form)return;
+  const opening=form.hidden;
+  const scope=btn.closest('.compact-top-actions')||btn.closest('.selected-card');
+  if(opening&&scope){
+    scope.querySelectorAll('.phone-inline-editor,.note-inline-editor,.selected-phone-form').forEach(other=>{
+      if(other!==form)other.hidden=true;
+    });
+    scope.querySelectorAll('.phone-editor-toggle,.note-editor-toggle,.add-phone-toggle').forEach(other=>{
+      if(other!==btn){
+        other.setAttribute('aria-expanded','false');
+        other.classList.remove('is-active');
+      }
+    });
+  }
+  form.hidden=!opening;
+  btn.setAttribute('aria-expanded',opening?'true':'false');
+  btn.classList.toggle('is-active',opening);
+  if(opening){
+    const input=form.querySelector('input:not([type=hidden])');
+    if(input)setTimeout(()=>input.focus(),0);
+  }
+}));
 
-function openDelivery(id,childId){const d=document.getElementById(id);if(!d)return;d.open=true;if(childId){const c=document.getElementById(childId);if(c)c.open=true}}
-document.querySelectorAll('.detail-opener').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();openDelivery(a.dataset.open,a.dataset.openChild)}));
-document.querySelectorAll('.add-phone-toggle,.phone-editor-toggle,.note-editor-toggle').forEach(btn=>btn.addEventListener('click',()=>{const form=document.getElementById(btn.getAttribute('aria-controls'));if(!form)return;const opening=form.hidden;const scope=btn.closest('.compact-top-actions')||btn.closest('.selected-card');if(opening&&scope){scope.querySelectorAll('.phone-inline-editor,.note-inline-editor,.selected-phone-form').forEach(other=>{if(other!==form)other.hidden=true});scope.querySelectorAll('.phone-editor-toggle,.note-editor-toggle,.add-phone-toggle').forEach(other=>{if(other!==btn){other.setAttribute('aria-expanded','false');other.classList.remove('is-active')}})}form.hidden=!opening;btn.setAttribute('aria-expanded',opening?'true':'false');btn.classList.toggle('is-active',opening);if(opening){const input=form.querySelector('input:not([type=hidden])');if(input)setTimeout(()=>input.focus(),0)}}));
 document.querySelectorAll('.ajax-reorder-form').forEach(form=>form.addEventListener('submit',async e=>{
   e.preventDefault();
   if(form.dataset.busy==='1')return;
   const item=form.closest('.route-item');
   const list=item&&item.parentElement;
   if(!item||!list)return form.submit();
+
   const direction=form.querySelector('input[name=direction]')?.value;
   const siblings=[...list.children].filter(el=>el.matches('.route-item:not(.done)'));
   const index=siblings.indexOf(item);
   const other=direction==='up'?siblings[index-1]:siblings[index+1];
   if(!other)return;
+
   form.dataset.busy='1';
   item.classList.add('reorder-moving');
-  const first=new Map([...list.children].filter(el=>el.matches('.route-item')).map(el=>[el,el.getBoundingClientRect()]));
+  const rows=[...list.children].filter(el=>el.matches('.route-item'));
+  const first=new Map(rows.map(el=>[el,el.getBoundingClientRect()]));
+
   try{
-    const response=await fetch(form.action,{method:'POST',body:new FormData(form),headers:{'X-Requested-With':'XMLHttpRequest','Accept':'application/json'},credentials:'same-origin'});
+    const response=await fetch(form.action,{
+      method:'POST',
+      body:new FormData(form),
+      headers:{'X-Requested-With':'XMLHttpRequest','Accept':'application/json'},
+      credentials:'same-origin'
+    });
     if(!response.ok)throw new Error((await response.json().catch(()=>({}))).error||'Не удалось изменить порядок');
-    if(direction==='up')list.insertBefore(item,other); else list.insertBefore(other,item);
-    const rows=[...list.children].filter(el=>el.matches('.route-item'));
-    rows.forEach((el,i)=>{const old=first.get(el);if(!old)return;const now=el.getBoundingClientRect();const dx=old.left-now.left,dy=old.top-now.top;if(dx||dy){el.style.transition='none';el.style.transform=`translate(${dx}px,${dy}px)`;requestAnimationFrame(()=>requestAnimationFrame(()=>{el.style.transition='transform 240ms cubic-bezier(.2,.8,.2,1)';el.style.transform=''}))}});
-    setTimeout(()=>rows.forEach(el=>{el.style.transition='';el.style.transform='';el.classList.remove('reorder-moving')}),280);
+
+    if(direction==='up')list.insertBefore(item,other);
+    else list.insertBefore(other,item);
+
+    const moved=[...list.children].filter(el=>el.matches('.route-item'));
+    await Promise.all(moved.map(async el=>{
+      const old=first.get(el);
+      if(!old)return;
+      const now=el.getBoundingClientRect();
+      const dx=old.left-now.left;
+      const dy=old.top-now.top;
+      if(!dx&&!dy)return;
+      await animateElement(el,{
+        transform:[`translate(${dx}px,${dy}px)`,'translate(0px,0px)']
+      },{duration:.24,ease:MOTION.ease});
+      el.style.transform='';
+    }));
   }catch(err){
     item.classList.add('reorder-error');
     setTimeout(()=>item.classList.remove('reorder-error'),700);
-  }finally{form.dataset.busy='0';item.classList.remove('reorder-moving')}
+  }finally{
+    form.dataset.busy='0';
+    item.classList.remove('reorder-moving');
+  }
 }));
+
 if(location.hash&&location.hash.startsWith('#delivery-'))openDelivery(location.hash.slice(1));
 </script>
 {% endblock %}
