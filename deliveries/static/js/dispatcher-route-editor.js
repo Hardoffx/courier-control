@@ -154,12 +154,13 @@ function setupEditor(root){
       e.preventDefault();
       const card=position.closest('.route-editor-item');
       const input=card.querySelector('.position-input');
-      const cards=[...root.querySelectorAll('.route-editor-item')];
-      let n=Math.max(1,Math.min(cards.length,parseInt(input?.value||'',10)||0));
-      if(!n){toast('Укажите номер позиции',true);return}
+      const cards=[...root.querySelectorAll('.route-editor-item')].filter(x=>x.dataset.movable!=='0');
+      const raw=parseInt(input?.value||'',10);
+      if(!Number.isFinite(raw)){toast('Укажите номер позиции',true);return}
+      const n=Math.max(1,Math.min(cards.length,raw));
       const target=cards[n-1];
       if(target!==card){
-        if(n>=cards.length) target.parentNode.appendChild(card);
+        if(n>=cards.length) target.after(card);
         else target.parentNode.insertBefore(card,target);
       }
       try{await saveOrder(root)}catch(err){toast(err.message,true);location.reload()}
