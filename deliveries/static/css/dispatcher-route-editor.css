@@ -29,7 +29,7 @@
 .template-default-state[data-enabled="0"]{opacity:.6}
 .route-editor-item.is-disabled{opacity:.58}
 .route-editor-item.is-disabled[open]{opacity:.82}
-.insert-zone{display:none;width:100%;border:1px dashed #70a5eb;background:#f2f7ff;color:#2569be;border-radius:10px;padding:9px;font-weight:800;transition:transform .16s ease,background .16s ease,border-color .16s ease}
+.insert-zone{display:none;width:100%;border:1px dashed #70a5eb;background:#f2f7ff;color:#2569be;border-radius:9px;padding:7px 9px;font-size:13px;line-height:1.15;font-weight:800;transition:transform .16s ease,background .16s ease,border-color .16s ease}
 .insert-zone:active,.insert-zone.is-chosen{transform:scale(.985);background:#e1efff;border-color:#2f80ed}
 .route-editor-list.is-moving .insert-zone{display:block}
 .route-editor-list.is-moving .route-editor-item:not(.is-moving-item){opacity:.68}
