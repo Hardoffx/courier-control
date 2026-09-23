@@ -139,9 +139,9 @@ document.getElementById('open-unassigned')?.addEventListener('click',()=>{
   if(details) details.open=true;
   if(filterForm){
     const courier=filterForm.querySelector('[name="courier"]');
-    if(courier) courier.value='unassigned';
-    details?.scrollIntoView({behavior:'smooth',block:'start'});
+    if(courier){courier.value='unassigned';filterForm.submit();return}
   }
+  details?.scrollIntoView({behavior:'smooth',block:'start'});
 });
 </script>
 {% endblock %}
