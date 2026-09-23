@@ -2,7 +2,7 @@
 {% load static %}
 {% block title %}{{ route.name }} · Courier Control{% endblock %}
 {% block head %}
-<link rel="stylesheet" href="{% static 'css/dispatcher-route-editor.css' %}">
+<link rel="stylesheet" href="{% static 'css/dispatcher-route-editor.css' %}?v=20260923-2318">
 <style>
 .route-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}.route-head h1{margin:0 0 5px}.route-head-actions,.variant-row{display:flex;gap:7px;flex-wrap:wrap}.variant-row{align-items:center}.route-editor-card{padding:14px}.point-list{max-height:330px;overflow:auto;border:1px solid var(--line);border-radius:10px;padding:7px;margin:9px 0}.point-option{display:block;padding:9px;border-bottom:1px solid var(--line)}.point-option:last-child{border-bottom:0}.point-option input{width:auto;margin:0 8px 0 0}
 @media(max-width:700px){.route-head-actions{width:100%}.route-head-actions .btn{flex:1}.variant-row>b{width:100%}.variant-row .btn{flex:1}.route-editor-card{padding:10px}}
@@ -164,5 +164,5 @@
 {% endif %}
 {% endblock %}
 {% block scripts %}
-<script type="module" src="{% static 'js/dispatcher-route-editor.js' %}"></script>
+<script type="module" src="{% static 'js/dispatcher-route-editor.js' %}?v=20260923-2318"></script>
 {% endblock %}
