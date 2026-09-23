@@ -55,7 +55,7 @@
   </div>
   {% endif %}
 
-  <details id="all-deliveries" class="card all-deliveries-panel" {% if filters.q or filters.kind or filters.status or filters.courier %}open{% endif %}>
+  <details id="all-deliveries" class="card all-deliveries-panel" {% if filters.q or filters.kind or filters.status or filters.courier or filters.unrouted %}open{% endif %}>
     <summary>
       <div><h2>Все доставки дня · {{ total_count }}</h2><div class="muted">Поиск, история и массовые действия — вспомогательный режим</div></div>
       <span class="all-deliveries-chevron" aria-hidden="true"></span>
@@ -73,6 +73,7 @@
   <details class="card filter-card filter-details"><summary class="btn alt">Фильтры</summary>
     <form id="filter-form" method="get" class="filter-row">
       <input type="hidden" name="date" value="{{ selected_date|date:'Y-m-d' }}">
+      <input type="hidden" id="filter-unrouted" name="unrouted" value="{% if filters.unrouted %}1{% endif %}">
       <label class="live-search-label">Поиск<input id="live-search" name="q" value="{{ filters.q }}" placeholder="Адрес, ЛПУ, телефон…"></label>
       <label>Тип<select id="filter-kind" name="kind"><option value="">Все</option>{% for value,label in point_kinds %}<option value="{{ value }}" {% if filters.kind == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
       <label>Статус<select id="filter-status" name="status"><option value="">Все</option>{% for value,label in statuses %}<option value="{{ value }}" {% if filters.status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
@@ -129,17 +130,19 @@ function visibleChecks(){return [...document.querySelectorAll('.row-check')].fil
 function updateSelected(){document.getElementById('selected-count').textContent='Выбрано: '+visibleChecks().filter(x=>x.checked).length}
 document.querySelectorAll('.row-check').forEach(x=>x.addEventListener('change',updateSelected));
 document.getElementById('select-all')?.addEventListener('change',e=>{visibleChecks().forEach(x=>x.checked=e.target.checked);updateSelected()});
-const filterForm=document.getElementById('filter-form'),kind=document.getElementById('filter-kind'),status=document.getElementById('filter-status');
-document.querySelectorAll('[data-kind]').forEach(b=>b.addEventListener('click',()=>{kind.value=b.dataset.kind;status.value='';filterForm.submit()}));
-document.querySelectorAll('[data-status]').forEach(b=>b.addEventListener('click',()=>{status.value=b.dataset.status;kind.value='';filterForm.submit()}));
-document.querySelector('[data-quick="all"]')?.addEventListener('click',()=>{kind.value='';status.value='';filterForm.submit()});
+const filterForm=document.getElementById('filter-form'),kind=document.getElementById('filter-kind'),status=document.getElementById('filter-status'),unrouted=document.getElementById('filter-unrouted');
+document.querySelectorAll('[data-kind]').forEach(b=>b.addEventListener('click',()=>{kind.value=b.dataset.kind;status.value='';if(unrouted)unrouted.value='';filterForm.submit()}));
+document.querySelectorAll('[data-status]').forEach(b=>b.addEventListener('click',()=>{status.value=b.dataset.status;kind.value='';if(unrouted)unrouted.value='';filterForm.submit()}));
+document.querySelector('[data-quick="all"]')?.addEventListener('click',()=>{kind.value='';status.value='';if(unrouted)unrouted.value='';filterForm.submit()});
 const liveSearch=document.getElementById('live-search');let searchTimer;liveSearch?.addEventListener('input',()=>{clearTimeout(searchTimer);searchTimer=setTimeout(()=>filterForm.submit(),350)});
 document.getElementById('open-unassigned')?.addEventListener('click',()=>{
   const details=document.getElementById('all-deliveries');
   if(details) details.open=true;
   if(filterForm){
+    if(unrouted) unrouted.value='1';
     const courier=filterForm.querySelector('[name="courier"]');
-    if(courier){courier.value='unassigned';filterForm.submit();return}
+    if(courier) courier.value='';
+    filterForm.submit();return;
   }
   details?.scrollIntoView({behavior:'smooth',block:'start'});
 });
