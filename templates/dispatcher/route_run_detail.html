@@ -114,9 +114,15 @@
               {% for event in d.events.all %}
               <div class="event-row">
                 <time>{{ event.created_at|date:"d.m H:i" }}</time>
-                <div><b>{{ event.action }}</b><div class="muted">{{ event.note|default:'—' }}{% if event.actor %} · {{ event.actor.get_full_name|default:event.actor.username }}{% endif %}</div></div>
+                <div><b>Сегодня · {{ event.action }}</b><div class="muted">{{ event.note|default:'—' }}{% if event.actor %} · {{ event.actor.get_full_name|default:event.actor.username }}{% endif %}</div></div>
               </div>
-              {% empty %}<div class="muted">Событий пока нет.</div>{% endfor %}
+              {% endfor %}
+              {% for old in d.point_history %}
+              <div class="event-row">
+                <time>{{ old.delivery_date|date:"d.m" }}</time>
+                <div><b>{{ old.get_status_display }}{% if old.route_run %} · {{ old.route_run.route.name }}{% endif %}</b><div class="muted">{% if old.courier %}{{ old.courier.get_full_name|default:old.courier.username }}{% else %}Курьер не назначен{% endif %}{% if old.completed_at %} · {{ old.completed_at|date:"H:i" }}{% endif %}{% if old.problem_reason %} · {{ old.problem_reason }}{% endif %}</div></div>
+              </div>
+              {% empty %}{% if not d.events.all %}<div class="muted">Истории пока нет.</div>{% endif %}{% endfor %}
             </div>
           </details>
         </div>
