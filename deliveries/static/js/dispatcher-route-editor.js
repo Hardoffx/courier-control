@@ -120,6 +120,8 @@ function setupEditor(root){
         toggle.dataset.enabled=payload.enabled?'1':'0';
         toggle.textContent=payload.enabled?'✓ По умолчанию включена':'— По умолчанию выключена';
         card.classList.toggle('is-disabled',!payload.enabled);
+        const defaultMeta=card.querySelector('.meta-default');
+        if(defaultMeta) defaultMeta.hidden=payload.enabled;
         toast('Настройка сохранена');
       }catch(err){toast(err.message,true)}
       return;
@@ -177,7 +179,14 @@ function setupEditor(root){
       e.preventDefault();
       if(button){button.disabled=true;button.textContent='Сохраняю…'}
       try{
-        await post(form.action,new FormData(form));
+        const payload=await post(form.action,new FormData(form));
+        const card=form.closest('.route-editor-item');
+        const timeMeta=card?.querySelector('.meta-time');
+        const commentMeta=card?.querySelector('.meta-comment');
+        const timeValue=form.querySelector('[name="time_window"]')?.value.trim()||'';
+        const commentValue=form.querySelector('[name="comment"]')?.value.trim()||'';
+        if(timeMeta){timeMeta.textContent=timeValue;timeMeta.hidden=!timeValue}
+        if(commentMeta){commentMeta.textContent=commentValue?'· '+commentValue:'';commentMeta.hidden=!commentValue}
         if(button){button.hidden=true;button.textContent='Сохранить';button.disabled=false}
         toast('Изменения сохранены');
       }catch(err){
@@ -187,7 +196,7 @@ function setupEditor(root){
     });
   });
 
-  root.querySelectorAll('.day-toggle input').forEach(x=>x.addEventListener('click',e=>e.stopPropagation()));
+  root.querySelectorAll('.day-toggle').forEach(x=>x.addEventListener('click',e=>e.stopPropagation()));
 }
 
 document.querySelectorAll('.admin-route-editor').forEach(setupEditor);
