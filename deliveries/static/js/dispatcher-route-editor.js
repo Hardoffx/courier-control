@@ -46,7 +46,7 @@ function enterMoveMode(root,item){
   clearInsertZones(list);
   item.classList.add('is-moving-item');
   list.classList.add('is-moving');
-  const cards=[...list.querySelectorAll('.route-editor-item')];
+  const cards=[...list.querySelectorAll('.route-editor-item')].filter(card=>card.dataset.movable!=='0');
   cards.forEach(card=>{
     const zone=document.createElement('button');
     zone.type='button';zone.className='insert-zone';zone.textContent=card===item?'Текущая позиция':'Поставить сюда';
@@ -65,7 +65,8 @@ function enterMoveMode(root,item){
     clearInsertZones(list);
     try{await saveOrder(root)}catch(e){toast(e.message,true);location.reload()}
   });
-  list.appendChild(last);
+  const lastMovable=cards[cards.length-1];
+  if(lastMovable) lastMovable.after(last); else list.appendChild(last);
 }
 
 function setupDrag(root){
@@ -120,6 +121,18 @@ function setupEditor(root){
         toggle.textContent=payload.enabled?'✓ По умолчанию включена':'— По умолчанию выключена';
         card.classList.toggle('is-disabled',!payload.enabled);
         toast('Настройка сохранена');
+      }catch(err){toast(err.message,true)}
+      return;
+    }
+
+    const ajaxAction=e.target.closest('.ajax-action');
+    if(ajaxAction){
+      e.preventDefault();
+      try{
+        await post(ajaxAction.dataset.url,{action:ajaxAction.dataset.action});
+        ajaxAction.disabled=true;
+        if(ajaxAction.dataset.action==='unassign') ajaxAction.textContent='Курьер снят';
+        toast(ajaxAction.dataset.success||'Изменение сохранено');
       }catch(err){toast(err.message,true)}
       return;
     }
