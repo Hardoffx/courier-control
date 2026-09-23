@@ -77,7 +77,8 @@
             </div>
             <div class="editor-address">{{ d.address }}</div>
             <div class="editor-meta">
-              <span>{{ d.time_window|default:'Время не указано' }}</span>
+              <span class="meta-time">{{ d.time_window|default:'Время не указано' }}</span>
+              <span class="meta-comment" {% if not d.comment %}hidden{% endif %}>{% if d.comment %}· {{ d.comment }}{% endif %}</span>
               {% if d.courier %}<span>· {{ d.courier.get_full_name|default:d.courier.username }}</span>{% else %}<span>· курьер не назначен</span>{% endif %}
               {% if d.problem_reason %}<span>· {{ d.problem_reason }}</span>{% endif %}
             </div>
