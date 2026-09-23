@@ -40,6 +40,8 @@
 .move-mode-bar{position:sticky;top:8px;z-index:20;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 10px;border:1px solid #bdd8fb;border-radius:12px;background:rgba(244,249,255,.96);box-shadow:0 8px 22px rgba(30,73,118,.10);backdrop-filter:blur(10px)}
 .move-mode-bar strong{color:#205fa8;font-size:13px}
 .move-mode-bar .btn{margin:0;min-height:36px;padding:7px 11px}
+.move-mode-bar .move-cancel{border-color:#e7a0a5;background:#fff1f2;color:#b4232c;box-shadow:0 2px 8px rgba(180,35,44,.08)}
+.move-mode-bar .move-cancel:hover,.move-mode-bar .move-cancel:focus-visible{border-color:#d96870;background:#ffe8ea;color:#9f1d26}
 .editor-save-note{min-height:18px;font-size:12px;color:#2f7d4b;margin-top:7px}
 .create-point-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .create-point-grid .wide{grid-column:1/-1}
