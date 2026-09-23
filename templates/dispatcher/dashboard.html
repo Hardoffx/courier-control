@@ -1,5 +1,11 @@
 {% extends 'base.html' %}
 {% block title %}Сегодня · Courier Control{% endblock %}
+{% block head %}
+<style>
+.day-exception{display:flex;align-items:center;justify-content:space-between;gap:12px;border-color:#efc66f;background:#fff9ea}.day-exception strong{font-size:16px}.all-deliveries-panel{padding:0;overflow:hidden;margin-top:16px}.all-deliveries-panel>summary{list-style:none;cursor:pointer;padding:16px;display:flex;justify-content:space-between;align-items:center;gap:10px}.all-deliveries-panel>summary::-webkit-details-marker{display:none}.all-deliveries-panel>summary h2{margin:0}.all-deliveries-panel>.all-deliveries-body{padding:0 16px 16px}.all-deliveries-chevron{width:12px;height:12px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg);transition:transform .2s}.all-deliveries-panel[open] .all-deliveries-chevron{transform:rotate(225deg)}
+@media(max-width:700px){.day-exception{align-items:flex-start;flex-direction:column}.day-exception .btn{width:100%}.all-deliveries-panel>summary{padding:14px}.all-deliveries-panel>.all-deliveries-body{padding:0 10px 10px}}
+</style>
+{% endblock %}
 {% block content %}
 <div class="dashboard-page">
   <div class="page-head">
@@ -20,7 +26,7 @@
 
   <div class="kpi-grid">
     <div class="card kpi"><span class="kpi-icon total" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 6h12M8 12h12M8 18h12"/><rect x="3" y="4" width="2.5" height="2.5" rx=".6"/><rect x="3" y="10.7" width="2.5" height="2.5" rx=".6"/><rect x="3" y="17.5" width="2.5" height="2.5" rx=".6"/></svg></span><div><div class="kpi-label">Маршрутов</div><div class="kpi-value">{{ route_count }}</div><div class="muted">{{ completed_routes }} завершено</div></div></div>
-    <div class="card kpi"><span class="kpi-icon done" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="12" r="8.5"/><path d="m8.2 12.1 2.4 2.5 5.4-5.4"/></svg></span><div><div class="kpi-label">Доставок</div><div class="kpi-value">{{ total_count }}</div><div class="muted">{{ counts.done }} выполнено</div></div></div>
+    <div class="card kpi"><span class="kpi-icon done" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="9" cy="9" r="3"/><path d="M3.8 19c.5-3.1 2.2-4.7 5.2-4.7s4.7 1.6 5.2 4.7"/><path d="M16 8.5a2.5 2.5 0 1 1 0 5M16.3 15.2c2.2.4 3.4 1.7 3.9 3.8"/></svg></span><div><div class="kpi-label">Курьеров</div><div class="kpi-value">{{ active_courier_count }}</div><div class="muted">{{ total_count }} доставок сегодня</div></div></div>
     <div class="card kpi"><span class="kpi-icon problem" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v5.7"/><circle cx="12" cy="16.5" r=".8" fill="currentColor" stroke="none"/></svg></span><div><div class="kpi-label">Выполнено</div><div class="kpi-value">{{ counts.done }} · {{ completion_percent }}%</div><div class="muted">за выбранный день</div></div></div>
     <div class="card kpi"><span class="kpi-icon route" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3.5 7.5h10v8h-10z"/><path d="M13.5 10h3.2l3 3v2.5h-6.2z"/><circle cx="7" cy="17.5" r="2"/><circle cx="17" cy="17.5" r="2"/><path d="M5.5 5h5"/></svg></span><div><div class="kpi-label">Проблемы</div><div class="kpi-value">{{ counts.problem }}</div><div class="muted">{{ attention_routes }} маршрутов требуют внимания</div></div></div>
   </div>
@@ -42,6 +48,19 @@
     {% empty %}<div class="card">Маршруты на эту дату ещё не сформированы.</div>{% endfor %}
   </div>
 
+  {% if unassigned_count %}
+  <div class="card day-exception">
+    <div><strong>⚠ Без маршрута: {{ unassigned_count }}</strong><div class="muted">Эти точки загружены на день, но ещё не входят ни в один маршрут.</div></div>
+    <button class="btn alt" type="button" id="open-unassigned">Разобрать точки</button>
+  </div>
+  {% endif %}
+
+  <details id="all-deliveries" class="card all-deliveries-panel" {% if filters.q or filters.kind or filters.status or filters.courier %}open{% endif %}>
+    <summary>
+      <div><h2>Все доставки дня · {{ total_count }}</h2><div class="muted">Поиск, история и массовые действия — вспомогательный режим</div></div>
+      <span class="all-deliveries-chevron" aria-hidden="true"></span>
+    </summary>
+    <div class="all-deliveries-body">
   <div class="quick-filters" aria-label="Быстрые фильтры">
     <button class="filter-chip {% if not filters.kind and not filters.status %}active{% endif %}" type="button" data-quick="all">Все</button>
     <button class="filter-chip {% if filters.kind == 'cmd' %}active{% endif %}" type="button" data-kind="cmd">CMD</button>
@@ -99,6 +118,8 @@
       {% empty %}<div class="card">Точек нет.</div>{% endfor %}
     </div>
   </section>
+    </div>
+  </details>
 
 </div>
 {% endblock %}
@@ -113,5 +134,14 @@ document.querySelectorAll('[data-kind]').forEach(b=>b.addEventListener('click',(
 document.querySelectorAll('[data-status]').forEach(b=>b.addEventListener('click',()=>{status.value=b.dataset.status;kind.value='';filterForm.submit()}));
 document.querySelector('[data-quick="all"]')?.addEventListener('click',()=>{kind.value='';status.value='';filterForm.submit()});
 const liveSearch=document.getElementById('live-search');let searchTimer;liveSearch?.addEventListener('input',()=>{clearTimeout(searchTimer);searchTimer=setTimeout(()=>filterForm.submit(),350)});
+document.getElementById('open-unassigned')?.addEventListener('click',()=>{
+  const details=document.getElementById('all-deliveries');
+  if(details) details.open=true;
+  if(filterForm){
+    const courier=filterForm.querySelector('[name="courier"]');
+    if(courier) courier.value='unassigned';
+    details?.scrollIntoView({behavior:'smooth',block:'start'});
+  }
+});
 </script>
 {% endblock %}
