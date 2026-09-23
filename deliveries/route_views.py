@@ -542,11 +542,16 @@ def run_delivery_move(request, pk, delivery_pk):
 def run_reorder(request, pk):
     run = get_object_or_404(RouteRun, pk=pk)
     items = list(run.deliveries.exclude(status=Delivery.Status.DONE).order_by('route_order', 'id'))
+    slots = sorted(item.route_order for item in items)
     by_id = {x.pk: x for x in items}
     requested = _ids(request.POST.get('order'))
     ordered = [by_id[x] for x in requested if x in by_id]
     ordered.extend(x for x in items if x.pk not in requested)
-    _save_order(ordered)
+    with transaction.atomic():
+        for slot, item in zip(slots, ordered):
+            if item.route_order != slot:
+                item.route_order = slot
+                item.save(update_fields=['route_order'])
     if _wants_json(request):
         return JsonResponse({'ok': True, 'order': [item.pk for item in ordered]})
     messages.success(request, 'Порядок маршрута сохранён')
