@@ -4,10 +4,12 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
+from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from accounts.models import User
 from .models import Delivery, DeliveryEvent, DeliveryPoint, Route, RouteOrderSuggestion, RouteRun, RouteTemplate, RouteTemplateItem
 from .route_services import generate_route_run, reassign_route_run, learn_template_from_run, dissolve_route_run, suggestion_comparison
+from .import_services import normalize_delivery_address
 
 
 def dispatcher_required(view):
@@ -52,6 +54,51 @@ def _save_order(items):
             if item.route_order != pos:
                 item.route_order = pos
                 item.save(update_fields=['route_order'])
+
+
+def _wants_json(request):
+    return request.headers.get('x-requested-with') == 'XMLHttpRequest'
+
+
+def _point_from_post(request):
+    kinds = {value for value, _ in DeliveryPoint.Kind.choices}
+    kind = request.POST.get('kind', DeliveryPoint.Kind.UNKNOWN).strip()
+    if kind not in kinds:
+        kind = DeliveryPoint.Kind.UNKNOWN
+    code = request.POST.get('code', '').strip()[:100]
+    address = normalize_delivery_address(request.POST.get('address', ''))[:500]
+    phone = request.POST.get('phone', '').strip()[:64]
+    name = request.POST.get('name', '').strip()[:255]
+    if not address:
+        raise ValueError('Укажите адрес новой точки')
+    if not name:
+        if kind == DeliveryPoint.Kind.CMD:
+            name = code or 'ЦМД'
+        elif kind == DeliveryPoint.Kind.INVITRO:
+            name = 'ИНВИТРО'
+        elif kind == DeliveryPoint.Kind.SERVICE:
+            name = 'Служебная точка'
+        else:
+            name = address[:255]
+
+    exact = DeliveryPoint.objects.filter(address=address, is_active=True)
+    if code:
+        exact = exact.filter(code=code)
+    else:
+        exact = exact.filter(code='', kind=kind, name__iexact=name)
+    point = exact.first()
+    if point:
+        return point, False
+
+    point = DeliveryPoint.objects.create(
+        name=name,
+        code=code,
+        address=address,
+        kind=kind,
+        phone=phone,
+        is_active=True,
+    )
+    return point, True
 
 
 @dispatcher_required
@@ -125,14 +172,47 @@ def template_add_point(request, pk):
 
 @dispatcher_required
 @require_POST
+def template_create_point(request, pk):
+    template = get_object_or_404(RouteTemplate.objects.select_related('route'), pk=pk)
+    try:
+        with transaction.atomic():
+            point, point_created = _point_from_post(request)
+            item = template.items.filter(point=point).first()
+            item_created = item is None
+            if item is None:
+                last = template.items.order_by('-route_order').first()
+                item = RouteTemplateItem.objects.create(
+                    template=template,
+                    point=point,
+                    route_order=(last.route_order + 1 if last else 1),
+                )
+            item.enabled_by_default = request.POST.get('enabled_by_default', '1') not in ('0', 'false', 'off', '')
+            item.time_window = request.POST.get('time_window', '').strip()[:64]
+            item.comment = request.POST.get('comment', '').strip()[:255]
+            item.save(update_fields=['enabled_by_default', 'time_window', 'comment'])
+        message = 'Новая точка создана и добавлена в шаблон' if point_created else ('Точка добавлена в шаблон' if item_created else 'Точка уже была в шаблоне — данные обновлены')
+        if _wants_json(request):
+            return JsonResponse({'ok': True, 'point_id': point.pk, 'item_id': item.pk, 'created': point_created, 'message': message})
+        messages.success(request, message)
+    except ValueError as exc:
+        if _wants_json(request):
+            return JsonResponse({'ok': False, 'error': str(exc)}, status=400)
+        messages.error(request, str(exc))
+    return redirect(f'/dispatcher/routes/{template.route_id}/?template={template.pk}')
+
+
+@dispatcher_required
+@require_POST
 def template_item_update(request, pk):
     item = get_object_or_404(RouteTemplateItem.objects.select_related('template'), pk=pk)
     action = request.POST.get('action')
     route_id = item.template.route_id
     template_id = item.template_id
+    payload = {'ok': True, 'item_id': item.pk, 'action': action}
     if action == 'toggle':
         item.enabled_by_default = not item.enabled_by_default
         item.save(update_fields=['enabled_by_default'])
+        payload['enabled'] = item.enabled_by_default
     elif action in ('up', 'down'):
         items = list(item.template.items.order_by('route_order', 'id'))
         idx = items.index(item)
@@ -144,8 +224,17 @@ def template_item_update(request, pk):
         item.time_window = request.POST.get('time_window', '').strip()[:64]
         item.comment = request.POST.get('comment', '').strip()[:255]
         item.save(update_fields=['time_window', 'comment'])
+        payload.update({'time_window': item.time_window, 'comment': item.comment})
     elif action == 'remove':
+        template = item.template
         item.delete()
+        _save_order(list(template.items.order_by('route_order', 'id')))
+    else:
+        if _wants_json(request):
+            return JsonResponse({'ok': False, 'error': 'Неизвестное действие'}, status=400)
+        raise PermissionDenied
+    if _wants_json(request):
+        return JsonResponse(payload)
     return redirect(f'/dispatcher/routes/{route_id}/?template={template_id}')
 
 
@@ -159,6 +248,8 @@ def template_reorder(request, pk):
     ordered = [by_id[x] for x in requested if x in by_id]
     ordered.extend(x for x in items if x.pk not in requested)
     _save_order(ordered)
+    if _wants_json(request):
+        return JsonResponse({'ok': True, 'order': [item.pk for item in ordered]})
     return redirect(f'/dispatcher/routes/{template.route_id}/?template={template.pk}')
 
 
@@ -288,6 +379,51 @@ def run_add_point(request, pk):
 
 @dispatcher_required
 @require_POST
+def run_create_point(request, pk):
+    run = get_object_or_404(RouteRun.objects.select_related('route', 'template'), pk=pk)
+    try:
+        with transaction.atomic():
+            point, point_created = _point_from_post(request)
+            if run.deliveries.filter(point=point).exists():
+                raise ValueError('Эта точка уже есть в сегодняшнем маршруте')
+            last = run.deliveries.order_by('-route_order').first()
+            order = last.route_order + 1 if last else 1
+            delivery = _add_point_to_run(
+                run,
+                point,
+                request.POST.get('time_window', '').strip()[:64],
+                request.user,
+                order,
+            )
+            delivery.comment = request.POST.get('comment', '').strip()
+            delivery.save(update_fields=['comment', 'updated_at'])
+            added_to_template = False
+            if request.POST.get('add_to_template') and run.template_id:
+                template_item, created = RouteTemplateItem.objects.get_or_create(
+                    template=run.template,
+                    point=point,
+                    defaults={'route_order': (run.template.items.order_by('-route_order').values_list('route_order', flat=True).first() or 0) + 1},
+                )
+                template_item.enabled_by_default = True
+                template_item.time_window = delivery.time_window
+                template_item.comment = delivery.comment[:255]
+                template_item.save(update_fields=['enabled_by_default', 'time_window', 'comment'])
+                added_to_template = True
+        message = 'Новая точка создана и добавлена на сегодня' if point_created else 'Точка добавлена на сегодня'
+        if added_to_template:
+            message += ' и в постоянный шаблон'
+        if _wants_json(request):
+            return JsonResponse({'ok': True, 'delivery_id': delivery.pk, 'point_id': point.pk, 'message': message})
+        messages.success(request, message)
+    except ValueError as exc:
+        if _wants_json(request):
+            return JsonResponse({'ok': False, 'error': str(exc)}, status=400)
+        messages.error(request, str(exc))
+    return redirect('run_detail', pk=pk)
+
+
+@dispatcher_required
+@require_POST
 def run_copy_previous(request, pk):
     run = get_object_or_404(RouteRun, pk=pk)
     previous = RouteRun.objects.filter(route=run.route, run_date__lt=run.run_date).order_by('-run_date').first()
@@ -358,11 +494,24 @@ def run_delivery_move(request, pk, delivery_pk):
     run = get_object_or_404(RouteRun, pk=pk)
     delivery = get_object_or_404(Delivery, pk=delivery_pk, route_run=run)
     if delivery.status == Delivery.Status.DONE:
+        if _wants_json(request):
+            return JsonResponse({'ok': False, 'error': 'Выполненную точку изменять нельзя'}, status=409)
         messages.warning(request, 'Выполненную точку изменять нельзя')
         return redirect('run_detail', pk=pk)
-    action = request.POST.get('direction')
+    action = request.POST.get('action') or request.POST.get('direction')
+    if action == 'edit':
+        delivery.time_window = request.POST.get('time_window', '').strip()[:64]
+        delivery.comment = request.POST.get('comment', '').strip()
+        delivery.save(update_fields=['time_window', 'comment', 'updated_at'])
+        DeliveryEvent.objects.create(delivery=delivery, actor=request.user, action='dispatcher_edited', note='Обновлены время/комментарий')
+        if _wants_json(request):
+            return JsonResponse({'ok': True, 'action': action, 'time_window': delivery.time_window, 'comment': delivery.comment})
+        return redirect('run_detail', pk=pk)
     if action == 'remove':
         delivery.delete()
+        _save_order(list(run.deliveries.order_by('route_order', 'id')))
+        if _wants_json(request):
+            return JsonResponse({'ok': True, 'action': action})
         messages.success(request, 'Точка убрана только из этого дня')
         return redirect('run_detail', pk=pk)
     if action == 'unassign':
@@ -372,6 +521,8 @@ def run_delivery_move(request, pk, delivery_pk):
             delivery.status = Delivery.Status.NEW
         delivery.save(update_fields=['courier', 'status', 'updated_at'])
         DeliveryEvent.objects.create(delivery=delivery, actor=request.user, action='unassigned', note=f'Назначение снято: {old or "—"} → —')
+        if _wants_json(request):
+            return JsonResponse({'ok': True, 'action': action})
         messages.success(request, 'Точка снята с курьера')
         return redirect('run_detail', pk=pk)
     items = list(run.deliveries.exclude(status=Delivery.Status.DONE).order_by('route_order', 'id'))
@@ -380,6 +531,8 @@ def run_delivery_move(request, pk, delivery_pk):
     if 0 <= target < len(items):
         items[idx], items[target] = items[target], items[idx]
         _save_order(items)
+    if _wants_json(request):
+        return JsonResponse({'ok': True, 'action': action})
     return redirect('run_detail', pk=pk)
 
 
@@ -393,5 +546,7 @@ def run_reorder(request, pk):
     ordered = [by_id[x] for x in requested if x in by_id]
     ordered.extend(x for x in items if x.pk not in requested)
     _save_order(ordered)
+    if _wants_json(request):
+        return JsonResponse({'ok': True, 'order': [item.pk for item in ordered]})
     messages.success(request, 'Порядок маршрута сохранён')
     return redirect('run_detail', pk=pk)
