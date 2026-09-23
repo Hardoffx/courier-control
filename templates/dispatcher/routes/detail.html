@@ -122,9 +122,9 @@
             </div>
             <div class="editor-address">{{ item.point.address }}</div>
             <div class="editor-meta">
-              {% if item.time_window %}<span>{{ item.time_window }}</span>{% endif %}
-              {% if item.comment %}<span>· {{ item.comment }}</span>{% endif %}
-              {% if not item.enabled_by_default %}<span>· по умолчанию выключена</span>{% endif %}
+              <span class="meta-time" {% if not item.time_window %}hidden{% endif %}>{{ item.time_window }}</span>
+              <span class="meta-comment" {% if not item.comment %}hidden{% endif %}>{% if item.comment %}· {{ item.comment }}{% endif %}</span>
+              <span class="meta-default" {% if item.enabled_by_default %}hidden{% endif %}>· по умолчанию выключена</span>
             </div>
           </div>
           <label class="day-toggle" title="Только для создаваемого дня">
