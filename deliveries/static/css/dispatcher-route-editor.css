@@ -59,10 +59,11 @@
   .day-toggle{grid-column:2/3;justify-self:start}
   .route-chevron{grid-column:3;grid-row:1/3}
   .editor-fields{grid-template-columns:1fr}
-  .editor-secondary{display:grid;grid-template-columns:1fr 1fr}
-  .editor-secondary .btn{width:100%}
-  .editor-secondary .move-position{grid-column:1/-1;margin-left:0;display:grid;grid-template-columns:1fr auto}
-  .editor-secondary .move-position input{width:100%}
+  .editor-fields>*{min-width:0}
+  .editor-secondary{display:grid;grid-template-columns:minmax(0,1fr)}
+  .editor-secondary>*{min-width:0}
+  .editor-secondary .btn{width:100%;max-width:100%;white-space:normal}
+  .editor-secondary .move-position{display:none}
 }
 @media(max-width:480px){
   .create-point-grid{grid-template-columns:1fr}
