@@ -50,10 +50,11 @@ def _dashboard_date(request):
 @dispatcher_required
 def dispatcher_dashboard(request):
     selected_date=_dashboard_date(request); base=Delivery.objects.filter(delivery_date=selected_date).select_related('courier','point','route_run__route'); deliveries=base
-    q=request.GET.get('q','').strip(); kind=request.GET.get('kind','').strip(); status=request.GET.get('status','').strip(); courier_filter=request.GET.get('courier','').strip(); route_q=request.GET.get('route_q','').strip(); route_state=request.GET.get('route_state','').strip(); route_sort=request.GET.get('route_sort','name').strip()
+    q=request.GET.get('q','').strip(); kind=request.GET.get('kind','').strip(); status=request.GET.get('status','').strip(); courier_filter=request.GET.get('courier','').strip(); unrouted=request.GET.get('unrouted','')=='1'; route_q=request.GET.get('route_q','').strip(); route_state=request.GET.get('route_state','').strip(); route_sort=request.GET.get('route_sort','name').strip()
     if q: deliveries=deliveries.filter(Q(source_label__icontains=q)|Q(address__icontains=q)|Q(phone__icontains=q)|Q(organization__icontains=q)|Q(recipient__icontains=q))
     if kind: deliveries=deliveries.filter(point__kind=kind)
     if status: deliveries=deliveries.filter(status=status)
+    if unrouted: deliveries=deliveries.filter(route_run__isnull=True)
     if courier_filter=='unassigned': deliveries=deliveries.filter(courier__isnull=True)
     elif courier_filter.isdigit(): deliveries=deliveries.filter(courier_id=int(courier_filter))
     deliveries=list(deliveries.order_by('route_run__route__name','courier_id','route_order','id'))
@@ -75,7 +76,7 @@ def dispatcher_dashboard(request):
     if route_sort=='progress': visible_runs=sorted(visible_runs,key=lambda item:(item['percent'],item['run'].route.name))
     elif route_sort=='attention': visible_runs=sorted(visible_runs,key=lambda item:(item['state']!='attention',-item['problem'],item['run'].route.name))
     elif route_sort=='courier': visible_runs=sorted(visible_runs,key=lambda item:((item['run'].assigned_courier.get_full_name() or item['run'].assigned_courier.username) if item['run'].assigned_courier else 'яяя',item['run'].route.name))
-    return render(request,'dispatcher/dashboard.html',{'deliveries':deliveries,'total_count':base.count(),'couriers':couriers,'row_colors':Delivery.RowColor.choices,'point_kinds':DeliveryPoint.Kind.choices,'statuses':Delivery.Status.choices,'counts':counts,'courier_stats':courier_stats,'today':timezone.localdate(),'selected_date':selected_date,'prev_date':selected_date-timedelta(days=1),'next_date':selected_date+timedelta(days=1),'route_runs':visible_runs,'route_count':route_count,'completed_routes':completed_routes,'attention_routes':attention_routes,'completion_percent':completion_percent,'filters':{'q':q,'kind':kind,'status':status,'courier':courier_filter},'route_filters':{'q':route_q,'state':route_state,'sort':route_sort},'unassigned_count':unassigned_count,'active_courier_count':active_courier_count})
+    return render(request,'dispatcher/dashboard.html',{'deliveries':deliveries,'total_count':base.count(),'couriers':couriers,'row_colors':Delivery.RowColor.choices,'point_kinds':DeliveryPoint.Kind.choices,'statuses':Delivery.Status.choices,'counts':counts,'courier_stats':courier_stats,'today':timezone.localdate(),'selected_date':selected_date,'prev_date':selected_date-timedelta(days=1),'next_date':selected_date+timedelta(days=1),'route_runs':visible_runs,'route_count':route_count,'completed_routes':completed_routes,'attention_routes':attention_routes,'completion_percent':completion_percent,'filters':{'q':q,'kind':kind,'status':status,'courier':courier_filter,'unrouted':unrouted},'route_filters':{'q':route_q,'state':route_state,'sort':route_sort},'unassigned_count':unassigned_count,'active_courier_count':active_courier_count})
 
 def _resolve_courier(courier_id):
     if not courier_id: return None
