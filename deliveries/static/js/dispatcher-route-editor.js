@@ -61,7 +61,7 @@ function enterMoveMode(root,item){
   const last=document.createElement('button');
   last.type='button';last.className='insert-zone';last.textContent='Поставить в конец';
   last.addEventListener('click',async()=>{
-    list.appendChild(item);
+    last.parentNode.insertBefore(item,last);
     clearInsertZones(list);
     try{await saveOrder(root)}catch(e){toast(e.message,true);location.reload()}
   });
