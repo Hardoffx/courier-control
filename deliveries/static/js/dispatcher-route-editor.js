@@ -36,37 +36,79 @@ async function saveOrder(root){
 }
 
 function clearInsertZones(list){
-  list.querySelectorAll('.insert-zone').forEach(x=>x.remove());
+  list.querySelectorAll('.insert-zone,.move-mode-bar').forEach(x=>x.remove());
   list.classList.remove('is-moving');
-  list.querySelectorAll('.is-moving-item').forEach(x=>x.classList.remove('is-moving-item'));
+  list.querySelectorAll('.is-moving-item').forEach(x=>{
+    x.classList.remove('is-moving-item');
+    x.removeAttribute('data-move-state');
+  });
+}
+
+function animateRelocation(item, beforeRect){
+  const afterRect=item.getBoundingClientRect();
+  const dx=beforeRect.left-afterRect.left;
+  const dy=beforeRect.top-afterRect.top;
+  if(Math.abs(dx)<1&&Math.abs(dy)<1)return;
+  item.animate([
+    {transform:`translate(${dx}px,${dy}px)`,zIndex:3},
+    {transform:'translate(0,0)',zIndex:3}
+  ],{duration:320,easing:'cubic-bezier(.22,1,.36,1)'});
+}
+
+function confirmMove(item){
+  item.classList.add('move-success');
+  item.scrollIntoView({behavior:'smooth',block:'center'});
+  toast('Точка перемещена');
+  setTimeout(()=>item.classList.remove('move-success'),950);
 }
 
 function enterMoveMode(root,item){
   const list=root.querySelector('.route-editor-list');
   clearInsertZones(list);
   item.classList.add('is-moving-item');
+  item.dataset.moveState='active';
   list.classList.add('is-moving');
+
+  const bar=document.createElement('div');
+  bar.className='move-mode-bar';
+  bar.innerHTML='<strong>Выберите новое место</strong><button type="button" class="btn alt move-cancel">Отмена</button>';
+  list.prepend(bar);
+
   const cards=[...list.querySelectorAll('.route-editor-item')].filter(card=>card.dataset.movable!=='0');
   cards.forEach(card=>{
     const zone=document.createElement('button');
     zone.type='button';zone.className='insert-zone';zone.textContent=card===item?'Текущая позиция':'Поставить сюда';
     zone.disabled=card===item;
     zone.addEventListener('click',async()=>{
+      const before=item.getBoundingClientRect();
+      zone.classList.add('is-chosen');
       list.insertBefore(item,card);
+      animateRelocation(item,before);
       clearInsertZones(list);
-      try{await saveOrder(root)}catch(e){toast(e.message,true);location.reload()}
+      try{
+        await saveOrder(root);
+        confirmMove(item);
+      }catch(e){toast(e.message,true);location.reload()}
     });
     list.insertBefore(zone,card);
   });
   const last=document.createElement('button');
   last.type='button';last.className='insert-zone';last.textContent='Поставить в конец';
   last.addEventListener('click',async()=>{
+    const before=item.getBoundingClientRect();
+    last.classList.add('is-chosen');
     last.parentNode.insertBefore(item,last);
+    animateRelocation(item,before);
     clearInsertZones(list);
-    try{await saveOrder(root)}catch(e){toast(e.message,true);location.reload()}
+    try{
+      await saveOrder(root);
+      confirmMove(item);
+    }catch(e){toast(e.message,true);location.reload()}
   });
   const lastMovable=cards[cards.length-1];
   if(lastMovable) lastMovable.after(last); else list.appendChild(last);
+
+  requestAnimationFrame(()=>item.scrollIntoView({behavior:'smooth',block:'center'}));
 }
 
 function setupDrag(root){
@@ -94,7 +136,7 @@ function setupDrag(root){
 
 function setupEditor(root){
   const items=root.querySelectorAll('.route-editor-item');
-  new SingleAccordion(items,{bodySelector:':scope > .editor-body',summarySelector:':scope > .editor-summary'});
+  const accordion=new SingleAccordion(items,{bodySelector:':scope > .editor-body',summarySelector:':scope > .editor-summary'});
   setupDrag(root);
 
   root.addEventListener('click',async e=>{
@@ -104,7 +146,14 @@ function setupEditor(root){
     const move=e.target.closest('.move-start');
     if(move){
       e.preventDefault();
-      enterMoveMode(root,move.closest('.route-editor-item'));
+      const card=move.closest('.route-editor-item');
+      move.disabled=true;
+      try{
+        if(card.open) await accordion.transitionTo(card);
+        enterMoveMode(root,card);
+      }finally{
+        move.disabled=false;
+      }
       return;
     }
 
