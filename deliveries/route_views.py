@@ -137,7 +137,7 @@ def route_detail(request, pk):
     template_id = request.GET.get('template')
     template = templates.filter(pk=template_id).first() if template_id else templates.order_by('kind', 'id').first()
     points = DeliveryPoint.objects.filter(is_active=True).order_by('kind', 'name')
-    return render(request, 'dispatcher/routes/detail.html', {'route': route, 'templates': templates, 'template': template, 'points': points, 'couriers': _couriers()})
+    return render(request, 'dispatcher/routes/detail.html', {'route': route, 'templates': templates, 'template': template, 'points': points, 'couriers': _couriers(), 'point_kinds': DeliveryPoint.Kind.choices})
 
 
 @dispatcher_required
@@ -299,6 +299,7 @@ def run_detail(request, pk):
         'deliveries': deliveries,
         'couriers': _couriers(),
         'points': points,
+        'point_kinds': DeliveryPoint.Kind.choices,
         'previous_run': previous,
         'templates': templates,
         'order_suggestion': suggestion,
