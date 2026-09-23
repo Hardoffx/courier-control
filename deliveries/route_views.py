@@ -279,6 +279,21 @@ def run_detail(request, pk):
     templates = run.route.templates.filter(is_active=True).order_by('kind', 'id')
     suggestion = RouteOrderSuggestion.objects.filter(run=run, status=RouteOrderSuggestion.Status.PENDING).select_related('courier').first()
     rows = list(deliveries)
+    point_ids = {row.point_id for row in rows if row.point_id}
+    history_by_point = {point_id: [] for point_id in point_ids}
+    if point_ids:
+        history_rows = (
+            Delivery.objects.filter(point_id__in=point_ids)
+            .exclude(route_run=run)
+            .select_related('courier', 'route_run__route')
+            .order_by('-delivery_date', '-id')
+        )
+        for old in history_rows:
+            bucket = history_by_point.get(old.point_id)
+            if bucket is not None and len(bucket) < 5:
+                bucket.append(old)
+    for row in rows:
+        row.point_history = history_by_point.get(row.point_id, [])
     total = len(rows)
     done = sum(d.status == Delivery.Status.DONE for d in rows)
     problem = sum(d.status == Delivery.Status.PROBLEM for d in rows)
