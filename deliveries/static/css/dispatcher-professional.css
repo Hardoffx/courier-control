@@ -150,8 +150,8 @@
   .delivery-mobile-actions .btn{width:100%}
 }
 @media(max-width:340px){
-  .ops-dashboard{width:100%;max-width:100%;min-width:0;overflow-x:clip}
-  .ops-dashboard>*{min-width:0}
+  .ops-dashboard,.deliveries-workspace{width:100%;max-width:100%;min-width:0;overflow-x:clip}
+  .ops-dashboard>*,.deliveries-workspace>*{min-width:0}
   .ops-kpis{grid-template-columns:1fr}
   .attention-chips{grid-template-columns:1fr}
   .ops-section-head{display:block}
