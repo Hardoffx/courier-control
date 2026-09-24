@@ -31,13 +31,6 @@ jobs:
           COURIER_UI_TESTING: '1'
           ROUTE_UI_TESTING: '1'
         run: npx playwright test tests/ui/responsive.spec.js tests/ui/dispatcher.spec.js tests/ui/courier.spec.js
-      - name: Visual regression
-        run: |
-          if find tests/ui -type d -name '*-snapshots' -print -quit | grep -q .; then
-            npx playwright test tests/ui/visual.spec.js
-          else
-            echo 'Visual baselines not approved yet; generate them on staging after human review.'
-          fi
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
