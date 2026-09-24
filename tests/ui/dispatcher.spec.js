@@ -2,6 +2,7 @@ const { test, expect } = require('./fixtures');
 
 const pages = [
   ['/dispatcher/', 'dashboard'],
+  ['/dispatcher/deliveries/', 'deliveries'],
   ['/dispatcher/stats/', 'statistics'],
   ['/dispatcher/couriers/new/', 'courier-create'],
   ['/dispatcher/routes/new/', 'route-create'],

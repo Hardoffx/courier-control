@@ -1,1 +1,81 @@
-{% extends 'base.html' %}{% load static %}{% block title %}Статистика · Courier Control{% endblock %}{% block head %}<link rel="stylesheet" href="{% static 'css/stats.css' %}">{% endblock %}{% block content %}<div class="page-head"><div><h1>Статистика</h1><div class="muted">{{ start }} — {{ end }}</div></div><a class="btn alt" href="{% url 'management_export' %}?from={{ start|date:'Y-m-d' }}&to={{ end|date:'Y-m-d' }}">Скачать CSV</a></div><div class="card period-card"><form method="get"><label>С<input type="date" name="from" value="{{ start|date:'Y-m-d' }}"></label><label>По<input type="date" name="to" value="{{ end|date:'Y-m-d' }}"></label><button class="btn">Показать</button></form><div class="period-links"><a href="?period=1">Сегодня</a><a href="?period=7">7 дней</a><a href="?period=30">30 дней</a></div></div><div class="metric-grid"><div class="card metric"><div class="muted">Всего точек</div><div class="stat">{{ total }}</div></div><div class="card metric good"><div class="muted">Выполнено</div><div class="stat">{{ done }}</div></div><div class="card metric bad"><div class="muted">Проблемы</div><div class="stat">{{ problem }}</div></div><div class="card metric good"><div class="muted">Выполнение</div><div class="stat">{{ rate }}%</div><div class="rate-bar"><span style="width:{{ rate }}%"></span></div></div></div><div class="card"><h2>Курьеры</h2><div class="desktop-stat-table table-wrap"><table><thead><tr><th>Курьер</th><th>Всего</th><th>Выполнено</th><th>Проблемы</th><th>Результат</th></tr></thead><tbody>{% for r in couriers %}<tr><td><b>{{ r.courier.get_full_name|default:r.courier.username }}</b>{% if r.courier.is_reserve_courier %} <span class="type">Резерв</span>{% endif %}</td><td>{{ r.total }}</td><td>{{ r.done }}</td><td>{{ r.problem }}</td><td><b>{{ r.rate }}%</b></td></tr>{% empty %}<tr><td colspan="5">За период назначенных доставок нет.</td></tr>{% endfor %}</tbody></table></div><div class="mobile-stat-list">{% for r in couriers %}<div class="stat-row"><div class="stat-row-top"><b>{{ r.courier.get_full_name|default:r.courier.username }}</b><b>{{ r.rate }}%</b></div><div class="stat-meta"><span>Всего {{ r.total }}</span><span>Готово {{ r.done }}</span><span>Проблем {{ r.problem }}</span></div><div class="rate-bar"><span style="width:{{ r.rate }}%"></span></div></div>{% empty %}<div class="muted">За период назначенных доставок нет.</div>{% endfor %}</div></div><div class="card"><h2>По дням</h2><div class="table-wrap"><table><thead><tr><th>Дата</th><th>Всего</th><th>Выполнено</th><th>Проблемы</th><th>%</th></tr></thead><tbody>{% for r in days %}<tr><td><b>{{ r.date }}</b></td><td>{{ r.total }}</td><td>{{ r.done }}</td><td>{{ r.problem }}</td><td><b>{{ r.rate }}%</b></td></tr>{% endfor %}</tbody></table></div></div>{% endblock %}
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Статистика · Courier Control{% endblock %}
+{% block head %}
+<link rel="stylesheet" href="{% static 'css/dispatcher-professional.css' %}?v=20260924-1">
+<link rel="stylesheet" href="{% static 'css/stats.css' %}?v=20260924-2">
+{% endblock %}
+{% block content %}
+<div class="stats-dashboard">
+  <header class="stats-head">
+    <div><h1>Статистика</h1><p>{{ start|date:"j E Y" }} — {{ end|date:"j E Y" }}</p></div>
+    <a class="btn alt" href="{% url 'management_export' %}?from={{ start|date:'Y-m-d' }}&to={{ end|date:'Y-m-d' }}">Скачать CSV</a>
+  </header>
+
+  <section class="card period-card">
+    <form method="get">
+      <label>С<input type="date" name="from" value="{{ start|date:'Y-m-d' }}"></label>
+      <label>По<input type="date" name="to" value="{{ end|date:'Y-m-d' }}"></label>
+      <button class="btn">Показать</button>
+    </form>
+    <nav class="period-links"><a href="?period=1">Сегодня</a><a href="?period=7">7 дней</a><a href="?period=30">30 дней</a></nav>
+  </section>
+
+  <section class="stats-kpis" aria-label="Основные показатели">
+    <article class="stat-kpi"><span class="stat-kpi-label">Всего точек</span><strong>{{ total }}</strong><small>за выбранный период</small></article>
+    <article class="stat-kpi green"><span class="stat-kpi-label">Выполнено</span><strong>{{ done }}</strong><small>{{ rate }}% от всех доставок</small></article>
+    <article class="stat-kpi red"><span class="stat-kpi-label">Проблемы</span><strong>{{ problem }}</strong><small>зафиксировано курьерами</small></article>
+    <article class="stat-kpi blue"><span class="stat-kpi-label">Выполнение</span><strong>{{ rate }}%</strong><div class="rate-bar"><span style="width:{{ rate }}%"></span></div></article>
+  </section>
+
+  <div class="stats-section-title"><div><h2>Время выполнения маршрутов</h2><p>От первой выполненной точки до последней — без дороги на склад до начала маршрута</p></div></div>
+  <section class="timing-grid">
+    <article class="timing-card"><span>Среднее время</span><strong>{{ timing.avg_duration }}</strong><small>{{ timing.completed_routes }} завершённых маршрутов</small></article>
+    <article class="timing-card"><span>Медиана</span><strong>{{ timing.median_duration }}</strong><small>типичная длительность без влияния выбросов</small></article>
+    <article class="timing-card"><span>Средний интервал</span><strong>{{ timing.avg_interval }}</strong><small>между выполненными точками</small></article>
+    <article class="timing-card"><span>Диапазон</span><strong>{{ timing.shortest_label }} — {{ timing.longest_label }}</strong><small>короткий и длинный завершённый маршрут</small></article>
+  </section>
+  {% if timing.shortest or timing.longest %}
+  <div class="timing-extremes">
+    {% if timing.shortest %}<div><span>Короткий интервал</span><b>{{ timing.shortest.run.route.name }}</b><small>{{ timing.shortest.points }} точек · {{ timing.shortest.first|date:"H:i" }} → {{ timing.shortest.last|date:"H:i" }}</small></div>{% endif %}
+    {% if timing.longest %}<div><span>Длинный интервал</span><b>{{ timing.longest.run.route.name }}</b><small>{{ timing.longest.points }} точек · {{ timing.longest.first|date:"H:i" }} → {{ timing.longest.last|date:"H:i" }}</small></div>{% endif %}
+  </div>
+  {% endif %}
+
+  <section class="card stats-card">
+    <div class="stats-section-title"><div><h2>Курьеры</h2><p>Результат и среднее время завершённых маршрутов</p></div></div>
+    <div class="courier-stat-list">
+      {% for r in couriers %}
+      <article class="courier-stat-row">
+        <div class="courier-stat-name"><b>{{ r.courier.get_full_name|default:r.courier.username }}</b>{% if r.courier.is_reserve_courier %}<span class="type">Резерв</span>{% endif %}</div>
+        <div class="courier-stat-result"><strong>{{ r.rate }}%</strong><div class="rate-bar"><span style="width:{{ r.rate }}%"></span></div></div>
+        <div class="courier-stat-metrics">
+          <span><small>Всего</small><b>{{ r.total }}</b></span>
+          <span><small>Готово</small><b>{{ r.done }}</b></span>
+          <span><small>Проблем</small><b>{{ r.problem }}</b></span>
+          <span><small>Ср. маршрут</small><b>{{ r.avg_route_duration }}</b></span>
+        </div>
+      </article>
+      {% empty %}<div class="muted">За период назначенных доставок нет.</div>{% endfor %}
+    </div>
+  </section>
+
+  <section class="card stats-card">
+    <div class="stats-section-title"><div><h2>По дням</h2><p>Динамика выполнения и времени маршрутов</p></div></div>
+    <div class="days-desktop table-wrap">
+      <table><thead><tr><th>Дата</th><th>Всего</th><th>Выполнено</th><th>Проблемы</th><th>Результат</th><th>Ср. время маршрута</th></tr></thead>
+      <tbody>{% for r in days %}<tr><td><b>{{ r.date|date:"j E" }}</b></td><td>{{ r.total }}</td><td>{{ r.done }}</td><td>{{ r.problem }}</td><td><b>{{ r.rate }}%</b></td><td>{{ r.avg_route_duration }}</td></tr>{% endfor %}</tbody></table>
+    </div>
+    <div class="days-mobile">
+      {% for r in days %}
+      <article class="day-stat-row">
+        <div class="day-stat-top"><b>{{ r.date|date:"j E" }}</b><strong>{{ r.rate }}%</strong></div>
+        <div class="rate-bar"><span style="width:{{ r.rate }}%"></span></div>
+        <div class="day-stat-meta"><span>Всего {{ r.total }}</span><span>Готово {{ r.done }}</span><span>Проблем {{ r.problem }}</span></div>
+        <div class="day-stat-time">Среднее время маршрута · <b>{{ r.avg_route_duration }}</b></div>
+      </article>
+      {% endfor %}
+    </div>
+  </section>
+</div>
+{% endblock %}

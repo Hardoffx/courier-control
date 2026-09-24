@@ -47,36 +47,144 @@ def _dashboard_date(request):
         except ValueError: pass
     return timezone.localdate()
 
+
+def _format_duration(delta):
+    if delta is None:
+        return ''
+    seconds=max(0,int(delta.total_seconds()))
+    hours,rest=divmod(seconds,3600)
+    minutes=rest//60
+    if hours:
+        return f'{hours} ч {minutes:02d} мин' if minutes else f'{hours} ч'
+    return f'{minutes} мин' if minutes else '< 1 мин'
+
+
+def _run_timing(rows, now=None, live=True):
+    completed=sorted(
+        (d for d in rows if d.status==Delivery.Status.DONE and d.completed_at),
+        key=lambda d:d.completed_at,
+    )
+    if not completed:
+        return {'first_done':None,'last_done':None,'duration_label':'','avg_interval_label':'','is_completed':False}
+    first_done=completed[0]
+    last_done=completed[-1]
+    is_completed=bool(rows) and all(d.status==Delivery.Status.DONE for d in rows)
+    end_at=last_done.completed_at if is_completed or not live else (now or timezone.now())
+    duration=end_at-first_done.completed_at
+    avg_interval=(last_done.completed_at-first_done.completed_at)/(len(completed)-1) if len(completed)>1 else None
+    return {
+        'first_done':first_done,
+        'last_done':last_done,
+        'duration_label':_format_duration(duration),
+        'avg_interval_label':_format_duration(avg_interval),
+        'is_completed':is_completed,
+    }
+
 @dispatcher_required
 def dispatcher_dashboard(request):
-    selected_date=_dashboard_date(request); base=Delivery.objects.filter(delivery_date=selected_date).select_related('courier','point','route_run__route'); deliveries=base
-    q=request.GET.get('q','').strip(); kind=request.GET.get('kind','').strip(); status=request.GET.get('status','').strip(); courier_filter=request.GET.get('courier','').strip(); unrouted=request.GET.get('unrouted','')=='1'; route_q=request.GET.get('route_q','').strip(); route_state=request.GET.get('route_state','').strip(); route_sort=request.GET.get('route_sort','name').strip()
-    if q: deliveries=deliveries.filter(Q(source_label__icontains=q)|Q(address__icontains=q)|Q(phone__icontains=q)|Q(organization__icontains=q)|Q(recipient__icontains=q))
-    if kind: deliveries=deliveries.filter(point__kind=kind)
-    if status: deliveries=deliveries.filter(status=status)
-    if unrouted: deliveries=deliveries.filter(route_run__isnull=True)
-    if courier_filter=='unassigned': deliveries=deliveries.filter(courier__isnull=True)
-    elif courier_filter.isdigit(): deliveries=deliveries.filter(courier_id=int(courier_filter))
-    deliveries=list(deliveries.order_by('route_run__route__name','courier_id','route_order','id'))
+    selected_date=_dashboard_date(request)
+    base=Delivery.objects.filter(delivery_date=selected_date).select_related('courier','point','route_run__route')
     couriers=User.objects.filter(role=User.Role.COURIER,is_active=True,is_superuser=False).order_by('first_name','username')
-    counts={key:base.filter(status=key).count() for key,_ in Delivery.Status.choices}; courier_stats=[]
-    for courier in couriers:
-        qs=base.filter(courier=courier); courier_stats.append({'courier':courier,'total':qs.count(),'done':qs.filter(status=Delivery.Status.DONE).count(),'problem':qs.filter(status=Delivery.Status.PROBLEM).count()})
+    counts={key:base.filter(status=key).count() for key,_ in Delivery.Status.choices}
+    route_q=request.GET.get('route_q','').strip()
+    route_state=request.GET.get('route_state','').strip()
+    route_sort=request.GET.get('route_sort','name').strip()
     suggestions={s.run_id:s for s in RouteOrderSuggestion.objects.filter(run__run_date=selected_date,status=RouteOrderSuggestion.Status.PENDING).select_related('courier')}
+    now=timezone.now()
     runs=[]
     for run in RouteRun.objects.filter(run_date=selected_date).select_related('route','template','assigned_courier').prefetch_related('deliveries').order_by('route__name'):
-        rows=list(run.deliveries.all()); total=len(rows); done=sum(d.status==Delivery.Status.DONE for d in rows); problem=sum(d.status==Delivery.Status.PROBLEM for d in rows); completed=[d for d in rows if d.status==Delivery.Status.DONE and d.completed_at]; last_done=max(completed,key=lambda d:d.completed_at) if completed else None; remaining=total-done; ordered_remaining=[d for d in sorted(rows,key=lambda x:(x.route_order,x.id)) if d.status!=Delivery.Status.DONE]; next_stop=next((d for d in ordered_remaining if d.status!=Delivery.Status.PROBLEM),None) or (ordered_remaining[0] if ordered_remaining else None); state='completed' if total and done==total else ('attention' if problem or not run.assigned_courier else ('active' if done else 'waiting')); runs.append({'run':run,'total':total,'done':done,'remaining':remaining,'problem':problem,'percent':round(done*100/total) if total else 0,'order_suggestion':suggestions.get(run.pk),'last_done':last_done,'next_stop':next_stop,'state':state})
-    route_count=len(runs); completed_routes=sum(item['state']=='completed' for item in runs); attention_routes=sum(item['state']=='attention' for item in runs); done_count=counts.get(Delivery.Status.DONE,0); completion_percent=round(done_count*100/base.count()) if base.count() else 0; unassigned_count=base.filter(route_run__isnull=True).count(); active_courier_count=len({item['run'].assigned_courier_id for item in runs if item['run'].assigned_courier_id})
+        rows=list(run.deliveries.all())
+        total=len(rows)
+        done=sum(d.status==Delivery.Status.DONE for d in rows)
+        problem=sum(d.status==Delivery.Status.PROBLEM for d in rows)
+        remaining=total-done
+        ordered_remaining=[d for d in sorted(rows,key=lambda x:(x.route_order,x.id)) if d.status!=Delivery.Status.DONE]
+        next_stop=next((d for d in ordered_remaining if d.status!=Delivery.Status.PROBLEM),None) or (ordered_remaining[0] if ordered_remaining else None)
+        timing=_run_timing(rows,now,live=selected_date==timezone.localdate())
+        suggestion=suggestions.get(run.pk)
+        is_completed=bool(total) and done==total
+        needs_attention=bool(problem or suggestion or (not is_completed and not run.assigned_courier))
+        state='completed' if is_completed else ('attention' if needs_attention else ('active' if done else 'waiting'))
+        runs.append({
+            'run':run,'total':total,'done':done,'remaining':remaining,'problem':problem,
+            'percent':round(done*100/total) if total else 0,'order_suggestion':suggestion,
+            'last_done':timing['last_done'],'first_done':timing['first_done'],'next_stop':next_stop,
+            'duration_label':timing['duration_label'],'avg_interval_label':timing['avg_interval_label'],
+            'state':state,'needs_attention':needs_attention,
+        })
+    route_count=len(runs)
+    completed_routes=sum(item['state']=='completed' for item in runs)
+    attention_routes=sum(item['needs_attention'] for item in runs)
+    total_count=base.count()
+    done_count=counts.get(Delivery.Status.DONE,0)
+    completion_percent=round(done_count*100/total_count) if total_count else 0
+    unrouted_count=base.filter(route_run__isnull=True).count()
+    route_without_courier_count=sum(1 for item in runs if item['state']!='completed' and not item['run'].assigned_courier_id)
+    problem_count=counts.get(Delivery.Status.PROBLEM,0)
+    pending_order_count=len(suggestions)
+    attention_count=problem_count+unrouted_count+route_without_courier_count+pending_order_count
+    active_courier_count=len({item['run'].assigned_courier_id for item in runs if item['run'].assigned_courier_id})
+
     visible_runs=runs
     if route_q:
         needle=route_q.casefold()
         visible_runs=[item for item in visible_runs if needle in item['run'].route.name.casefold() or (item['run'].assigned_courier and needle in (item['run'].assigned_courier.get_full_name() or item['run'].assigned_courier.username).casefold())]
     if route_state:
         visible_runs=[item for item in visible_runs if item['state']==route_state]
-    if route_sort=='progress': visible_runs=sorted(visible_runs,key=lambda item:(item['percent'],item['run'].route.name))
-    elif route_sort=='attention': visible_runs=sorted(visible_runs,key=lambda item:(item['state']!='attention',-item['problem'],item['run'].route.name))
-    elif route_sort=='courier': visible_runs=sorted(visible_runs,key=lambda item:((item['run'].assigned_courier.get_full_name() or item['run'].assigned_courier.username) if item['run'].assigned_courier else 'яяя',item['run'].route.name))
-    return render(request,'dispatcher/dashboard.html',{'deliveries':deliveries,'total_count':base.count(),'couriers':couriers,'row_colors':Delivery.RowColor.choices,'point_kinds':DeliveryPoint.Kind.choices,'statuses':Delivery.Status.choices,'counts':counts,'courier_stats':courier_stats,'today':timezone.localdate(),'selected_date':selected_date,'prev_date':selected_date-timedelta(days=1),'next_date':selected_date+timedelta(days=1),'route_runs':visible_runs,'route_count':route_count,'completed_routes':completed_routes,'attention_routes':attention_routes,'completion_percent':completion_percent,'filters':{'q':q,'kind':kind,'status':status,'courier':courier_filter,'unrouted':unrouted},'route_filters':{'q':route_q,'state':route_state,'sort':route_sort},'unassigned_count':unassigned_count,'active_courier_count':active_courier_count})
+    if route_sort=='progress':
+        visible_runs=sorted(visible_runs,key=lambda item:(item['percent'],item['run'].route.name))
+    elif route_sort=='attention':
+        visible_runs=sorted(visible_runs,key=lambda item:(item['state']!='attention',-item['problem'],item['run'].route.name))
+    elif route_sort=='courier':
+        visible_runs=sorted(visible_runs,key=lambda item:((item['run'].assigned_courier.get_full_name() or item['run'].assigned_courier.username) if item['run'].assigned_courier else 'яяя',item['run'].route.name))
+
+    return render(request,'dispatcher/dashboard.html',{
+        'total_count':total_count,'couriers':couriers,'counts':counts,'today':timezone.localdate(),
+        'selected_date':selected_date,'prev_date':selected_date-timedelta(days=1),'next_date':selected_date+timedelta(days=1),
+        'route_runs':visible_runs,'route_count':route_count,'completed_routes':completed_routes,
+        'attention_routes':attention_routes,'completion_percent':completion_percent,
+        'route_filters':{'q':route_q,'state':route_state,'sort':route_sort},
+        'unrouted_count':unrouted_count,'route_without_courier_count':route_without_courier_count,
+        'pending_order_count':pending_order_count,'problem_count':problem_count,'attention_count':attention_count,
+        'active_courier_count':active_courier_count,
+    })
+
+
+@dispatcher_required
+def dispatcher_deliveries(request):
+    selected_date=_dashboard_date(request)
+    base=Delivery.objects.filter(delivery_date=selected_date).select_related('courier','point','route_run__route')
+    deliveries=base
+    q=request.GET.get('q','').strip()
+    kind=request.GET.get('kind','').strip()
+    status=request.GET.get('status','').strip()
+    courier_filter=request.GET.get('courier','').strip()
+    unrouted=request.GET.get('unrouted','')=='1'
+    route_filter=request.GET.get('route','').strip()
+    if q:
+        deliveries=deliveries.filter(Q(source_label__icontains=q)|Q(address__icontains=q)|Q(phone__icontains=q)|Q(organization__icontains=q)|Q(recipient__icontains=q))
+    if kind:
+        deliveries=deliveries.filter(point__kind=kind)
+    if status:
+        deliveries=deliveries.filter(status=status)
+    if unrouted:
+        deliveries=deliveries.filter(route_run__isnull=True)
+    if courier_filter=='unassigned':
+        deliveries=deliveries.filter(courier__isnull=True)
+    elif courier_filter.isdigit():
+        deliveries=deliveries.filter(courier_id=int(courier_filter))
+    if route_filter.isdigit():
+        deliveries=deliveries.filter(route_run_id=int(route_filter))
+    deliveries=list(deliveries.order_by('route_run__route__name','courier_id','route_order','id'))
+    couriers=User.objects.filter(role=User.Role.COURIER,is_active=True,is_superuser=False).order_by('first_name','username')
+    runs=RouteRun.objects.filter(run_date=selected_date).select_related('route','assigned_courier').order_by('route__name')
+    return render(request,'dispatcher/deliveries.html',{
+        'deliveries':deliveries,'total_count':base.count(),'couriers':couriers,'runs':runs,
+        'row_colors':Delivery.RowColor.choices,'point_kinds':DeliveryPoint.Kind.choices,'statuses':Delivery.Status.choices,
+        'today':timezone.localdate(),'selected_date':selected_date,'prev_date':selected_date-timedelta(days=1),'next_date':selected_date+timedelta(days=1),
+        'filters':{'q':q,'kind':kind,'status':status,'courier':courier_filter,'unrouted':unrouted,'route':route_filter},
+    })
+
 
 def _resolve_courier(courier_id):
     if not courier_id: return None
@@ -90,15 +198,32 @@ def _assign(delivery,courier,actor,action='assigned'):
 
 @dispatcher_required
 @require_POST
-def dispatcher_assign(request,pk): _assign(get_object_or_404(Delivery,pk=pk),_resolve_courier(request.POST.get('courier_id','')),request.user); return redirect('dispatcher_dashboard')
+def dispatcher_assign(request,pk):
+    delivery=get_object_or_404(Delivery,pk=pk)
+    courier=_resolve_courier(request.POST.get('courier_id',''))
+    _assign(delivery,courier,request.user)
+    if request.headers.get('x-requested-with')=='XMLHttpRequest':
+        return JsonResponse({'ok':True,'delivery_id':delivery.pk,'courier':(courier.get_full_name() or courier.username) if courier else ''})
+    return redirect(f'/dispatcher/deliveries/?date={delivery.delivery_date.isoformat()}')
+
 
 @dispatcher_required
 @require_POST
 def dispatcher_bulk_assign(request):
-    ids=request.POST.getlist('delivery_ids'); courier=_resolve_courier(request.POST.get('courier_id','')); deliveries=Delivery.objects.filter(pk__in=ids).exclude(status=Delivery.Status.DONE)
+    ids=request.POST.getlist('delivery_ids')
+    courier=_resolve_courier(request.POST.get('courier_id',''))
+    deliveries=list(Delivery.objects.filter(pk__in=ids).exclude(status=Delivery.Status.DONE))
     with transaction.atomic():
-        for delivery in deliveries: _assign(delivery,courier,request.user,'bulk_assigned')
-    messages.success(request,f'Обновлено точек: {deliveries.count()}') if ids else messages.warning(request,'Сначала отметьте точки'); return redirect('dispatcher_dashboard')
+        for delivery in deliveries:
+            _assign(delivery,courier,request.user,'bulk_assigned')
+    if request.headers.get('x-requested-with')=='XMLHttpRequest':
+        return JsonResponse({'ok':True,'updated':len(deliveries)})
+    if ids:
+        messages.success(request,f'Обновлено точек: {len(deliveries)}')
+    else:
+        messages.warning(request,'Сначала отметьте точки')
+    day=request.POST.get('date','').strip()
+    return redirect(f'/dispatcher/deliveries/?date={day}' if day else 'dispatcher_deliveries')
 
 @dispatcher_required
 @require_POST

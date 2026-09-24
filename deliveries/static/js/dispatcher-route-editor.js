@@ -249,6 +249,50 @@ function setupEditor(root){
 }
 
 document.querySelectorAll('.admin-route-editor').forEach(setupEditor);
+
+document.querySelectorAll('.day-item-toggle').forEach(toggle=>toggle.addEventListener('change',async()=>{
+  const form=document.getElementById('generate-route-form');
+  const date=form?.querySelector('[name="run_date"]')?.value||'';
+  if(!date){
+    toggle.checked=!toggle.checked;
+    toast('Сначала выберите дату',true);
+    return;
+  }
+  const previous=!toggle.checked;
+  toggle.disabled=true;
+  toggle.closest('.day-toggle')?.classList.add('is-saving');
+  try{
+    const payload=await post(toggle.dataset.dayToggleUrl,{run_date:date,enabled:toggle.checked?'1':'0'});
+    const label=toggle.closest('.day-toggle')?.querySelector('span');
+    if(label)label.textContent=toggle.checked?'В этот день':'Исключена на день';
+    toast(payload.message||(toggle.checked?'Точка добавлена':'Точка убрана'));
+  }catch(err){
+    toggle.checked=previous;
+    toast(err.message,true);
+  }finally{
+    toggle.disabled=false;
+    toggle.closest('.day-toggle')?.classList.remove('is-saving');
+  }
+}));
+
+document.querySelectorAll('.run-reassign-select').forEach(select=>select.addEventListener('change',async()=>{
+  select.classList.add('is-saving');
+  select.disabled=true;
+  try{
+    const payload=await post(select.dataset.url,{courier_id:select.value});
+    const badge=document.querySelector('.route-now-courier');
+    if(badge)badge.textContent=payload.courier||'Курьер не назначен';
+    toast(payload.message||'Курьер изменён');
+  }catch(err){
+    toast(err.message,true);
+  }finally{
+    select.disabled=false;
+    select.classList.remove('is-saving');
+  }
+}));
+
+document.querySelectorAll('[data-flash]').forEach((node,index)=>setTimeout(()=>toast(node.dataset.flash||node.textContent),index*300));
+
 document.querySelectorAll('.point-search').forEach(input=>input.addEventListener('input',()=>{
   const q=input.value.toLowerCase();
   input.closest('form')?.querySelectorAll('.point-option').forEach(row=>{

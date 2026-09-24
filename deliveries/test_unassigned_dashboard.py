@@ -47,4 +47,13 @@ class UnassignedDispatcherDashboardTests(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Маршрут без курьера')
-        self.assertContains(response, 'Не назначен')
+        self.assertContains(response, 'Курьер не назначен')
+        self.assertContains(response, 'Требует внимания')
+
+        deliveries_response = self.client.get(
+            reverse('dispatcher_deliveries'),
+            {'date': self.run.run_date.isoformat(), 'courier': 'unassigned'},
+        )
+        self.assertEqual(deliveries_response.status_code, 200)
+        self.assertContains(deliveries_response, self.point.address)
+        self.assertContains(deliveries_response, 'Без курьера')

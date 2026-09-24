@@ -1,0 +1,91 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Доставки · Courier Control{% endblock %}
+{% block head %}<link rel="stylesheet" href="{% static 'css/dispatcher-professional.css' %}?v=20260924-1">{% endblock %}
+{% block content %}
+<div class="deliveries-workspace">
+  <header class="delivery-workspace-head">
+    <div>
+      <h1>Доставки</h1>
+      <p>Глобальный поиск и служебные операции по точкам дня</p>
+      <nav class="ops-date" aria-label="Выбор дня">
+        <a class="btn alt" href="?date={{ prev_date|date:'Y-m-d' }}" aria-label="Предыдущий день">←</a>
+        <strong>{{ selected_date|date:"j E Y" }}</strong>
+        <a class="btn alt" href="?date={{ next_date|date:'Y-m-d' }}" aria-label="Следующий день">→</a>
+      </nav>
+    </div>
+    <div class="ops-actions">
+      <a class="btn alt" href="{% url 'dispatcher_dashboard' %}?date={{ selected_date|date:'Y-m-d' }}">← К обзору дня</a>
+      <a class="btn" href="{% url 'delivery_create' %}">＋ Добавить доставку</a>
+    </div>
+  </header>
+
+  <div class="delivery-quick">
+    <a class="filter-chip {% if not filters.kind and not filters.status and not filters.unrouted %}active{% endif %}" href="?date={{ selected_date|date:'Y-m-d' }}">Все</a>
+    <a class="filter-chip {% if filters.status == 'problem' %}active{% endif %}" href="?date={{ selected_date|date:'Y-m-d' }}&status=problem">Проблемы</a>
+    <a class="filter-chip {% if filters.unrouted %}active{% endif %}" href="?date={{ selected_date|date:'Y-m-d' }}&unrouted=1">Без маршрута</a>
+    <a class="filter-chip {% if filters.courier == 'unassigned' %}active{% endif %}" href="?date={{ selected_date|date:'Y-m-d' }}&courier=unassigned">Без курьера</a>
+    <span class="delivery-count">Найдено: {{ deliveries|length }} из {{ total_count }}</span>
+  </div>
+
+  <form class="card delivery-filter-card" method="get">
+    <input type="hidden" name="date" value="{{ selected_date|date:'Y-m-d' }}">
+    <div class="delivery-filter-grid">
+      <label>Поиск<input name="q" value="{{ filters.q }}" placeholder="Адрес, ЛПУ, телефон, организация…"></label>
+      <label>Маршрут<select name="route"><option value="">Все маршруты</option>{% for run in runs %}<option value="{{ run.pk }}" {% if filters.route == run.pk|stringformat:'s' %}selected{% endif %}>{{ run.route.name }}</option>{% endfor %}</select></label>
+      <label>Тип<select name="kind"><option value="">Все типы</option>{% for value,label in point_kinds %}<option value="{{ value }}" {% if filters.kind == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+      <label>Статус<select name="status"><option value="">Все статусы</option>{% for value,label in statuses %}<option value="{{ value }}" {% if filters.status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+      <label>Курьер<select name="courier"><option value="">Все курьеры</option><option value="unassigned" {% if filters.courier == 'unassigned' %}selected{% endif %}>Не назначен</option>{% for c in couriers %}<option value="{{ c.pk }}" {% if filters.courier == c.pk|stringformat:'s' %}selected{% endif %}>{{ c.get_full_name|default:c.username }}</option>{% endfor %}</select></label>
+    </div>
+    <div class="create-actions"><button class="btn" type="submit">Показать</button>{% if filters.q or filters.kind or filters.status or filters.courier or filters.route or filters.unrouted %}<a class="btn alt" href="?date={{ selected_date|date:'Y-m-d' }}">Сбросить</a>{% endif %}</div>
+  </form>
+
+  <form id="bulk-form" method="post" action="{% url 'dispatcher_bulk_assign' %}" class="card bulk-bar">
+    {% csrf_token %}<input type="hidden" name="date" value="{{ selected_date|date:'Y-m-d' }}">
+    <strong id="selected-count">Выбрано: 0</strong>
+    <select name="courier_id" aria-label="Назначить курьера"><option value="">Снять назначение</option>{% for c in couriers %}<option value="{{ c.pk }}">{{ c.get_full_name|default:c.username }}</option>{% endfor %}</select>
+    <button class="btn small" type="submit">Применить к выбранным</button>
+  </form>
+
+  <section class="card delivery-panel">
+    <div class="desktop-delivery-table table-wrap">
+      <table>
+        <thead><tr><th><input id="select-all" type="checkbox"></th><th>#</th><th>Адрес</th><th>Лаборатория</th><th>Маршрут / курьер</th><th>Время</th><th>Статус</th><th></th></tr></thead>
+        <tbody>
+          {% for d in deliveries %}
+          <tr data-delivery-id="{{ d.pk }}">
+            <td>{% if d.status != 'done' %}<input class="row-check" form="bulk-form" type="checkbox" name="delivery_ids" value="{{ d.pk }}">{% endif %}</td>
+            <td><strong>{{ d.route_order|default:"—" }}</strong></td>
+            <td><div class="delivery-address-main">{{ d.address }}</div>{% if d.phone %}<div class="delivery-address-sub">{{ d.phone }}</div>{% endif %}</td>
+            <td class="lab-cell">{% include 'includes/lab_badge.html' with delivery=d %}{% if d.lpu_number %}<div class="delivery-row-route">ЛПУ {{ d.lpu_number }}</div>{% endif %}</td>
+            <td><div><b>{% if d.route_run %}{{ d.route_run.route.name }}{% else %}Без маршрута{% endif %}</b></div><div class="delivery-row-route courier-cell">{% if d.courier %}{{ d.courier.get_full_name|default:d.courier.username }}{% else %}Курьер не назначен{% endif %}</div></td>
+            <td>{{ d.time_window|default:"—" }}</td>
+            <td><span class="status-chip s-{{ d.status }}">{{ d.get_status_display }}</span>{% if d.problem_reason %}<div class="status-note">{{ d.problem_reason }}</div>{% endif %}</td>
+            <td><div class="table-actions"><a class="btn alt small" href="{% url 'delivery_edit' d.pk %}">Изменить</a><a class="btn alt small" href="{% url 'delivery_history' d.pk %}">История</a></div></td>
+          </tr>
+          {% empty %}<tr><td colspan="8">По выбранным фильтрам доставок нет.</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="delivery-mobile-card-list">
+      {% for d in deliveries %}
+      <article class="delivery-mobile-card card" data-delivery-id="{{ d.pk }}">
+        <div class="delivery-mobile-head"><div>{% include 'includes/lab_badge.html' with delivery=d %}{% if d.lpu_number %}<span class="lab-caption">ЛПУ {{ d.lpu_number }}</span>{% endif %}</div><span class="status-chip s-{{ d.status }}">{{ d.get_status_display }}</span></div>
+        <div class="delivery-mobile-address">№{{ d.route_order|default:"—" }} · {{ d.address }}</div>
+        <div class="delivery-mobile-meta">{% if d.route_run %}{{ d.route_run.route.name }}{% else %}Без маршрута{% endif %} · <span class="courier-cell">{% if d.courier %}{{ d.courier.get_full_name|default:d.courier.username }}{% else %}Курьер не назначен{% endif %}</span></div>
+        <div class="delivery-mobile-meta">{{ d.time_window|default:"Время не указано" }}{% if d.phone %} · {{ d.phone }}{% endif %}</div>
+        {% if d.problem_reason %}<div class="status-note">{{ d.problem_reason }}</div>{% endif %}
+        <div class="delivery-mobile-actions">
+          {% if d.status != 'done' %}<label><input class="row-check" form="bulk-form" type="checkbox" name="delivery_ids" value="{{ d.pk }}"> Выбрать</label>{% endif %}
+          {% if d.phone %}<a class="btn alt" href="tel:{{ d.phone }}">Позвонить</a>{% endif %}
+          <a class="btn alt" href="{% url 'delivery_edit' d.pk %}">Изменить</a>
+          <a class="btn alt" href="{% url 'delivery_history' d.pk %}">История</a>
+        </div>
+      </article>
+      {% empty %}<div class="muted">По выбранным фильтрам доставок нет.</div>{% endfor %}
+    </div>
+  </section>
+</div>
+{% endblock %}
+{% block scripts %}<script type="module" src="{% static 'js/dispatcher-deliveries.js' %}?v=20260924-1"></script>{% endblock %}
