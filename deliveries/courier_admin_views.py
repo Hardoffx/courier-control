@@ -4,6 +4,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404, redirect, render
+from django.http import JsonResponse
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils import timezone
 from django.views.decorators.http import require_POST
@@ -76,6 +77,10 @@ def courier_preview(request,pk):
 @require_POST
 def courier_toggle(request,pk):
     courier=get_object_or_404(_courier_users(),pk=pk)
-    courier.is_active=not courier.is_active; courier.save(update_fields=['is_active'])
-    messages.success(request,'Курьер активирован' if courier.is_active else 'Курьер отключён. История маршрутов сохранена.')
+    courier.is_active=not courier.is_active
+    courier.save(update_fields=['is_active'])
+    message='Курьер активирован' if courier.is_active else 'Курьер отключён. История маршрутов сохранена.'
+    if request.headers.get('x-requested-with')=='XMLHttpRequest':
+        return JsonResponse({'ok':True,'courier_id':courier.pk,'is_active':courier.is_active,'message':message})
+    messages.success(request,message)
     return redirect('courier_manage_list')
