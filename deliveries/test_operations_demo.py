@@ -1,7 +1,9 @@
 from io import StringIO
+import os
 
 from django.core.management import call_command
 from django.test import TestCase
+from unittest.mock import patch
 
 from accounts.models import User
 from deliveries.models import Delivery, Route, RouteOrderSuggestion, RouteRun
@@ -12,11 +14,12 @@ class OperationsDemoCommandTests(TestCase):
 
     def run_seed(self):
         stdout = StringIO()
-        call_command(
-            "seed_operations_demo",
-            target_date=self.target_date,
-            stdout=stdout,
-        )
+        with patch.dict(os.environ, {"OPERATIONS_DEMO_SEED": "1"}):
+            call_command(
+                "seed_operations_demo",
+                target_date=self.target_date,
+                stdout=stdout,
+            )
         return stdout.getvalue()
 
     def test_seed_creates_realistic_route_mix_and_is_repeatable(self):
@@ -80,7 +83,8 @@ class OperationsDemoCommandTests(TestCase):
         )
         self.run_seed()
 
-        call_command("seed_operations_demo", reset=True, stdout=StringIO())
+        with patch.dict(os.environ, {"OPERATIONS_DEMO_SEED": "1"}):
+            call_command("seed_operations_demo", reset=True, stdout=StringIO())
 
         self.assertFalse(Route.objects.filter(name__startswith="OPS DEMO · ").exists())
         self.assertFalse(
@@ -92,3 +96,12 @@ class OperationsDemoCommandTests(TestCase):
             ).exists()
         )
         self.assertTrue(User.objects.filter(pk=keeper.pk).exists())
+
+    def test_requires_explicit_environment_gate(self):
+        with patch.dict(os.environ, {}, clear=True):
+            with self.assertRaisesMessage(
+                Exception,
+                "OPERATIONS_DEMO_SEED=1",
+            ):
+                call_command("seed_operations_demo", target_date=self.target_date)
+
