@@ -5,6 +5,8 @@ const pages = [
   ['/dispatcher/deliveries/', 'deliveries'],
   ['/dispatcher/stats/', 'statistics'],
   ['/dispatcher/couriers/new/', 'courier-create'],
+  ['/dispatcher/couriers/', 'couriers'],
+  ['/dispatcher/points/', 'points'],
   ['/dispatcher/routes/new/', 'route-create'],
   ['/dispatcher/ui-preview/', 'ui-preview'],
 ];
