@@ -62,8 +62,8 @@
     <div class="attention-chips">
       {% if problem_count %}<a class="attention-chip danger" href="{% url 'dispatcher_deliveries' %}?date={{ selected_date|date:'Y-m-d' }}&status=problem"><b>{{ problem_count }}</b> проблем</a>{% endif %}
       {% if unrouted_count %}<a class="attention-chip warn" href="{% url 'dispatcher_deliveries' %}?date={{ selected_date|date:'Y-m-d' }}&unrouted=1"><b>{{ unrouted_count }}</b> без маршрута</a>{% endif %}
-      {% if route_without_courier_count %}<a class="attention-chip warn" href="#routes-today" data-attention-filter="attention"><b>{{ route_without_courier_count }}</b> без курьера</a>{% endif %}
-      {% if pending_order_count %}<a class="attention-chip info" href="#routes-today" data-attention-filter="attention"><b>{{ pending_order_count }}</b> решений по порядку</a>{% endif %}
+      {% if route_without_courier_count %}<a class="attention-chip warn" href="#routes-today" data-attention-filter="unassigned"><b>{{ route_without_courier_count }}</b> без курьера</a>{% endif %}
+      {% if pending_order_count %}<a class="attention-chip info" href="#routes-today" data-attention-filter="order"><b>{{ pending_order_count }}</b> решений по порядку</a>{% endif %}
     </div>
   </section>
   {% else %}
@@ -82,6 +82,8 @@
     <select id="route-state-filter" aria-label="Состояние">
       <option value="">Все состояния</option>
       <option value="attention">Требуют внимания</option>
+      <option value="unassigned">Без курьера</option>
+      <option value="order">Ожидает решения по порядку</option>
       <option value="active">В работе</option>
       <option value="waiting">Не начаты</option>
       <option value="completed">Завершены</option>
@@ -96,7 +98,7 @@
 
   <section id="route-grid" class="ops-route-grid">
     {% for item in route_runs %}
-    <article class="ops-route-card" data-state="{{ item.state }}" data-attention="{% if item.needs_attention %}1{% else %}0{% endif %}" data-route="{{ item.run.route.name|lower }}" data-courier="{% if item.run.assigned_courier %}{{ item.run.assigned_courier.get_full_name|default:item.run.assigned_courier.username|lower }}{% endif %}" data-percent="{{ item.percent }}">
+    <article class="ops-route-card" data-state="{{ item.state }}" data-attention="{% if item.needs_attention %}1{% else %}0{% endif %}" data-unassigned="{% if not item.run.assigned_courier and item.state != 'completed' %}1{% else %}0{% endif %}" data-order="{% if item.order_suggestion %}1{% else %}0{% endif %}" data-route="{{ item.run.route.name|lower }}" data-courier="{% if item.run.assigned_courier %}{{ item.run.assigned_courier.get_full_name|default:item.run.assigned_courier.username|lower }}{% endif %}" data-percent="{{ item.percent }}">
       <div class="route-card-title">
         <div><div class="route-name">{{ item.run.route.name }}</div><div class="route-courier-name">{% if item.run.assigned_courier %}{{ item.run.assigned_courier.get_full_name|default:item.run.assigned_courier.username }}{% else %}Курьер не назначен{% endif %}</div></div>
         <span class="route-status {{ item.state }}">{% if item.state == 'completed' %}✓ Завершён{% elif item.state == 'active' %}В работе{% elif item.state == 'attention' %}Требует внимания{% else %}Не начат{% endif %}</span>
