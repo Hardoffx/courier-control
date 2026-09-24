@@ -43,7 +43,7 @@ function bindBulkForm(){
     const courierSelect=form.querySelector('[name=courier_id]');
     button.disabled=true;
     try{
-      const response=await fetch(form.action,{method:'POST',headers:{'X-Requested-With':'XMLHttpRequest','X-CSRFToken':csrf()},body:new FormData(form)});
+      const response=await fetch((form.getAttribute('action')||window.location.href),{method:'POST',headers:{'X-Requested-With':'XMLHttpRequest','X-CSRFToken':csrf()},body:new FormData(form)});
       const payload=await response.json();
       if(!response.ok||payload.ok===false)throw new Error(payload.error||'Не удалось сохранить');
       const courier=courierSelect.value?courierSelect.options[courierSelect.selectedIndex].textContent:'Курьер не назначен';
