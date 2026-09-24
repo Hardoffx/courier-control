@@ -59,7 +59,7 @@ def _format_duration(delta):
     return f'{minutes} мин' if minutes else '< 1 мин'
 
 
-def _run_timing(rows, now=None):
+def _run_timing(rows, now=None, live=True):
     completed=sorted(
         (d for d in rows if d.status==Delivery.Status.DONE and d.completed_at),
         key=lambda d:d.completed_at,
@@ -69,7 +69,7 @@ def _run_timing(rows, now=None):
     first_done=completed[0]
     last_done=completed[-1]
     is_completed=bool(rows) and all(d.status==Delivery.Status.DONE for d in rows)
-    end_at=last_done.completed_at if is_completed else (now or timezone.now())
+    end_at=last_done.completed_at if is_completed or not live else (now or timezone.now())
     duration=end_at-first_done.completed_at
     avg_interval=(last_done.completed_at-first_done.completed_at)/(len(completed)-1) if len(completed)>1 else None
     return {
@@ -100,7 +100,7 @@ def dispatcher_dashboard(request):
         remaining=total-done
         ordered_remaining=[d for d in sorted(rows,key=lambda x:(x.route_order,x.id)) if d.status!=Delivery.Status.DONE]
         next_stop=next((d for d in ordered_remaining if d.status!=Delivery.Status.PROBLEM),None) or (ordered_remaining[0] if ordered_remaining else None)
-        timing=_run_timing(rows,now)
+        timing=_run_timing(rows,now,live=selected_date==timezone.localdate())
         suggestion=suggestions.get(run.pk)
         state='completed' if total and done==total else ('attention' if problem or not run.assigned_courier or suggestion else ('active' if done else 'waiting'))
         runs.append({
