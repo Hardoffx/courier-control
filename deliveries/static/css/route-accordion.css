@@ -301,3 +301,5 @@ button:disabled,.btn:disabled{opacity:.68;cursor:wait;pointer-events:none}
 @media (prefers-reduced-motion:reduce){.selected-card.completion-highlight,.courier-toast{transition:none!important}}
 
 .hold-done.motion-managed.is-holding{transform:none!important}
+
+.courier-shell.is-live-refreshing{opacity:.64;pointer-events:none;transition:opacity .16s ease}.courier-toast.error{background:#a72e39}
