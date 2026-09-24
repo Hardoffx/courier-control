@@ -554,7 +554,19 @@ def run_reassign(request, pk):
     reassign_route_run(run, courier)
     message=f'{run.route.name}: ' + ('курьер изменён' if courier else 'назначение курьера снято')
     if _wants_json(request):
-        return JsonResponse({'ok':True,'run_id':run.pk,'courier_id':courier.pk if courier else None,'courier':(courier.get_full_name() or courier.username) if courier else '','message':message})
+        rows=list(run.deliveries.all())
+        total=len(rows)
+        done=sum(row.status==Delivery.Status.DONE for row in rows)
+        is_completed=bool(total) and done==total
+        has_problem=any(row.status==Delivery.Status.PROBLEM for row in rows)
+        has_order_suggestion=RouteOrderSuggestion.objects.filter(run=run,status=RouteOrderSuggestion.Status.PENDING).exists()
+        needs_attention=bool(has_problem or has_order_suggestion or (not is_completed and not courier))
+        state='completed' if is_completed else ('attention' if needs_attention else ('active' if done else 'waiting'))
+        return JsonResponse({
+            'ok':True,'run_id':run.pk,'courier_id':courier.pk if courier else None,
+            'courier':(courier.get_full_name() or courier.username) if courier else '',
+            'message':message,'state':state,'needs_attention':needs_attention,
+        })
     messages.success(request,message)
     return redirect(request.POST.get('next') or f'/dispatcher/?date={run.run_date.isoformat()}')
 
