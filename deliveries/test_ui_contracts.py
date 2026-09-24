@@ -44,3 +44,14 @@ class UIContractTests(SimpleTestCase):
         self.assertIn("window.history.replaceState", js)
         self.assertIn("window.addEventListener('popstate'", js)
 
+    def test_directory_actions_update_without_page_reload(self):
+        courier_html = (ROOT / "templates/dispatcher/couriers/list.html").read_text()
+        point_html = (ROOT / "templates/dispatcher/points.html").read_text()
+        js = (ROOT / "deliveries/static/js/dispatcher-directory.js").read_text()
+        self.assertIn('id="courier-list-workspace"', courier_html)
+        self.assertIn('id="point-directory-workspace"', point_html)
+        self.assertIn('ajax-state-toggle', courier_html)
+        self.assertIn('point-live-filter', point_html)
+        self.assertIn("refreshWorkspace", js)
+        self.assertIn("runPointFilter", js)
+

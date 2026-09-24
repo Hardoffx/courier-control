@@ -74,6 +74,19 @@ class CourierManagementTests(TestCase):
     def setUp(self): self.dispatcher=User.objects.create_user(username='boss',password='pass',role=User.Role.DISPATCHER); self.client.login(username='boss',password='pass')
     def test_dispatcher_can_create_reserve_courier(self): response=self.client.post(reverse('courier_manage_create'),{'username':'reserve-driver','first_name':'Резерв','password':'temp12345','is_reserve_courier':'on','is_active':'on'}); self.assertEqual(response.status_code,302); self.assertTrue(User.objects.get(username='reserve-driver').is_reserve_courier)
     def test_deactivation_preserves_user(self): courier=User.objects.create_user(username='driver',role=User.Role.COURIER); self.client.post(reverse('courier_manage_toggle',args=[courier.pk])); courier.refresh_from_db(); self.assertFalse(courier.is_active)
+    def test_courier_toggle_supports_ajax(self):
+        courier=User.objects.create_user(username='ajax-driver',role=User.Role.COURIER)
+        response=self.client.post(reverse('courier_manage_toggle',args=[courier.pk]),HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(response.status_code,200); self.assertTrue(response.json()['ok']); self.assertFalse(response.json()['is_active'])
+
+class PointDirectoryTests(TestCase):
+    def setUp(self):
+        self.dispatcher=User.objects.create_user(username='point-boss',password='pass',role=User.Role.DISPATCHER)
+        self.point=DeliveryPoint.objects.create(name='Постоянная точка',address='Москва, Тест 7')
+        self.client.login(username='point-boss',password='pass')
+    def test_point_toggle_supports_ajax(self):
+        response=self.client.post(reverse('point_toggle',args=[self.point.pk]),HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(response.status_code,200); self.assertTrue(response.json()['ok']); self.assertFalse(response.json()['is_active'])
 
 class PointImportTests(TestCase):
     def setUp(self): self.dispatcher=User.objects.create_user(username='dispatcher2',role=User.Role.DISPATCHER); self.point=DeliveryPoint.objects.create(name='CMD 458',code='458',address='Москва, Каноническая 10',phone='+79990000000',kind=DeliveryPoint.Kind.CMD)
