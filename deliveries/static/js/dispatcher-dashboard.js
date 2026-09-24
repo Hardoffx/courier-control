@@ -63,10 +63,15 @@ document.querySelectorAll('.route-assign-select').forEach(select=>select.addEven
     const courier=card?.querySelector('.route-courier-name');
     if(courier)courier.textContent=name;
     card.dataset.courier=name.toLowerCase();
-    if(card.dataset.state==='attention'){
-      card.dataset.state='waiting';
+    if(card){
+      card.dataset.state=payload.state||card.dataset.state;
+      card.dataset.attention=payload.needs_attention?'1':'0';
       const badge=card.querySelector('.route-status');
-      if(badge){badge.className='route-status waiting';badge.textContent='Не начат'}
+      if(badge){
+        const labels={completed:'✓ Завершён',active:'В работе',attention:'Требует внимания',waiting:'Не начат'};
+        badge.className='route-status '+card.dataset.state;
+        badge.textContent=labels[card.dataset.state]||'Маршрут';
+      }
     }
     select.closest('.route-quick-assign')?.remove();
     toast('Курьер назначен');
