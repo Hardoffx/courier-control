@@ -5,7 +5,7 @@
 <link rel="stylesheet" href="{% static 'css/dispatcher-professional.css' %}?v=20260924-1">
 {% endblock %}
 {% block content %}
-<div class="ops-dashboard">
+<div class="ops-dashboard" id="dispatcher-day-workspace">
   <header class="ops-head">
     <div>
       <div class="ops-title">
@@ -15,9 +15,9 @@
         <div><h1>Диспетчерская</h1><p>Обстановка по маршрутам на выбранный день</p></div>
       </div>
       <nav class="ops-date" aria-label="Выбор дня">
-        <a class="btn alt" href="?date={{ prev_date|date:'Y-m-d' }}" aria-label="Предыдущий день">←</a>
+        <a class="btn alt" data-live-day href="?date={{ prev_date|date:'Y-m-d' }}" aria-label="Предыдущий день">←</a>
         <strong>{{ selected_date|date:"j E Y" }}</strong>
-        <a class="btn alt" href="?date={{ next_date|date:'Y-m-d' }}" aria-label="Следующий день">→</a>
+        <a class="btn alt" data-live-day href="?date={{ next_date|date:'Y-m-d' }}" aria-label="Следующий день">→</a>
       </nav>
     </div>
     <div class="ops-actions">
@@ -26,7 +26,7 @@
         <span>Импорт Excel</span>
       </a>
       <a class="btn" href="{% url 'delivery_create' %}">＋ Добавить доставку</a>
-      {% if selected_date != today %}<a class="btn alt" href="?date={{ today|date:'Y-m-d' }}">Сегодня</a>{% endif %}
+      {% if selected_date != today %}<a class="btn alt" data-live-day href="?date={{ today|date:'Y-m-d' }}">Сегодня</a>{% endif %}
     </div>
   </header>
 
@@ -149,5 +149,5 @@
 </div>
 {% endblock %}
 {% block scripts %}
-<script type="module" src="{% static 'js/dispatcher-dashboard.js' %}?v=20260924-1"></script>
+<script type="module" src="{% static 'js/dispatcher-dashboard.js' %}?v=20260924-2"></script>
 {% endblock %}
