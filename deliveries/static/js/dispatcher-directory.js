@@ -1,8 +1,8 @@
 const csrf=()=>document.querySelector('[name=csrfmiddlewaretoken]')?.value||'';
 
 function toast(message,error=false){
-  let el=document.querySelector('.ops-toast');
-  if(!el){el=document.createElement('div');el.className='ops-toast';document.body.appendChild(el)}
+  let el=document.querySelector('.directory-toast');
+  if(!el){el=document.createElement('div');el.className='directory-toast';document.body.appendChild(el)}
   el.textContent=message;
   el.classList.toggle('error',error);
   requestAnimationFrame(()=>el.classList.add('show'));
