@@ -37,7 +37,7 @@ Dispatcher operations are route-centric: the selected day's RouteRun board is th
 Для визуальной приёмки диспетчерской, статистики и длинных маршрутов можно создать отдельный изолированный набор данных:
 
 ```bash
-python manage.py seed_operations_demo
+OPERATIONS_DEMO_SEED=1 python manage.py seed_operations_demo
 ```
 
 По умолчанию создаются 8 маршрутов, 8 курьеров, 119 доставок на сегодня и история за 7 дней. Сценарий включает длинный маршрут на 26 точек, завершённые и активные маршруты, проблему, маршрут без курьера и ожидающее решение по изменённому порядку.
@@ -45,13 +45,15 @@ python manage.py seed_operations_demo
 Для фиксированной даты:
 
 ```bash
-python manage.py seed_operations_demo --date 2026-09-24
+OPERATIONS_DEMO_SEED=1 python manage.py seed_operations_demo --date 2026-09-24
 ```
 
 Удалить только этот демонстрационный namespace:
 
 ```bash
-python manage.py seed_operations_demo --reset
+OPERATIONS_DEMO_SEED=1 python manage.py seed_operations_demo --reset
 ```
 
 Логин диспетчера: `ops-demo-dispatcher`, пароль: `opsdemo12345`.
+
+`OPERATIONS_DEMO_SEED=1` — обязательный safety-gate: без него команда ничего не создаёт и не удаляет.
