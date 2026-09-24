@@ -70,6 +70,7 @@ document.querySelectorAll('.route-assign-select').forEach(select=>select.addEven
     if(card){
       card.dataset.state=payload.state||card.dataset.state;
       card.dataset.attention=payload.needs_attention?'1':'0';
+      card.dataset.unassigned='0';
       const badge=card.querySelector('.route-status');
       if(badge){
         const labels={completed:'✓ Завершён',active:'В работе',attention:'Требует внимания',waiting:'Не начат'};
