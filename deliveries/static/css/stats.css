@@ -73,6 +73,6 @@
  .days-desktop{display:none}
  .days-mobile{display:block}
 }
-@media(max-width:390px){
+@media(max-width:340px){
  .stats-kpis,.timing-grid{grid-template-columns:1fr}
 }
