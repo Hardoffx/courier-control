@@ -257,30 +257,36 @@ function initEditors(scope=document){
 }
 initEditors();
 
-document.querySelectorAll('.day-item-toggle').forEach(toggle=>toggle.addEventListener('change',async()=>{
-  const form=document.getElementById('generate-route-form');
-  const date=form?.querySelector('[name="run_date"]')?.value||'';
-  if(!date){
-    toggle.checked=!toggle.checked;
-    toast('Сначала выберите дату',true);
-    return;
-  }
-  const previous=!toggle.checked;
-  toggle.disabled=true;
-  toggle.closest('.day-toggle')?.classList.add('is-saving');
-  try{
-    const payload=await post(toggle.dataset.dayToggleUrl,{run_date:date,enabled:toggle.checked?'1':'0'});
-    const label=toggle.closest('.day-toggle')?.querySelector('span');
-    if(label)label.textContent=toggle.checked?'В этот день':'Исключена на день';
-    toast(payload.message||(toggle.checked?'Точка добавлена':'Точка убрана'));
-  }catch(err){
-    toggle.checked=previous;
-    toast(err.message,true);
-  }finally{
-    toggle.disabled=false;
-    toggle.closest('.day-toggle')?.classList.remove('is-saving');
-  }
-}));
+function bindDayToggles(scope=document){
+  scope.querySelectorAll('.day-item-toggle:not([data-bound])').forEach(toggle=>{
+    toggle.dataset.bound='1';
+    toggle.addEventListener('change',async()=>{
+      const form=document.getElementById('generate-route-form');
+      const date=form?.querySelector('[name="run_date"]')?.value||'';
+      if(!date){
+        toggle.checked=!toggle.checked;
+        toast('Сначала выберите дату',true);
+        return;
+      }
+      const previous=!toggle.checked;
+      toggle.disabled=true;
+      toggle.closest('.day-toggle')?.classList.add('is-saving');
+      try{
+        const payload=await post(toggle.dataset.dayToggleUrl,{run_date:date,enabled:toggle.checked?'1':'0'});
+        const label=toggle.closest('.day-toggle')?.querySelector('span');
+        if(label)label.textContent=toggle.checked?'В этот день':'Исключена на день';
+        toast(payload.message||(toggle.checked?'Точка добавлена':'Точка убрана'));
+      }catch(err){
+        toggle.checked=previous;
+        toast(err.message,true);
+      }finally{
+        toggle.disabled=false;
+        toggle.closest('.day-toggle')?.classList.remove('is-saving');
+      }
+    });
+  });
+}
+bindDayToggles();
 
 function bindRunReassign(scope=document){
   scope.querySelectorAll('.run-reassign-select:not([data-bound])').forEach(select=>{
@@ -320,6 +326,31 @@ function bindPointSearch(scope=document){
 }
 bindPointSearch();
 
+async function refreshTemplateWorkspace(){
+  const workspace=document.getElementById('template-route-editor-workspace');
+  if(!workspace)return;
+  workspace.classList.add('is-refreshing');
+  try{
+    const response=await fetch(window.location.href,{headers:{'X-Requested-With':'XMLHttpRequest'}});
+    if(!response.ok)throw new Error('Не удалось обновить шаблон');
+    const html=await response.text();
+    const freshDoc=new DOMParser().parseFromString(html,'text/html');
+    const fresh=freshDoc.getElementById('template-route-editor-workspace');
+    if(!fresh)throw new Error('Не удалось обновить редактор маршрута');
+    workspace.innerHTML=fresh.innerHTML;
+    initEditors(workspace);
+    bindDayToggles(workspace);
+    bindPointSearch(workspace);
+    const count=workspace.querySelectorAll('.route-editor-item').length;
+    const countLabel=document.querySelector('.template-point-count');
+    if(countLabel)countLabel.textContent=count+' '+(count===1?'точка':(count>=2&&count<=4?'точки':'точек'))+' в шаблоне';
+    void bindPressables(workspace.querySelectorAll('.btn,.insert-zone'));
+    void warmMotion();
+  }finally{
+    workspace.classList.remove('is-refreshing');
+  }
+}
+
 async function refreshRunWorkspace(){
   const workspace=document.getElementById('run-live-workspace');
   if(!workspace)return;
@@ -340,6 +371,25 @@ async function refreshRunWorkspace(){
     workspace.classList.remove('is-refreshing');
   }
 }
+
+document.addEventListener('submit',async e=>{
+  const form=e.target.closest('.ajax-template-form');
+  if(!form)return;
+  e.preventDefault();
+  const submitter=e.submitter;
+  if(submitter)submitter.disabled=true;
+  form.classList.add('is-saving');
+  try{
+    const payload=await post(form.action,new FormData(form));
+    toast(payload.message||'Шаблон обновлён');
+    await refreshTemplateWorkspace();
+  }catch(err){
+    toast(err.message,true);
+  }finally{
+    form.classList.remove('is-saving');
+    if(submitter)submitter.disabled=false;
+  }
+});
 
 document.addEventListener('submit',async e=>{
   const form=e.target.closest('.ajax-run-form');
