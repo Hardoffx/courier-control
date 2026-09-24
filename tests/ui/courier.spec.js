@@ -24,4 +24,5 @@ test('courier note saves without document reload', async ({ page }, testInfo) =>
 
   await expect.poll(() => page.evaluate(() => window.__courierLiveMarker || '')).toBe('alive');
   await expect(page.locator('#top')).toContainText('UI live note');
+  await expect(page.locator('.selected-note-editor summary')).toContainText('Изменить заметку');
 });
