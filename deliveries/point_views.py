@@ -4,6 +4,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
+from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from .forms import DeliveryPointForm
 from .models import DeliveryPoint
@@ -63,4 +64,8 @@ def point_toggle(request, pk):
     point = get_object_or_404(DeliveryPoint, pk=pk)
     point.is_active = not point.is_active
     point.save(update_fields=['is_active', 'updated_at'])
+    message = 'Точка включена' if point.is_active else 'Точка отключена'
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        return JsonResponse({'ok': True, 'point_id': point.pk, 'is_active': point.is_active, 'message': message})
+    messages.success(request, message)
     return redirect('point_list')
