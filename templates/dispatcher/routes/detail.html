@@ -39,7 +39,7 @@
   <form id="generate-route-form" method="post" action="{% url 'route_generate' route.pk %}" class="compact-generate" style="margin-top:12px">
     {% csrf_token %}
     <input type="hidden" name="template_id" value="{{ template.pk }}">
-    <label>Дата<input type="date" name="run_date" value="{{ today|date:'Y-m-d' }}" required></label>
+    <label>Дата<input type="date" name="run_date" value="{{ planning_date|date:'Y-m-d' }}" required></label>
     <label>Кто едет
       <select name="courier_id">
         <option value="">{% if route.default_courier %}Обычный: {{ route.default_courier.get_full_name|default:route.default_courier.username }}{% else %}Не назначен{% endif %}</option>
@@ -128,8 +128,8 @@
             </div>
           </div>
           <label class="day-toggle" title="Только для создаваемого дня">
-            <input class="day-item-toggle" type="checkbox" form="generate-route-form" name="enabled_items" value="{{ item.pk }}" data-day-toggle-url="{% url 'template_item_day_toggle' item.pk %}" {% if item.enabled_by_default %}checked{% endif %}>
-            <span>В этот день</span>
+            <input class="day-item-toggle" type="checkbox" form="generate-route-form" name="enabled_items" value="{{ item.pk }}" data-day-toggle-url="{% url 'template_item_day_toggle' item.pk %}" {% if planning_run %}{% if item.point_id in day_point_ids %}checked{% endif %}{% elif item.enabled_by_default %}checked{% endif %}>
+            <span>{% if planning_run and item.point_id not in day_point_ids %}Исключена на день{% else %}В этот день{% endif %}</span>
           </label>
           <span class="route-chevron" aria-hidden="true"></span>
         </summary>
