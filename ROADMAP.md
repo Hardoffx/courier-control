@@ -74,7 +74,7 @@ See docs/ROUTE_CENTRIC_OPERATIONS.md.
 - [x] Exact completion time visible where useful; completion GPS optional/non-blocking
 - [x] Preserve Done from selected card and expanded unfinished rows
 - [x] Preserve compact problem presets + optional comment
-- [ ] Long-route density QA at 375/390/430 px
+- [x] Long-route density QA at 375/390/430 px
 - [x] Preserve neighbor-swap reorder invariant; drag handle is optional later enhancement
 
 See docs/COURIER_WORKSPACE.md.
