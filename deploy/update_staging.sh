@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 APP_DIR=/opt/courier-control-staging
-BRANCH=${STAGING_BRANCH:-feat/ui-quality-pipeline}
+BRANCH=${STAGING_BRANCH:-main}
 SERVICE=courier-control-staging.service
 
 [[ ${EUID:-$(id -u)} -eq 0 ]] || { echo "Run as root" >&2; exit 1; }
