@@ -360,7 +360,7 @@ def run_detail(request, pk):
     first_done = completed[0] if completed else None
     last_done = completed[-1] if completed else None
     route_completed = bool(total) and done == total
-    timing_end = last_done.completed_at if route_completed and last_done else (timezone.now() if first_done else None)
+    timing_end = (last_done.completed_at if route_completed or run.run_date != timezone.localdate() else timezone.now()) if first_done else None
     route_duration_label = _duration_label(timing_end-first_done.completed_at) if first_done and timing_end else ''
     avg_interval_label = _duration_label((last_done.completed_at-first_done.completed_at)/(len(completed)-1)) if len(completed)>1 else ''
     next_stop = next((d for d in rows if d.status != Delivery.Status.DONE), None)
