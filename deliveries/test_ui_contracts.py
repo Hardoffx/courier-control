@@ -72,3 +72,14 @@ class UIContractTests(SimpleTestCase):
         self.assertIn("refreshPreview", js)
         self.assertIn("window.history.replaceState", js)
 
+    def test_day_navigation_updates_without_page_reload(self):
+        dashboard = (ROOT / "templates/dispatcher/dashboard.html").read_text()
+        deliveries = (ROOT / "templates/dispatcher/deliveries.html").read_text()
+        dashboard_js = (ROOT / "deliveries/static/js/dispatcher-dashboard.js").read_text()
+        deliveries_js = (ROOT / "deliveries/static/js/dispatcher-deliveries.js").read_text()
+        self.assertIn('id="dispatcher-day-workspace"', dashboard)
+        self.assertIn('data-live-day', dashboard)
+        self.assertIn('data-live-delivery-date', deliveries)
+        self.assertIn("refreshDashboard", dashboard_js)
+        self.assertIn("fullWorkspace", deliveries_js)
+
