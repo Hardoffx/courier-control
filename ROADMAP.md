@@ -59,7 +59,7 @@ Roadmap отражает порядок разработки, а не обеща
 - [x] Preserve global delivery search/bulk operations as secondary surface
 - [x] Add route-board sorting/filtering for scale (attention/progress/courier/name)
 - [x] RouteRun events/history presentation
-- [ ] Staging demo dataset for realistic multi-route visual acceptance
+- [x] Staging demo dataset for realistic multi-route visual acceptance
 - [ ] Later: route-selected map monitoring with numbered status markers and click details
 - [ ] Later: cached coordinates on persistent points; no continuous courier GPS required
 
