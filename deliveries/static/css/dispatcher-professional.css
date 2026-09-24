@@ -149,7 +149,7 @@
   .delivery-mobile-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:10px}
   .delivery-mobile-actions .btn{width:100%}
 }
-@media(max-width:390px){
+@media(max-width:340px){
   .ops-dashboard{width:100%;max-width:100%;min-width:0;overflow-x:clip}
   .ops-dashboard>*{min-width:0}
   .ops-kpis{grid-template-columns:1fr}
