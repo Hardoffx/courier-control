@@ -195,7 +195,13 @@ def courier_update(request,pk):
         if delivery.status!=Delivery.Status.DONE: return redirect('courier_today')
         delivery.status=Delivery.Status.IN_PROGRESS; delivery.completed_at=None; delivery.completed_latitude=None; delivery.completed_longitude=None; delivery.problem_reason=''; note='Возвращено в работу'
     elif action=='problem': reason=request.POST.get('problem_reason','').strip(); comment=request.POST.get('problem_comment','').strip()[:255]; reason=reason if reason in PROBLEM_REASONS else 'Другая проблема'; delivery.status=Delivery.Status.PROBLEM; delivery.problem_reason=(f'{reason}: {comment}' if comment else reason)[:255]; note=delivery.problem_reason
-    elif action=='phone': delivery.phone=request.POST.get('phone','').strip()[:64]; note=f'Телефон: {delivery.phone}'
+    elif action=='phone':
+        delivery.phone=request.POST.get('phone','').strip()[:64]
+        if delivery.point_id:
+            now=timezone.now()
+            DeliveryPoint.objects.filter(pk=delivery.point_id).update(phone=delivery.phone,updated_at=now)
+            Delivery.objects.filter(point_id=delivery.point_id).exclude(pk=delivery.pk).update(phone=delivery.phone,updated_at=now)
+        note=f'Телефон точки: {delivery.phone or "удалён"}'
     elif action=='daily_note': delivery.courier_daily_note=request.POST.get('courier_daily_note','').strip()[:500]; note=('Заметка на сегодня: '+delivery.courier_daily_note) if delivery.courier_daily_note else 'Заметка на сегодня удалена'
     else: raise PermissionDenied
     delivery.save(); DeliveryEvent.objects.create(delivery=delivery,actor=request.user,action=action,note=note)
