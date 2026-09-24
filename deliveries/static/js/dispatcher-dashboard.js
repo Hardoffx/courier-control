@@ -31,7 +31,11 @@ function applyRouteView(){
   const cards=[...grid.querySelectorAll('.ops-route-card')];
   cards.forEach(card=>{
     const hay=(card.dataset.route+' '+card.dataset.courier).toLowerCase();
-    const stateMismatch=s==='attention'?card.dataset.attention!=='1':(s&&card.dataset.state!==s);
+    let stateMismatch=false;
+    if(s==='attention')stateMismatch=card.dataset.attention!=='1';
+    else if(s==='unassigned')stateMismatch=card.dataset.unassigned!=='1';
+    else if(s==='order')stateMismatch=card.dataset.order!=='1';
+    else if(s)stateMismatch=card.dataset.state!==s;
     card.classList.toggle('is-hidden',!!((q&&!hay.includes(q))||stateMismatch));
   });
   const mode=sort?.value||'name';
