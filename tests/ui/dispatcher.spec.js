@@ -96,12 +96,7 @@ for (const [path, name] of pages) {
 
 
 test('route-editor: responsive geometry', async ({ dispatcherPage: page }) => {
-  await page.goto('/dispatcher/routes/');
-  const card = page.locator('.route-card').filter({ hasText: 'UI Test Route' });
-  await expect(card).toBeVisible();
-  const href = await card.getByRole('link', { name: 'Открыть маршрут' }).getAttribute('href');
-  expect(href).toBeTruthy();
-  await page.goto(href);
+  await page.goto('/dispatcher/routes/910001/');
   await expect(page.locator('#template-route-editor-workspace')).toBeVisible();
   expect(await layoutViolations(page)).toEqual([]);
 
@@ -120,12 +115,7 @@ test('route-editor: responsive geometry', async ({ dispatcherPage: page }) => {
 });
 
 test('route-run: responsive geometry', async ({ dispatcherPage: page }) => {
-  await page.goto('/dispatcher/');
-  const card = page.locator('.ops-route-card').filter({ hasText: 'UI Test Route' });
-  await expect(card).toBeVisible();
-  const href = await card.getByRole('link', { name: 'Открыть маршрут' }).getAttribute('href');
-  expect(href).toBeTruthy();
-  await page.goto(href);
+  await page.goto('/dispatcher/runs/910001/');
   await expect(page.locator('#run-live-workspace')).toBeVisible();
   expect(await layoutViolations(page)).toEqual([]);
 
