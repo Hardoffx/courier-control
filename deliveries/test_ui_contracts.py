@@ -38,3 +38,9 @@ class UIContractTests(SimpleTestCase):
         self.assertIn("refreshTemplateWorkspace", js)
         self.assertIn("bindDayToggles", js)
 
+    def test_delivery_filters_update_without_page_reload(self):
+        js = (ROOT / "deliveries/static/js/dispatcher-deliveries.js").read_text()
+        self.assertIn("refreshDeliveries", js)
+        self.assertIn("window.history.replaceState", js)
+        self.assertIn("window.addEventListener('popstate'", js)
+

@@ -42,3 +42,18 @@ for (const [path, name] of pages) {
     expect(doc.scrollWidth).toBeLessThanOrEqual(doc.clientWidth + 1);
   });
 }
+
+test('deliveries: search and quick filters do not reload the document', async ({ dispatcherPage: page }) => {
+  await page.goto('/dispatcher/deliveries/');
+  await page.evaluate(() => { window.__deliveryWorkspaceMarker = 'alive'; });
+
+  const search = page.locator('.delivery-filter-card input[name="q"]');
+  await search.fill('needle');
+  await expect(page).toHaveURL(/q=needle/);
+  expect(await page.evaluate(() => window.__deliveryWorkspaceMarker)).toBe('alive');
+
+  await page.locator('.delivery-quick a[href*="status=problem"]').click();
+  await expect(page).toHaveURL(/status=problem/);
+  expect(await page.evaluate(() => window.__deliveryWorkspaceMarker)).toBe('alive');
+});
+
