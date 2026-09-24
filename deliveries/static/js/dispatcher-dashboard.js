@@ -31,13 +31,14 @@ function applyRouteView(){
   const cards=[...grid.querySelectorAll('.ops-route-card')];
   cards.forEach(card=>{
     const hay=(card.dataset.route+' '+card.dataset.courier).toLowerCase();
-    card.classList.toggle('is-hidden',!!((q&&!hay.includes(q))||(s&&card.dataset.state!==s)));
+    const stateMismatch=s==='attention'?card.dataset.attention!=='1':(s&&card.dataset.state!==s);
+    card.classList.toggle('is-hidden',!!((q&&!hay.includes(q))||stateMismatch));
   });
   const mode=sort?.value||'name';
   cards.sort((a,b)=>{
     if(mode==='progress')return Number(a.dataset.percent)-Number(b.dataset.percent)||a.dataset.route.localeCompare(b.dataset.route,'ru');
     if(mode==='courier')return (a.dataset.courier||'яяя').localeCompare(b.dataset.courier||'яяя','ru')||a.dataset.route.localeCompare(b.dataset.route,'ru');
-    if(mode==='attention')return (a.dataset.state!=='attention')-(b.dataset.state!=='attention')||a.dataset.route.localeCompare(b.dataset.route,'ru');
+    if(mode==='attention')return (a.dataset.attention!=='1')-(b.dataset.attention!=='1')||a.dataset.route.localeCompare(b.dataset.route,'ru');
     return a.dataset.route.localeCompare(b.dataset.route,'ru');
   });
   cards.forEach(card=>grid.appendChild(card));
