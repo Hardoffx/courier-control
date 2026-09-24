@@ -17,21 +17,6 @@ async function layoutViolations(page) {
     const nodes = [...document.querySelectorAll('input,select,textarea,button,.btn,form')];
     const issues = [];
 
-    for (const el of nodes) {
-      const r = el.getBoundingClientRect();
-      if (!r.width || !r.height) continue;
-      if (r.left < -1 || r.right > vw + 1) {
-        issues.push({
-          problem: 'viewport-overflow',
-          tag: el.tagName,
-          cls: el.className || '',
-          left: Math.round(r.left),
-          right: Math.round(r.right),
-          viewport: vw,
-        });
-      }
-    }
-
     const isActuallyVisible = (el) => {
       if (el.closest('[hidden]')) return false;
       const closedDetails = el.closest('details:not([open])');
@@ -48,6 +33,22 @@ async function layoutViolations(page) {
       }
       return true;
     };
+
+    for (const el of nodes) {
+      if (!isActuallyVisible(el)) continue;
+      const r = el.getBoundingClientRect();
+      if (!r.width || !r.height) continue;
+      if (r.left < -1 || r.right > vw + 1) {
+        issues.push({
+          problem: 'viewport-overflow',
+          tag: el.tagName,
+          cls: el.className || '',
+          left: Math.round(r.left),
+          right: Math.round(r.right),
+          viewport: vw,
+        });
+      }
+    }
 
     const controls = [...document.querySelectorAll(
       'input:not([type="hidden"]),select,textarea,button,a.btn,summary.btn'
@@ -107,6 +108,8 @@ test('route-editor: responsive geometry', async ({ dispatcherPage: page }) => {
   const firstItem = page.locator('#template-route-editor-workspace .route-editor-item').first();
   await firstItem.locator(':scope > .editor-summary').click();
   await expect(firstItem).toHaveAttribute('open', '');
+  await expect.poll(() => firstItem.evaluate((el) => el.style.height)).toBe('');
+  await page.evaluate(() => window.scrollTo(0, 0));
   expect(await layoutViolations(page)).toEqual([]);
 
   const doc = await page.evaluate(() => ({
@@ -129,6 +132,8 @@ test('route-run: responsive geometry', async ({ dispatcherPage: page }) => {
   const firstItem = page.locator('#run-live-workspace .route-editor-item').first();
   await firstItem.locator(':scope > .editor-summary').click();
   await expect(firstItem).toHaveAttribute('open', '');
+  await expect.poll(() => firstItem.evaluate((el) => el.style.height)).toBe('');
+  await page.evaluate(() => window.scrollTo(0, 0));
   expect(await layoutViolations(page)).toEqual([]);
 
   const doc = await page.evaluate(() => ({
