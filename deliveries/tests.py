@@ -31,6 +31,18 @@ class ManagementReportTests(TestCase):
         self.client.login(username='report-boss',password='pass'); response=self.client.get(reverse('management_export'),{'period':'1'}); self.assertEqual(response.status_code,200); self.assertTrue(response.content.startswith(b'\xef\xbb\xbf')); text=response.content.decode('utf-8-sig'); self.assertIn('report-driver',text); self.assertIn('Выполнение %',text)
     def test_demo_seed_is_repeatable(self):
         call_command('seed_demo',verbosity=0); first=(User.objects.filter(username__startswith='demo-').count(),Route.objects.filter(name__startswith='DEMO ').count(),Delivery.objects.filter(route_run__route__name__startswith='DEMO ').count()); call_command('seed_demo',verbosity=0); second=(User.objects.filter(username__startswith='demo-').count(),Route.objects.filter(name__startswith='DEMO ').count(),Delivery.objects.filter(route_run__route__name__startswith='DEMO ').count()); self.assertEqual(first,second); self.assertEqual(first,(4,2,70))
+    def test_stats_calculate_route_time_from_first_to_last_completed_delivery(self):
+        route=Route.objects.create(name='Timing route')
+        run=RouteRun.objects.create(route=route,run_date=timezone.localdate(),assigned_courier=self.courier,status=RouteRun.Status.READY)
+        end=timezone.now()
+        Delivery.objects.create(delivery_date=timezone.localdate(),route_run=run,address='T1',courier=self.courier,status=Delivery.Status.DONE,completed_at=end-timedelta(hours=1),route_order=1)
+        Delivery.objects.create(delivery_date=timezone.localdate(),route_run=run,address='T2',courier=self.courier,status=Delivery.Status.DONE,completed_at=end,route_order=2)
+        self.client.login(username='report-boss',password='pass')
+        response=self.client.get(reverse('management_stats'),{'period':'1'})
+        self.assertEqual(response.status_code,200)
+        self.assertEqual(response.context['timing']['completed_routes'],1)
+        self.assertEqual(response.context['timing']['avg_duration'],'1 ч')
+        self.assertEqual(response.context['timing']['avg_interval'],'1 ч')
 
 class DeliveryWorkflowTests(TestCase):
     def setUp(self): self.dispatcher=User.objects.create_user(username='dispatcher',password='pass',role=User.Role.DISPATCHER); self.courier=User.objects.create_user(username='courier',password='pass',role=User.Role.COURIER); self.other=User.objects.create_user(username='other',password='pass',role=User.Role.COURIER); self.delivery=Delivery.objects.create(delivery_date=timezone.localdate(),address='Москва, Тестовая 1',route_order=1)
