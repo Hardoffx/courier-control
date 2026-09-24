@@ -83,3 +83,16 @@ class UIContractTests(SimpleTestCase):
         self.assertIn("refreshDashboard", dashboard_js)
         self.assertIn("fullWorkspace", deliveries_js)
 
+    def test_ajax_modules_do_not_use_shadowable_form_action_property(self):
+        for relative in (
+            "deliveries/static/js/courier-bindings.js",
+            "deliveries/static/js/courier-live.js",
+            "deliveries/static/js/dispatcher-route-editor.js",
+            "deliveries/static/js/dispatcher-deliveries.js",
+            "deliveries/static/js/dispatcher-directory.js",
+        ):
+            js = (ROOT / relative).read_text()
+            self.assertNotIn("form.action", js, relative)
+            self.assertNotIn("f.action", js, relative)
+            self.assertIn("getAttribute('action')", js, relative)
+
