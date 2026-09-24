@@ -32,14 +32,28 @@ async function layoutViolations(page) {
       }
     }
 
+    const isActuallyVisible = (el) => {
+      if (el.closest('[hidden]')) return false;
+      const closedDetails = el.closest('details:not([open])');
+      if (closedDetails) {
+        const summary = closedDetails.querySelector(':scope > summary');
+        if (!summary || !summary.contains(el)) return false;
+      }
+      for (let node = el; node && node !== document.documentElement; node = node.parentElement) {
+        const style = getComputedStyle(node);
+        if (style.display === 'none' || style.visibility === 'hidden' ||
+            style.visibility === 'collapse' || Number(style.opacity || 1) <= 0) {
+          return false;
+        }
+      }
+      return true;
+    };
+
     const controls = [...document.querySelectorAll(
       'input:not([type="hidden"]),select,textarea,button,a.btn,summary.btn'
     )].filter((el) => {
       const r = el.getBoundingClientRect();
-      const style = getComputedStyle(el);
-      return r.width > 1 && r.height > 1 &&
-        style.display !== 'none' && style.visibility !== 'hidden' &&
-        Number(style.opacity || 1) > 0;
+      return isActuallyVisible(el) && r.width > 1 && r.height > 1;
     });
 
     for (let i = 0; i < controls.length; i += 1) {
@@ -89,6 +103,12 @@ test('route-editor: responsive geometry', async ({ dispatcherPage: page }) => {
   await page.goto(href);
   await expect(page.locator('#template-route-editor-workspace')).toBeVisible();
   expect(await layoutViolations(page)).toEqual([]);
+
+  const firstItem = page.locator('#template-route-editor-workspace .route-editor-item').first();
+  await firstItem.locator(':scope > .editor-summary').click();
+  await expect(firstItem).toHaveAttribute('open', '');
+  expect(await layoutViolations(page)).toEqual([]);
+
   const doc = await page.evaluate(() => ({
     scrollWidth: document.documentElement.scrollWidth,
     clientWidth: document.documentElement.clientWidth,
@@ -105,6 +125,12 @@ test('route-run: responsive geometry', async ({ dispatcherPage: page }) => {
   await page.goto(href);
   await expect(page.locator('#run-live-workspace')).toBeVisible();
   expect(await layoutViolations(page)).toEqual([]);
+
+  const firstItem = page.locator('#run-live-workspace .route-editor-item').first();
+  await firstItem.locator(':scope > .editor-summary').click();
+  await expect(firstItem).toHaveAttribute('open', '');
+  expect(await layoutViolations(page)).toEqual([]);
+
   const doc = await page.evaluate(() => ({
     scrollWidth: document.documentElement.scrollWidth,
     clientWidth: document.documentElement.clientWidth,
