@@ -1,4 +1,5 @@
 from django.contrib import messages
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 from .import_services import validate_upload
@@ -111,7 +112,11 @@ def order_suggestion_decide(request, pk):
     try:
         decide_order_suggestion(suggestion, request.POST.get('action', ''), request.user)
     except ValueError as exc:
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return JsonResponse({'ok': False, 'error': str(exc)}, status=400)
         messages.error(request, str(exc))
     else:
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return JsonResponse({'ok': True, 'message': 'Решение по порядку маршрута сохранено'})
         messages.success(request, 'Решение по порядку маршрута сохранено')
     return redirect('run_detail', pk=suggestion.run_id)

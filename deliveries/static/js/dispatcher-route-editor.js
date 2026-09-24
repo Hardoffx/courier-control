@@ -135,6 +135,8 @@ function setupDrag(root){
 }
 
 function setupEditor(root){
+  if(root.dataset.editorReady==='1')return;
+  root.dataset.editorReady='1';
   const items=root.querySelectorAll('.route-editor-item');
   const accordion=new SingleAccordion(items,{bodySelector:':scope > .editor-body',summarySelector:':scope > .editor-summary'});
   setupDrag(root);
@@ -184,6 +186,7 @@ function setupEditor(root){
         ajaxAction.disabled=true;
         if(ajaxAction.dataset.action==='unassign') ajaxAction.textContent='Курьер снят';
         toast(ajaxAction.dataset.success||'Изменение сохранено');
+        if(root.closest('#run-live-workspace')) await refreshRunWorkspace();
       }catch(err){toast(err.message,true)}
       return;
     }
@@ -196,6 +199,7 @@ function setupEditor(root){
       try{
         await post(remove.dataset.url,{action:'remove'});
         card.remove();renumber(root);toast('Точка убрана');
+        if(root.closest('#run-live-workspace')) await refreshRunWorkspace();
       }catch(err){toast(err.message,true)}
       return;
     }
@@ -248,7 +252,10 @@ function setupEditor(root){
   root.querySelectorAll('.day-toggle').forEach(x=>x.addEventListener('click',e=>e.stopPropagation()));
 }
 
-document.querySelectorAll('.admin-route-editor').forEach(setupEditor);
+function initEditors(scope=document){
+  scope.querySelectorAll('.admin-route-editor').forEach(setupEditor);
+}
+initEditors();
 
 document.querySelectorAll('.day-item-toggle').forEach(toggle=>toggle.addEventListener('change',async()=>{
   const form=document.getElementById('generate-route-form');
@@ -275,29 +282,91 @@ document.querySelectorAll('.day-item-toggle').forEach(toggle=>toggle.addEventLis
   }
 }));
 
-document.querySelectorAll('.run-reassign-select').forEach(select=>select.addEventListener('change',async()=>{
-  select.classList.add('is-saving');
-  select.disabled=true;
-  try{
-    const payload=await post(select.dataset.url,{courier_id:select.value});
-    const badge=document.querySelector('.route-now-courier');
-    if(badge)badge.textContent=payload.courier||'Курьер не назначен';
-    toast(payload.message||'Курьер изменён');
-  }catch(err){
-    toast(err.message,true);
-  }finally{
-    select.disabled=false;
-    select.classList.remove('is-saving');
-  }
-}));
+function bindRunReassign(scope=document){
+  scope.querySelectorAll('.run-reassign-select:not([data-bound])').forEach(select=>{
+    select.dataset.bound='1';
+    select.addEventListener('change',async()=>{
+      select.classList.add('is-saving');
+      select.disabled=true;
+      try{
+        const payload=await post(select.dataset.url,{courier_id:select.value});
+        const badge=document.querySelector('.route-now-courier');
+        if(badge)badge.textContent=payload.courier||'Курьер не назначен';
+        toast(payload.message||'Курьер изменён');
+        await refreshRunWorkspace();
+      }catch(err){
+        toast(err.message,true);
+      }finally{
+        select.disabled=false;
+        select.classList.remove('is-saving');
+      }
+    });
+  });
+}
+bindRunReassign();
 
 document.querySelectorAll('[data-flash]').forEach((node,index)=>setTimeout(()=>toast(node.dataset.flash||node.textContent),index*300));
 
-document.querySelectorAll('.point-search').forEach(input=>input.addEventListener('input',()=>{
-  const q=input.value.toLowerCase();
-  input.closest('form')?.querySelectorAll('.point-option').forEach(row=>{
-    row.style.display=row.dataset.search.toLowerCase().includes(q)?'block':'none';
+function bindPointSearch(scope=document){
+  scope.querySelectorAll('.point-search:not([data-bound])').forEach(input=>{
+    input.dataset.bound='1';
+    input.addEventListener('input',()=>{
+      const q=input.value.toLowerCase();
+      input.closest('form')?.querySelectorAll('.point-option').forEach(row=>{
+        row.style.display=row.dataset.search.toLowerCase().includes(q)?'block':'none';
+      });
+    });
   });
-}));
+}
+bindPointSearch();
+
+async function refreshRunWorkspace(){
+  const workspace=document.getElementById('run-live-workspace');
+  if(!workspace)return;
+  workspace.classList.add('is-refreshing');
+  try{
+    const response=await fetch(window.location.href,{headers:{'X-Requested-With':'XMLHttpRequest'}});
+    if(!response.ok)throw new Error('Не удалось обновить маршрут');
+    const html=await response.text();
+    const fresh=new DOMParser().parseFromString(html,'text/html').getElementById('run-live-workspace');
+    if(!fresh)throw new Error('Не удалось обновить интерфейс маршрута');
+    workspace.innerHTML=fresh.innerHTML;
+    initEditors(workspace);
+    bindRunReassign(workspace);
+    bindPointSearch(workspace);
+    void bindPressables(workspace.querySelectorAll('.btn,.insert-zone'));
+    void warmMotion();
+  }finally{
+    workspace.classList.remove('is-refreshing');
+  }
+}
+
+document.addEventListener('submit',async e=>{
+  const form=e.target.closest('.ajax-run-form');
+  if(!form)return;
+  e.preventDefault();
+  const question=form.dataset.confirm;
+  if(question&&!confirm(question))return;
+  const submitter=e.submitter;
+  const data=new FormData(form);
+  if(submitter?.name)data.append(submitter.name,submitter.value);
+  if(submitter)submitter.disabled=true;
+  form.classList.add('is-saving');
+  try{
+    const payload=await post(form.action,data);
+    toast(payload.message||'Изменение сохранено');
+    if(payload.redirect_url){
+      window.location.assign(payload.redirect_url);
+      return;
+    }
+    await refreshRunWorkspace();
+  }catch(err){
+    toast(err.message,true);
+  }finally{
+    form.classList.remove('is-saving');
+    if(submitter)submitter.disabled=false;
+  }
+});
+
 void bindPressables(document.querySelectorAll('.btn,.insert-zone'));
 void warmMotion();

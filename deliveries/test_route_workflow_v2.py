@@ -102,6 +102,49 @@ class RouteWorkflowV2Tests(TestCase):
         appended = list(self.template.items.filter(point__in=[p4, p5]).order_by('route_order').values_list('point_id', flat=True))
         self.assertEqual(appended, [p4.pk, p5.pk])
 
+    def test_template_add_point_supports_ajax_without_redirect(self):
+        self.client.force_login(self.dispatcher)
+        response = self.client.post(
+            reverse('template_add_point', args=[self.template.pk]),
+            {'point_ids': [str(self.p3.pk)]},
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()['ok'])
+        self.assertEqual(response.json()['added'], 1)
+        self.assertTrue(self.template.items.filter(point=self.p3).exists())
+
+    def test_run_add_point_supports_ajax_without_redirect(self):
+        run = generate_route_run(self.template, self.day, courier=self.courier)
+        self.client.force_login(self.dispatcher)
+        response = self.client.post(
+            reverse('run_add_point', args=[run.pk]),
+            {'point_ids': [str(self.p3.pk)]},
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()['ok'])
+        self.assertEqual(response.json()['added'], 1)
+        self.assertTrue(run.deliveries.filter(point=self.p3).exists())
+
+    def test_run_copy_previous_supports_ajax_without_redirect(self):
+        previous = generate_route_run(self.template, self.day - timedelta(days=1), courier=self.courier)
+        current = generate_route_run(self.template, self.day, courier=self.courier)
+        current.deliveries.filter(point=self.p2).delete()
+        self.client.force_login(self.dispatcher)
+        response = self.client.post(
+            reverse('run_copy_previous', args=[current.pk]),
+            {},
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()['ok'])
+        self.assertEqual(response.json()['copied'], previous.deliveries.count())
+        self.assertEqual(
+            list(current.deliveries.order_by('route_order').values_list('point_id', flat=True)),
+            list(previous.deliveries.order_by('route_order').values_list('point_id', flat=True)),
+        )
+
     def test_courier_reorder_creates_manager_suggestion_without_changing_template(self):
         run = generate_route_run(self.template, self.day, courier=self.courier)
         rows = list(run.deliveries.order_by('route_order', 'id'))
