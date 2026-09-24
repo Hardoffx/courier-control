@@ -36,6 +36,7 @@ class Command(BaseCommand):
             courier.save()
 
         route_name = "UI Test Route"
+        long_route_name = "UI Long Route"
         if os.getenv("ROUTE_UI_TESTING") == "1":
             courier = User.objects.filter(username="ui_courier").first()
             route, _ = Route.objects.update_or_create(
@@ -98,19 +99,83 @@ class Command(BaseCommand):
                         "comment": "UI regression fixture" if index == 2 else "",
                     },
                 )
-            self.stdout.write(self.style.SUCCESS("UI route fixture ready"))
-        else:
-            route = Route.objects.filter(name=route_name).first()
-            if route is not None:
-                point_ids = list(
-                    RouteTemplateItem.objects.filter(template__route=route)
-                    .values_list("point_id", flat=True)
+            long_route, _ = Route.objects.update_or_create(
+                pk=910002,
+                defaults={"name": long_route_name, "default_courier": courier, "is_active": True},
+            )
+            long_template, _ = RouteTemplate.objects.get_or_create(
+                route=long_route,
+                kind=RouteTemplate.Kind.WEEKDAY,
+                name="",
+            )
+            long_points = []
+            for index in range(1, 33):
+                point, _ = DeliveryPoint.objects.update_or_create(
+                    code=f"UI-L-{index:02d}",
+                    address=(
+                        f"Москва, Длинный тестовый маршрут, дом {index}"
+                        if index % 5
+                        else f"Москва, Очень длинное название тестового адреса маршрута, дом {index}, корпус 2, строение 1"
+                    ),
+                    defaults={
+                        "name": f"UI Длинная точка {index:02d}",
+                        "kind": DeliveryPoint.Kind.CMD if index % 3 else DeliveryPoint.Kind.INVITRO,
+                        "phone": f"+7999111{index:04d}",
+                        "is_active": True,
+                    },
                 )
-                Delivery.objects.filter(route_run__route=route).delete()
-                RouteRun.objects.filter(route=route).delete()
-                route.delete()
-                DeliveryPoint.objects.filter(pk__in=point_ids, code__startswith="UI-").delete()
-            self.stdout.write(self.style.SUCCESS("UI route fixture cleared"))
+                long_points.append(point)
+                RouteTemplateItem.objects.update_or_create(
+                    template=long_template,
+                    point=point,
+                    defaults={
+                        "route_order": index,
+                        "enabled_by_default": True,
+                        "time_window": f"{8 + ((index - 1) // 3):02d}:00-{9 + ((index - 1) // 3):02d}:00",
+                        "comment": "Длинный комментарий для проверки переноса текста на мобильном экране" if index % 8 == 0 else "",
+                    },
+                )
+
+            long_run, _ = RouteRun.objects.update_or_create(
+                pk=910002,
+                defaults={
+                    "route": long_route,
+                    "template": long_template,
+                    "run_date": timezone.localdate(),
+                    "assigned_courier": courier,
+                    "status": RouteRun.Status.IN_PROGRESS,
+                },
+            )
+            for index, point in enumerate(long_points, start=1):
+                status = Delivery.Status.DONE if index <= 5 else (Delivery.Status.PROBLEM if index == 6 else Delivery.Status.NEW)
+                Delivery.objects.update_or_create(
+                    route_run=long_run,
+                    point=point,
+                    defaults={
+                        "delivery_date": timezone.localdate(),
+                        "source_label": point.name,
+                        "address": point.address,
+                        "phone": point.phone,
+                        "courier": courier,
+                        "route_order": index,
+                        "status": status,
+                        "problem_reason": "Нужно вернуться позже" if status == Delivery.Status.PROBLEM else "",
+                        "time_window": f"{8 + ((index - 1) // 3):02d}:00-{9 + ((index - 1) // 3):02d}:00",
+                        "comment": "Проверка длинного маршрута" if index % 8 == 0 else "",
+                    },
+                )
+            self.stdout.write(self.style.SUCCESS("UI route fixtures ready"))
+        else:
+            routes = Route.objects.filter(name__in=(route_name, long_route_name))
+            point_ids = list(
+                RouteTemplateItem.objects.filter(template__route__in=routes)
+                .values_list("point_id", flat=True)
+            )
+            Delivery.objects.filter(route_run__route__in=routes).delete()
+            RouteRun.objects.filter(route__in=routes).delete()
+            routes.delete()
+            DeliveryPoint.objects.filter(pk__in=point_ids, code__startswith="UI-").delete()
+            self.stdout.write(self.style.SUCCESS("UI route fixtures cleared"))
 
         if os.getenv("COURIER_UI_TESTING") == "1":
             courier, _ = User.objects.get_or_create(
