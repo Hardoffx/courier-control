@@ -96,7 +96,7 @@
 
   <section id="route-grid" class="ops-route-grid">
     {% for item in route_runs %}
-    <article class="ops-route-card" data-state="{{ item.state }}" data-route="{{ item.run.route.name|lower }}" data-courier="{% if item.run.assigned_courier %}{{ item.run.assigned_courier.get_full_name|default:item.run.assigned_courier.username|lower }}{% endif %}" data-percent="{{ item.percent }}">
+    <article class="ops-route-card" data-state="{{ item.state }}" data-attention="{% if item.needs_attention %}1{% else %}0{% endif %}" data-route="{{ item.run.route.name|lower }}" data-courier="{% if item.run.assigned_courier %}{{ item.run.assigned_courier.get_full_name|default:item.run.assigned_courier.username|lower }}{% endif %}" data-percent="{{ item.percent }}">
       <div class="route-card-title">
         <div><div class="route-name">{{ item.run.route.name }}</div><div class="route-courier-name">{% if item.run.assigned_courier %}{{ item.run.assigned_courier.get_full_name|default:item.run.assigned_courier.username }}{% else %}Курьер не назначен{% endif %}</div></div>
         <span class="route-status {{ item.state }}">{% if item.state == 'completed' %}✓ Завершён{% elif item.state == 'active' %}В работе{% elif item.state == 'attention' %}Требует внимания{% else %}Не начат{% endif %}</span>
