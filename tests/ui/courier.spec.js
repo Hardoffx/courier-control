@@ -10,7 +10,8 @@ async function loginCourier(page) {
   ]);
 }
 
-test('courier note saves without document reload', async ({ page }) => {
+test('courier note saves without document reload', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'mobile-375', 'single mutating smoke profile');
   await loginCourier(page);
   await expect(page.locator('#top')).toBeVisible();
   await page.evaluate(() => { window.__courierLiveMarker = 'alive'; });
