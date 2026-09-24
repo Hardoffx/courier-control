@@ -79,6 +79,39 @@ for (const [path, name] of pages) {
   });
 }
 
+
+test('route-editor: responsive geometry', async ({ dispatcherPage: page }) => {
+  await page.goto('/dispatcher/routes/');
+  const card = page.locator('.route-card').filter({ hasText: 'UI Test Route' });
+  await expect(card).toBeVisible();
+  const href = await card.getByRole('link', { name: 'Открыть маршрут' }).getAttribute('href');
+  expect(href).toBeTruthy();
+  await page.goto(href);
+  await expect(page.locator('#template-route-editor-workspace')).toBeVisible();
+  expect(await layoutViolations(page)).toEqual([]);
+  const doc = await page.evaluate(() => ({
+    scrollWidth: document.documentElement.scrollWidth,
+    clientWidth: document.documentElement.clientWidth,
+  }));
+  expect(doc.scrollWidth).toBeLessThanOrEqual(doc.clientWidth + 1);
+});
+
+test('route-run: responsive geometry', async ({ dispatcherPage: page }) => {
+  await page.goto('/dispatcher/');
+  const card = page.locator('.ops-route-card').filter({ hasText: 'UI Test Route' });
+  await expect(card).toBeVisible();
+  const href = await card.getByRole('link', { name: 'Открыть маршрут' }).getAttribute('href');
+  expect(href).toBeTruthy();
+  await page.goto(href);
+  await expect(page.locator('#run-live-workspace')).toBeVisible();
+  expect(await layoutViolations(page)).toEqual([]);
+  const doc = await page.evaluate(() => ({
+    scrollWidth: document.documentElement.scrollWidth,
+    clientWidth: document.documentElement.clientWidth,
+  }));
+  expect(doc.scrollWidth).toBeLessThanOrEqual(doc.clientWidth + 1);
+});
+
 test('deliveries: search and quick filters do not reload the document', async ({ dispatcherPage: page }) => {
   await page.goto('/dispatcher/deliveries/');
   await page.evaluate(() => { window.__deliveryWorkspaceMarker = 'alive'; });
