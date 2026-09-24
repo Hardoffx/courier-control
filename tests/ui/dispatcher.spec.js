@@ -164,3 +164,48 @@ test('delivery day navigation stays in the same document', async ({ dispatcherPa
   await expect(page.locator('.deliveries-workspace')).toBeVisible();
   await expect.poll(() => page.evaluate(() => window.__liveDayMarker || '')).toBe('alive');
 });
+
+
+test('route-editor: inline edit saves without document reload', async ({ dispatcherPage: page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'mobile-375', 'single mutating smoke profile');
+  await page.goto('/dispatcher/routes/910001/');
+  await page.evaluate(() => { window.__routeEditorMarker = 'alive'; });
+
+  const firstItem = page.locator('#template-route-editor-workspace .route-editor-item').first();
+  await firstItem.locator(':scope > .editor-summary').click();
+  const comment = firstItem.locator('.inline-edit-form input[name="comment"]');
+  await comment.fill('Browser template note');
+  const save = firstItem.locator('.inline-edit-form .save-inline');
+  await expect(save).toBeVisible();
+  await save.click();
+
+  await expect.poll(() => page.evaluate(() => window.__routeEditorMarker || '')).toBe('alive');
+  await expect(firstItem.locator('.meta-comment')).toContainText('Browser template note');
+
+  await page.reload();
+  const persisted = page.locator('#template-route-editor-workspace .route-editor-item').first();
+  await persisted.locator(':scope > .editor-summary').click();
+  await expect(persisted.locator('.inline-edit-form input[name="comment"]')).toHaveValue('Browser template note');
+});
+
+test('route-run: inline edit saves without document reload', async ({ dispatcherPage: page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'mobile-375', 'single mutating smoke profile');
+  await page.goto('/dispatcher/runs/910001/');
+  await page.evaluate(() => { window.__routeRunMarker = 'alive'; });
+
+  const firstItem = page.locator('#run-live-workspace .route-editor-item').first();
+  await firstItem.locator(':scope > .editor-summary').click();
+  const comment = firstItem.locator('.inline-edit-form input[name="comment"]');
+  await comment.fill('Browser run note');
+  const save = firstItem.locator('.inline-edit-form .save-inline');
+  await expect(save).toBeVisible();
+  await save.click();
+
+  await expect.poll(() => page.evaluate(() => window.__routeRunMarker || '')).toBe('alive');
+  await expect(firstItem.locator('.meta-comment')).toContainText('Browser run note');
+
+  await page.reload();
+  const persisted = page.locator('#run-live-workspace .route-editor-item').first();
+  await persisted.locator(':scope > .editor-summary').click();
+  await expect(persisted.locator('.inline-edit-form input[name="comment"]')).toHaveValue('Browser run note');
+});
