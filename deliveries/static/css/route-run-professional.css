@@ -4,13 +4,13 @@
 .run-head .muted{font-size:13px}
 .run-head-actions .btn{min-height:40px}
 
-.route-kpi-grid{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:10px!important;margin:0 0 12px!important}
-.route-kpi-grid .kpi{margin:0!important;padding:14px 15px!important;min-height:104px!important;border-radius:15px!important;border:1px solid #dfe7f1!important;box-shadow:0 4px 16px rgba(34,59,90,.04)!important}
-.route-kpi-grid .kpi-label{font-size:12px!important;color:#6d7c91!important;font-weight:820!important}
-.route-kpi-grid .kpi-value{font-size:30px!important;line-height:1!important;margin-top:7px!important;letter-spacing:-.04em!important}
-.route-kpi-grid .muted{margin-top:7px;font-size:11px!important}
-.route-kpi-grid .kpi:nth-child(2) .kpi-value{color:#28a45f}
-.route-kpi-grid .kpi:nth-child(4) .kpi-value{color:#d74956}
+body.dispatcher-ui .route-kpi-grid{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:10px!important;margin:0 0 12px!important}
+body.dispatcher-ui .route-kpi-grid .kpi{margin:0!important;padding:14px 15px!important;min-height:104px!important;border-radius:15px!important;border:1px solid #dfe7f1!important;box-shadow:0 4px 16px rgba(34,59,90,.04)!important}
+body.dispatcher-ui .route-kpi-grid .kpi-label{font-size:12px!important;color:#6d7c91!important;font-weight:820!important}
+body.dispatcher-ui .route-kpi-grid .kpi-value{font-size:30px!important;line-height:1!important;margin-top:7px!important;letter-spacing:-.04em!important}
+body.dispatcher-ui .route-kpi-grid .muted{margin-top:7px;font-size:11px!important}
+body.dispatcher-ui .route-kpi-grid .kpi:nth-child(2) .kpi-value{color:#28a45f}
+body.dispatcher-ui .route-kpi-grid .kpi:nth-child(4) .kpi-value{color:#d74956}
 
 .route-now{padding:16px!important;border-radius:16px!important;border:1px solid #dce6f2!important;box-shadow:0 5px 20px rgba(34,59,90,.045)!important}
 .route-now-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
@@ -52,13 +52,13 @@
 .flash-message-source{display:none}
 
 @media(max-width:800px){
- .route-kpi-grid{grid-template-columns:1fr 1fr!important}
+ body.dispatcher-ui .route-kpi-grid{grid-template-columns:1fr 1fr!important}
  .route-time-summary{grid-template-columns:1fr 1fr}
  .route-time-stat:first-child{grid-column:1/-1}
 }
 @media(max-width:700px){
- .route-kpi-grid .kpi{min-width:0!important;min-height:98px!important}
- .route-kpi-grid .kpi-value{font-size:27px!important}
+ body.dispatcher-ui .route-kpi-grid .kpi{min-width:0!important;min-height:98px!important}
+ body.dispatcher-ui .route-kpi-grid .kpi-value{font-size:27px!important}
  .route-now{padding:14px!important}
  .route-now-header{display:block}
  .route-now-courier{margin-top:7px}
