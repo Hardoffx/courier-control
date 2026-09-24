@@ -32,3 +32,17 @@ If this architecture changes, update the tests and `docs/INCIDENTS.md` in the sa
 ## DNS / VPS migration reminder
 
 Browser origin is based on scheme + hostname + port. Moving a hostname to a new IP/VPS does not create a new origin. Persistent browser state associated with that hostname can therefore survive the migration.
+
+## Isolating the public network path
+
+When Gunicorn and nginx are healthy locally but the public HTTPS origin stalls,
+use `deploy/enable_cloudflare_quick_tunnel.sh` as a short-lived control test. It
+creates a fresh `trycloudflare.com` HTTPS origin over an outbound tunnel and
+rewrites the origin Host header to the configured control portal. This keeps
+strict `DOMAIN_SPLIT_ENABLED=1` routing intact.
+
+If the tunnel URL is fast while the normal domain still stalls, do not rewrite
+the application. The remaining fault is on the public DNS/TCP/TLS path or in
+origin-scoped browser state. Quick Tunnels have no uptime guarantee and are not
+a production endpoint; replace the failing path with a managed tunnel or a
+healthy VPS/network after the comparison.
