@@ -70,7 +70,7 @@ async function refreshCourierShell(target=window.location.href,{historyMode='non
     if(historyMode==='push')window.history.pushState({},'',url);
     else if(historyMode==='replace')window.history.replaceState({},'',url);
     await rebindCourierUI();
-    requestAnimationFrame(()=>window.scrollTo({top:scrollY,behavior:'instant'}));
+    requestAnimationFrame(()=>window.scrollTo({top:scrollY,behavior:'auto'}));
   }catch(err){
     if(err.name!=='AbortError')liveToast(err.message,true);
   }finally{
