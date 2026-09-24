@@ -1,3 +1,5 @@
+import os
+
 from datetime import date, datetime, time, timedelta
 
 from django.core.management.base import BaseCommand, CommandError
@@ -43,6 +45,10 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
+        if os.getenv("OPERATIONS_DEMO_SEED") != "1":
+            raise CommandError(
+                "Refusing to modify the database without OPERATIONS_DEMO_SEED=1"
+            )
         target_date = self._parse_date(options.get("target_date"))
         if options.get("reset"):
             with transaction.atomic():
