@@ -153,3 +153,8 @@
   .ops-kpis{grid-template-columns:1fr}
   .attention-chips{grid-template-columns:1fr}
 }
+
+.ops-toast{position:fixed;left:50%;bottom:max(24px,calc(env(safe-area-inset-bottom) + 18px));z-index:9999;transform:translate(-50%,12px);opacity:0;pointer-events:none;padding:10px 14px;border-radius:999px;background:#10233f;color:#fff;font-size:13px;font-weight:800;box-shadow:0 12px 34px rgba(16,35,63,.24);transition:opacity .2s ease,transform .25s cubic-bezier(.22,1,.36,1)}
+.ops-toast.show{opacity:1;transform:translate(-50%,0)}
+.ops-toast.error{background:#a72e39}
+.route-assign-select.is-saving{opacity:.6;pointer-events:none}
