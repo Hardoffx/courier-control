@@ -61,6 +61,7 @@ function filterUrl(form){
   new FormData(form).forEach((value,key)=>{
     if(key==='date'||String(value).trim())url.searchParams.set(key,String(value));
   });
+  if(form.querySelector('[name=route]')?.value)url.searchParams.delete('unrouted');
   return url;
 }
 
