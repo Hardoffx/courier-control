@@ -24,6 +24,17 @@ class Command(BaseCommand):
         user.save()
 
 
+        courier = None
+        if os.getenv("ROUTE_UI_TESTING") == "1" or os.getenv("COURIER_UI_TESTING") == "1":
+            courier, _ = User.objects.get_or_create(
+                username="ui_courier",
+                defaults={"role": User.Role.COURIER, "is_active": True},
+            )
+            courier.role = User.Role.COURIER
+            courier.is_active = True
+            courier.set_password("ui-test-only-password")
+            courier.save()
+
         route_name = "UI Test Route"
         if os.getenv("ROUTE_UI_TESTING") == "1":
             courier = User.objects.filter(username="ui_courier").first()
@@ -127,7 +138,7 @@ class Command(BaseCommand):
                 },
             )
             self.stdout.write(self.style.SUCCESS("UI test dispatcher and courier ready"))
-        else:
+        elif os.getenv("ROUTE_UI_TESTING") != "1":
             Delivery.objects.filter(courier__username="ui_courier").delete()
             User.objects.filter(username="ui_courier").delete()
             self.stdout.write(self.style.SUCCESS("UI test dispatcher ready"))
