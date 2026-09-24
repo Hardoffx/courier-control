@@ -76,3 +76,5 @@
 @media(max-width:340px){
  .stats-kpis,.timing-grid{grid-template-columns:1fr}
 }
+
+.stats-dashboard.is-refreshing{opacity:.62;pointer-events:none;transition:opacity .16s ease}
