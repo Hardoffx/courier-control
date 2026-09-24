@@ -102,16 +102,19 @@ def dispatcher_dashboard(request):
         next_stop=next((d for d in ordered_remaining if d.status!=Delivery.Status.PROBLEM),None) or (ordered_remaining[0] if ordered_remaining else None)
         timing=_run_timing(rows,now,live=selected_date==timezone.localdate())
         suggestion=suggestions.get(run.pk)
-        state='completed' if total and done==total else ('attention' if problem or not run.assigned_courier or suggestion else ('active' if done else 'waiting'))
+        is_completed=bool(total) and done==total
+        needs_attention=bool(problem or suggestion or (not is_completed and not run.assigned_courier))
+        state='completed' if is_completed else ('attention' if needs_attention else ('active' if done else 'waiting'))
         runs.append({
             'run':run,'total':total,'done':done,'remaining':remaining,'problem':problem,
             'percent':round(done*100/total) if total else 0,'order_suggestion':suggestion,
             'last_done':timing['last_done'],'first_done':timing['first_done'],'next_stop':next_stop,
-            'duration_label':timing['duration_label'],'avg_interval_label':timing['avg_interval_label'],'state':state,
+            'duration_label':timing['duration_label'],'avg_interval_label':timing['avg_interval_label'],
+            'state':state,'needs_attention':needs_attention,
         })
     route_count=len(runs)
     completed_routes=sum(item['state']=='completed' for item in runs)
-    attention_routes=sum(item['state']=='attention' for item in runs)
+    attention_routes=sum(item['needs_attention'] for item in runs)
     total_count=base.count()
     done_count=counts.get(Delivery.Status.DONE,0)
     completion_percent=round(done_count*100/total_count) if total_count else 0
