@@ -174,6 +174,8 @@ def template_add_point(request, pk):
     template = get_object_or_404(RouteTemplate, pk=pk)
     point_ids = _posted_point_ids(request)
     if not point_ids:
+        if _wants_json(request):
+            return JsonResponse({'ok': False, 'error': 'Выберите хотя бы одну точку'}, status=400)
         messages.warning(request, 'Выберите хотя бы одну точку')
         return redirect(f'/dispatcher/routes/{template.route_id}/?template={template.pk}')
     points = {point.pk: point for point in DeliveryPoint.objects.filter(pk__in=point_ids, is_active=True)}
@@ -194,7 +196,10 @@ def template_add_point(request, pk):
                 item.enabled_by_default = True
                 item.save(update_fields=['enabled_by_default'])
                 enabled += 1
-    messages.success(request, f'Добавлено точек: {added}' + (f'; включено ранее добавленных: {enabled}' if enabled else ''))
+    message = f'Добавлено точек: {added}' + (f'; включено ранее добавленных: {enabled}' if enabled else '')
+    if _wants_json(request):
+        return JsonResponse({'ok': True, 'added': added, 'enabled': enabled, 'message': message})
+    messages.success(request, message)
     return redirect(f'/dispatcher/routes/{template.route_id}/?template={template.pk}')
 
 
@@ -439,6 +444,8 @@ def run_add_point(request, pk):
     run = get_object_or_404(RouteRun, pk=pk)
     point_ids = _posted_point_ids(request)
     if not point_ids:
+        if _wants_json(request):
+            return JsonResponse({'ok': False, 'error': 'Выберите хотя бы одну точку'}, status=400)
         messages.warning(request, 'Выберите хотя бы одну точку')
         return redirect('run_detail', pk=pk)
     points = {point.pk: point for point in DeliveryPoint.objects.filter(pk__in=point_ids, is_active=True)}
@@ -456,7 +463,10 @@ def run_add_point(request, pk):
             existing_ids.add(point_id)
             order += 1
             added += 1
-    messages.success(request, f'Добавлено точек на сегодня: {added}')
+    message = f'Добавлено точек на сегодня: {added}'
+    if _wants_json(request):
+        return JsonResponse({'ok': True, 'added': added, 'message': message})
+    messages.success(request, message)
     return redirect('run_detail', pk=pk)
 
 
@@ -511,9 +521,13 @@ def run_copy_previous(request, pk):
     run = get_object_or_404(RouteRun, pk=pk)
     previous = RouteRun.objects.filter(route=run.route, run_date__lt=run.run_date).order_by('-run_date').first()
     if not previous:
+        if _wants_json(request):
+            return JsonResponse({'ok': False, 'error': 'Предыдущий маршрут не найден'}, status=404)
         messages.warning(request, 'Предыдущий маршрут не найден')
         return redirect('run_detail', pk=pk)
     if run.deliveries.filter(status=Delivery.Status.DONE).exists():
+        if _wants_json(request):
+            return JsonResponse({'ok': False, 'error': 'Нельзя заменить состав: в этом дне уже есть выполненные точки'}, status=409)
         messages.warning(request, 'Нельзя заменить состав: в этом дне уже есть выполненные точки')
         return redirect('run_detail', pk=pk)
     source = list(previous.deliveries.select_related('point').order_by('route_order', 'id'))
@@ -527,7 +541,10 @@ def run_copy_previous(request, pk):
                 route_order=order, status=Delivery.Status.IN_PROGRESS if run.assigned_courier else Delivery.Status.NEW,
             )
             DeliveryEvent.objects.create(delivery=d, actor=request.user, action='copied_previous', note=f'Скопировано из маршрута {previous.run_date:%d.%m.%Y}')
-    messages.success(request, f'Состав скопирован с {previous.run_date:%d.%m.%Y}: {len(source)} точек')
+    message = f'Состав скопирован с {previous.run_date:%d.%m.%Y}: {len(source)} точек'
+    if _wants_json(request):
+        return JsonResponse({'ok': True, 'copied': len(source), 'message': message})
+    messages.success(request, message)
     return redirect('run_detail', pk=pk)
 
 
@@ -539,9 +556,14 @@ def run_learn_template(request, pk):
     try:
         count = learn_template_from_run(run, template)
     except ValueError as exc:
+        if _wants_json(request):
+            return JsonResponse({'ok': False, 'error': str(exc)}, status=400)
         messages.error(request, str(exc))
         return redirect('run_detail', pk=pk)
-    messages.success(request, f'Шаблон «{template}» обновлён по этому дню: {count} точек. Другие шаблоны не изменены.')
+    message = f'Шаблон «{template}» обновлён по этому дню: {count} точек. Другие шаблоны не изменены.'
+    if _wants_json(request):
+        return JsonResponse({'ok': True, 'count': count, 'message': message})
+    messages.success(request, message)
     return redirect('run_detail', pk=pk)
 
 
@@ -580,10 +602,16 @@ def run_dissolve(request, pk):
     try:
         detached, duplicates = dissolve_route_run(run)
     except ValueError as exc:
+        if _wants_json(request):
+            return JsonResponse({'ok': False, 'error': str(exc)}, status=409)
         messages.error(request, str(exc))
         return redirect('run_detail', pk=pk)
-    messages.success(request, f'{route_name}: маршрут на {run_date:%d.%m.%Y} расформирован. Точек возвращено в список дня: {detached}; старых дублей удалено: {duplicates}.')
-    return redirect(f'/dispatcher/?date={run_date.isoformat()}')
+    message = f'{route_name}: маршрут на {run_date:%d.%m.%Y} расформирован. Точек возвращено в список дня: {detached}; старых дублей удалено: {duplicates}.'
+    redirect_url = f'/dispatcher/?date={run_date.isoformat()}'
+    if _wants_json(request):
+        return JsonResponse({'ok': True, 'detached': detached, 'duplicates': duplicates, 'message': message, 'redirect_url': redirect_url})
+    messages.success(request, message)
+    return redirect(redirect_url)
 
 
 @dispatcher_required
