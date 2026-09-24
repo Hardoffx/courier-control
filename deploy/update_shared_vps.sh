@@ -10,11 +10,20 @@ if [[ ${EUID:-$(id -u)} -ne 0 ]]; then
   exit 1
 fi
 [[ -d "$APP_DIR/.git" ]] || { echo "$APP_DIR is not installed" >&2; exit 1; }
-id "$APP_USER" >/dev/null 2>&1 || { echo "$APP_USER user is missing" >&2; exit 1; }
+
+if ! getent group "$APP_GROUP" >/dev/null 2>&1; then
+  groupadd --system "$APP_GROUP"
+fi
+if ! id "$APP_USER" >/dev/null 2>&1; then
+  useradd --system --gid "$APP_GROUP" --home-dir "$APP_DIR" --shell /usr/sbin/nologin "$APP_USER"
+fi
+
+mkdir -p "$APP_DIR/data" "$APP_DIR/backups" "$APP_DIR/var/import-staging"
+chown -R "$APP_USER:$APP_GROUP" "$APP_DIR"
+chmod 700 "$APP_DIR/data" "$APP_DIR/backups" "$APP_DIR/var/import-staging"
 
 runuser -u "$APP_USER" -- git -C "$APP_DIR" fetch --depth 1 origin main
 runuser -u "$APP_USER" -- git -C "$APP_DIR" reset --hard origin/main
-chown -R "$APP_USER:$APP_GROUP" "$APP_DIR"
 runuser -u "$APP_USER" -- "$APP_DIR/.venv/bin/pip" install -r "$APP_DIR/requirements.txt"
 cd "$APP_DIR"
 runuser -u "$APP_USER" -- .venv/bin/python manage.py check
