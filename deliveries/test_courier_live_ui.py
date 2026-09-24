@@ -25,3 +25,4 @@ class CourierLiveUIContracts(SimpleTestCase):
             self.assertIn(f"'{action}'", live)
         self.assertIn("X-Requested-With", live)
         self.assertIn("XMLHttpRequest", live)
+        self.assertIn("getAttribute('action')", live)
