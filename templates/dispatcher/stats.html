@@ -6,19 +6,19 @@
 <link rel="stylesheet" href="{% static 'css/stats.css' %}?v=20260924-2">
 {% endblock %}
 {% block content %}
-<div class="stats-dashboard">
+<div class="stats-dashboard" id="stats-live-workspace">
   <header class="stats-head">
     <div><h1>Статистика</h1><p>{{ start|date:"j E Y" }} — {{ end|date:"j E Y" }}</p></div>
     <a class="btn alt" href="{% url 'management_export' %}?from={{ start|date:'Y-m-d' }}&to={{ end|date:'Y-m-d' }}">Скачать CSV</a>
   </header>
 
   <section class="card period-card">
-    <form method="get">
+    <form method="get" class="stats-live-filter">
       <label>С<input type="date" name="from" value="{{ start|date:'Y-m-d' }}"></label>
       <label>По<input type="date" name="to" value="{{ end|date:'Y-m-d' }}"></label>
       <button class="btn">Показать</button>
     </form>
-    <nav class="period-links"><a href="?period=1">Сегодня</a><a href="?period=7">7 дней</a><a href="?period=30">30 дней</a></nav>
+    <nav class="period-links stats-live-presets"><a href="?period=1">Сегодня</a><a href="?period=7">7 дней</a><a href="?period=30">30 дней</a></nav>
   </section>
 
   <section class="stats-kpis" aria-label="Основные показатели">
@@ -79,3 +79,4 @@
   </section>
 </div>
 {% endblock %}
+{% block scripts %}<script type="module" src="{% static 'js/dispatcher-stats.js' %}?v=20260924-1"></script>{% endblock %}

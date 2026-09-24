@@ -55,3 +55,12 @@ class UIContractTests(SimpleTestCase):
         self.assertIn("refreshWorkspace", js)
         self.assertIn("runPointFilter", js)
 
+    def test_stats_filters_update_without_page_reload(self):
+        html = (ROOT / "templates/dispatcher/stats.html").read_text()
+        js = (ROOT / "deliveries/static/js/dispatcher-stats.js").read_text()
+        self.assertIn('id="stats-live-workspace"', html)
+        self.assertIn('class="stats-live-filter"', html)
+        self.assertIn('stats-live-presets', html)
+        self.assertIn("refreshStats", js)
+        self.assertIn("window.history.replaceState", js)
+
