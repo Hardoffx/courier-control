@@ -9,9 +9,9 @@
       <h1>Доставки</h1>
       <p>Глобальный поиск и служебные операции по точкам дня</p>
       <nav class="ops-date" aria-label="Выбор дня">
-        <a class="btn alt" data-live-delivery-date href="?date={{ prev_date|date:'Y-m-d' }}" aria-label="Предыдущий день">←</a>
+        <a class="btn alt" data-live-delivery-date data-live-delivery-date href="?date={{ prev_date|date:'Y-m-d' }}" aria-label="Предыдущий день">←</a>
         <strong>{{ selected_date|date:"j E Y" }}</strong>
-        <a class="btn alt" data-live-delivery-date href="?date={{ next_date|date:'Y-m-d' }}" aria-label="Следующий день">→</a>
+        <a class="btn alt" data-live-delivery-date data-live-delivery-date href="?date={{ next_date|date:'Y-m-d' }}" aria-label="Следующий день">→</a>
       </nav>
     </div>
     <div class="ops-actions">
