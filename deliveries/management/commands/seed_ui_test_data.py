@@ -43,6 +43,9 @@ class Command(BaseCommand):
                     "time_window": "10:00-12:00",
                     "route_order": 1,
                     "status": Delivery.Status.IN_PROGRESS,
+                    "courier_daily_note": "",
+                    "problem_reason": "",
+                    "completed_at": None,
                 },
             )
             self.stdout.write(self.style.SUCCESS("UI test dispatcher and courier ready"))
