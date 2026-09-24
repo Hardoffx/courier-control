@@ -28,8 +28,8 @@ class Command(BaseCommand):
         if os.getenv("ROUTE_UI_TESTING") == "1":
             courier = User.objects.filter(username="ui_courier").first()
             route, _ = Route.objects.update_or_create(
-                name=route_name,
-                defaults={"default_courier": courier, "is_active": True},
+                pk=910001,
+                defaults={"name": route_name, "default_courier": courier, "is_active": True},
             )
             template, _ = RouteTemplate.objects.get_or_create(
                 route=route,
@@ -60,23 +60,16 @@ class Command(BaseCommand):
                     },
                 )
 
-            run = RouteRun.objects.filter(
-                route=route,
-                template=template,
-                run_date=timezone.localdate(),
-            ).order_by("-created_at").first()
-            if run is None:
-                run = RouteRun.objects.create(
-                    route=route,
-                    template=template,
-                    run_date=timezone.localdate(),
-                    assigned_courier=courier,
-                    status=RouteRun.Status.READY,
-                )
-            else:
-                run.assigned_courier = courier
-                run.status = RouteRun.Status.READY
-                run.save(update_fields=["assigned_courier", "status", "updated_at"])
+            run, _ = RouteRun.objects.update_or_create(
+                pk=910001,
+                defaults={
+                    "route": route,
+                    "template": template,
+                    "run_date": timezone.localdate(),
+                    "assigned_courier": courier,
+                    "status": RouteRun.Status.READY,
+                },
+            )
 
             for index, point in enumerate(points, start=1):
                 Delivery.objects.update_or_create(
