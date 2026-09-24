@@ -64,3 +64,11 @@ class UIContractTests(SimpleTestCase):
         self.assertIn("refreshStats", js)
         self.assertIn("window.history.replaceState", js)
 
+    def test_courier_preview_date_updates_without_reload(self):
+        html = (ROOT / "templates/dispatcher/couriers/preview.html").read_text()
+        js = (ROOT / "deliveries/static/js/courier-preview.js").read_text()
+        self.assertIn('id="courier-preview-workspace"', html)
+        self.assertIn('class="preview-live-date"', html)
+        self.assertIn("refreshPreview", js)
+        self.assertIn("window.history.replaceState", js)
+
