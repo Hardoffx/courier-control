@@ -2,6 +2,7 @@ from io import StringIO
 import os
 
 from django.core.management import call_command
+from django.core.management.base import CommandError
 from django.test import TestCase
 from unittest.mock import patch
 
@@ -100,7 +101,7 @@ class OperationsDemoCommandTests(TestCase):
     def test_requires_explicit_environment_gate(self):
         with patch.dict(os.environ, {}, clear=True):
             with self.assertRaisesMessage(
-                Exception,
+                CommandError,
                 "OPERATIONS_DEMO_SEED=1",
             ):
                 call_command("seed_operations_demo", target_date=self.target_date)
