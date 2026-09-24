@@ -3,6 +3,7 @@ from . import views, point_views, route_views, route_import_views, courier_admin
 urlpatterns = [
  path('ui-preview/', ui_preview_views.ui_preview, name='ui_preview'),
  path('', views.dispatcher_dashboard, name='dispatcher_dashboard'),
+ path('deliveries/', views.dispatcher_deliveries, name='dispatcher_deliveries'),
  path('stats/', report_views.management_stats, name='management_stats'), path('stats/export.csv', report_views.management_export, name='management_export'),
  path('delivery/new/', views.delivery_create, name='delivery_create'), path('delivery/<int:pk>/edit/', views.delivery_edit, name='delivery_edit'), path('delivery/<int:pk>/history/', views.delivery_history, name='delivery_history'), path('delivery/<int:pk>/quick-edit/', views.dispatcher_quick_edit, name='dispatcher_quick_edit'), path('delivery/<int:pk>/assign/', views.dispatcher_assign, name='dispatcher_assign'), path('deliveries/bulk-assign/', views.dispatcher_bulk_assign, name='dispatcher_bulk_assign'),
  path('points/', point_views.point_list, name='point_list'), path('points/new/', point_views.point_create, name='point_create'), path('points/<int:pk>/edit/', point_views.point_edit, name='point_edit'), path('points/<int:pk>/toggle/', point_views.point_toggle, name='point_toggle'),
