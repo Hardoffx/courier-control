@@ -188,6 +188,50 @@ class RouteWorkflowV2Tests(TestCase):
         self.assertContains(response, self.p1.address)
         self.assertEqual(int(self.client.session['_auth_user_id']), self.dispatcher.pk)
 
+    def test_day_checkbox_updates_existing_run_immediately(self):
+        run=generate_route_run(self.template,self.day,courier=self.courier)
+        self.client.force_login(self.dispatcher)
+        response=self.client.post(
+            reverse('template_item_day_toggle',args=[self.i1.pk]),
+            {'run_date':self.day.isoformat(),'enabled':'0'},
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+        self.assertEqual(response.status_code,200)
+        self.assertFalse(run.deliveries.filter(point=self.p1).exists())
+        response=self.client.post(
+            reverse('template_item_day_toggle',args=[self.i1.pk]),
+            {'run_date':self.day.isoformat(),'enabled':'1'},
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+        self.assertEqual(response.status_code,200)
+        self.assertTrue(run.deliveries.filter(point=self.p1).exists())
+
+    def test_run_reassign_supports_ajax_without_redirect(self):
+        run=generate_route_run(self.template,self.day,courier=None)
+        self.client.force_login(self.dispatcher)
+        response=self.client.post(
+            reverse('run_reassign',args=[run.pk]),
+            {'courier_id':self.courier.pk},
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+        self.assertEqual(response.status_code,200)
+        self.assertTrue(response.json()['ok'])
+        run.refresh_from_db()
+        self.assertEqual(run.assigned_courier_id,self.courier.pk)
+
+    def test_completed_run_hides_courier_reassignment_controls(self):
+        run=generate_route_run(self.template,self.day,courier=self.courier)
+        now=timezone.now()
+        for offset,row in enumerate(run.deliveries.order_by('route_order')):
+            row.status=Delivery.Status.DONE
+            row.completed_at=now+timedelta(minutes=offset*30)
+            row.save(update_fields=['status','completed_at'])
+        self.client.force_login(self.dispatcher)
+        response=self.client.get(reverse('run_detail',args=[run.pk]))
+        self.assertEqual(response.status_code,200)
+        self.assertNotContains(response,'class="run-reassign-select"')
+        self.assertContains(response,'Время выполнения')
+
 
 class CourierWorkspaceContractTests(TestCase):
     def setUp(self):
