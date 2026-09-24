@@ -21,3 +21,12 @@ class UIContractTests(SimpleTestCase):
     def test_stats_has_no_inline_style_block(self):
         html = (ROOT / "templates/dispatcher/stats.html").read_text()
         self.assertNotIn("<style>", html)
+
+    def test_route_run_actions_use_no_reload_workspace(self):
+        html = (ROOT / "templates/dispatcher/route_run_detail.html").read_text()
+        js = (ROOT / "deliveries/static/js/dispatcher-route-editor.js").read_text()
+        self.assertIn('id="run-live-workspace"', html)
+        self.assertIn('class="ajax-run-form"', html)
+        self.assertIn("refreshRunWorkspace", js)
+        self.assertIn("document.addEventListener('submit'", js)
+
