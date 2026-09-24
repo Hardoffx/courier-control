@@ -232,7 +232,7 @@ function setupEditor(root){
       e.preventDefault();
       if(button){button.disabled=true;button.textContent='Сохраняю…'}
       try{
-        const payload=await post(form.action,new FormData(form));
+        const payload=await post((form.getAttribute('action')||window.location.href),new FormData(form));
         const card=form.closest('.route-editor-item');
         const timeMeta=card?.querySelector('.meta-time');
         const commentMeta=card?.querySelector('.meta-comment');
@@ -380,7 +380,7 @@ document.addEventListener('submit',async e=>{
   if(submitter)submitter.disabled=true;
   form.classList.add('is-saving');
   try{
-    const payload=await post(form.action,new FormData(form));
+    const payload=await post((form.getAttribute('action')||window.location.href),new FormData(form));
     toast(payload.message||'Шаблон обновлён');
     await refreshTemplateWorkspace();
   }catch(err){
@@ -403,7 +403,7 @@ document.addEventListener('submit',async e=>{
   if(submitter)submitter.disabled=true;
   form.classList.add('is-saving');
   try{
-    const payload=await post(form.action,data);
+    const payload=await post((form.getAttribute('action')||window.location.href),data);
     toast(payload.message||'Изменение сохранено');
     if(payload.redirect_url){
       window.location.assign(payload.redirect_url);

@@ -49,7 +49,7 @@ document.addEventListener('submit',async e=>{
   const button=e.submitter||form.querySelector('button[type=submit],button:not([type])');
   if(button)button.disabled=true;
   try{
-    const payload=await post(form.action,new FormData(form));
+    const payload=await post((form.getAttribute('action')||window.location.href),new FormData(form));
     toast(payload.message||'Изменение сохранено');
     const workspace=form.closest('#courier-list-workspace,#point-directory-workspace');
     if(workspace)await refreshWorkspace(workspace.id);
