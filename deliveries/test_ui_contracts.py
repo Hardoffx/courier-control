@@ -30,3 +30,11 @@ class UIContractTests(SimpleTestCase):
         self.assertIn("refreshRunWorkspace", js)
         self.assertIn("document.addEventListener('submit'", js)
 
+    def test_template_editor_actions_use_no_reload_workspace(self):
+        html = (ROOT / "templates/dispatcher/routes/detail.html").read_text()
+        js = (ROOT / "deliveries/static/js/dispatcher-route-editor.js").read_text()
+        self.assertIn('id="template-route-editor-workspace"', html)
+        self.assertIn('class="ajax-template-form"', html)
+        self.assertIn("refreshTemplateWorkspace", js)
+        self.assertIn("bindDayToggles", js)
+

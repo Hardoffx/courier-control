@@ -34,7 +34,7 @@
       <h2 style="margin:0 0 4px">Создать маршрут на день</h2>
       <div class="muted">Состав выбирается прямо в общем списке ниже. Галочки «В этот день» не меняют постоянный шаблон.</div>
     </div>
-    <span class="pill">{{ template.items.count }} точек в шаблоне</span>
+    <span class="pill template-point-count">{{ template.items.count }} точек в шаблоне</span>
   </div>
   <form id="generate-route-form" method="post" action="{% url 'route_generate' route.pk %}" class="compact-generate" style="margin-top:12px">
     {% csrf_token %}
@@ -50,7 +50,7 @@
   </form>
 </div>
 
-<div class="card route-editor-card">
+<div class="card route-editor-card" id="template-route-editor-workspace">
   <div class="route-editor-toolbar">
     <div>
       <h2 style="margin:0 0 4px">Маршрут · {{ template.name|default:template.get_kind_display }}</h2>
@@ -62,7 +62,7 @@
   <div class="add-source-grid">
     <details class="add-source-card">
       <summary>+ Добавить из базы</summary>
-      <form method="post" action="{% url 'template_add_point' template.pk %}">
+      <form class="ajax-template-form" method="post" action="{% url 'template_add_point' template.pk %}">
         {% csrf_token %}
         <input type="search" class="point-search" placeholder="Код, название или адрес">
         <div class="point-list">
@@ -80,7 +80,7 @@
 
     <details class="add-source-card">
       <summary>+ Создать новую точку</summary>
-      <form method="post" action="{% url 'template_create_point' template.pk %}">
+      <form class="ajax-template-form" method="post" action="{% url 'template_create_point' template.pk %}">
         {% csrf_token %}
         <div class="create-point-grid">
           <label>Тип
@@ -164,5 +164,5 @@
 {% endif %}
 {% endblock %}
 {% block scripts %}
-<script type="module" src="{% static 'js/dispatcher-route-editor.js' %}?v=20260924-1"></script>
+<script type="module" src="{% static 'js/dispatcher-route-editor.js' %}?v=20260924-4"></script>
 {% endblock %}
