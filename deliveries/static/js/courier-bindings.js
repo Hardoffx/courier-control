@@ -80,7 +80,7 @@ document.querySelectorAll('.done-form').forEach(f=>f.addEventListener('submit',e
   sessionStorage.setItem('courierDonePoint',point);
   const deliveryId=card?.dataset.selectedId||card?.dataset.deliveryId||'';
   if(deliveryId)sessionStorage.setItem('courierDoneId',deliveryId);
-  sessionStorage.setItem('courierDoneUrl',f.getAttribute('action')||f.action);
+  sessionStorage.setItem('courierDoneUrl',f.getAttribute('action')||window.location.href);
   if(btn){btn.disabled=true;const label=btn.querySelector('.hold-label');if(label)label.textContent='✓ Сохраняю…';else btn.textContent='✓ Сохраняю…'}
 }));
 
@@ -185,7 +185,7 @@ document.querySelectorAll('.ajax-reorder-form').forEach(form=>form.addEventListe
   const first=new Map(rows.map(el=>[el,el.getBoundingClientRect()]));
 
   try{
-    const response=await fetch(form.action,{
+    const response=await fetch((form.getAttribute('action')||window.location.href),{
       method:'POST',
       body:new FormData(form),
       headers:{'X-Requested-With':'XMLHttpRequest','Accept':'application/json'},
