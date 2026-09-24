@@ -30,3 +30,30 @@ SQLite используется для быстрого локального с�
 ## Current product direction
 
 Dispatcher operations are route-centric: the selected day's RouteRun board is the primary surface, with global day KPIs above it and route-specific KPIs/details after opening a route. The flat delivery list remains a secondary search/bulk tool. See [docs/ROUTE_CENTRIC_OPERATIONS.md](docs/ROUTE_CENTRIC_OPERATIONS.md) before changing dispatcher information architecture.
+
+
+## Реалистичный staging-сценарий
+
+Для визуальной приёмки диспетчерской, статистики и длинных маршрутов можно создать отдельный изолированный набор данных:
+
+```bash
+OPERATIONS_DEMO_SEED=1 python manage.py seed_operations_demo
+```
+
+По умолчанию создаются 8 маршрутов, 8 курьеров, 119 доставок на сегодня и история за 7 дней. Сценарий включает длинный маршрут на 26 точек, завершённые и активные маршруты, проблему, маршрут без курьера и ожидающее решение по изменённому порядку.
+
+Для фиксированной даты:
+
+```bash
+OPERATIONS_DEMO_SEED=1 python manage.py seed_operations_demo --date 2026-09-24
+```
+
+Удалить только этот демонстрационный namespace:
+
+```bash
+OPERATIONS_DEMO_SEED=1 python manage.py seed_operations_demo --reset
+```
+
+Логин диспетчера: `ops-demo-dispatcher`, пароль: `opsdemo12345`.
+
+`OPERATIONS_DEMO_SEED=1` — обязательный safety-gate: без него команда ничего не создаёт и не удаляет.
