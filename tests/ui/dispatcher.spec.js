@@ -15,20 +15,54 @@ async function layoutViolations(page) {
   return page.evaluate(() => {
     const vw = document.documentElement.clientWidth;
     const nodes = [...document.querySelectorAll('input,select,textarea,button,.btn,form')];
-    return nodes.flatMap((el) => {
+    const issues = [];
+
+    for (const el of nodes) {
       const r = el.getBoundingClientRect();
-      if (!r.width || !r.height) return [];
-      const problems = [];
-      if (r.left < -1 || r.right > vw + 1) problems.push('viewport-overflow');
-      return problems.map(problem => ({
-        problem,
-        tag: el.tagName,
-        cls: el.className || '',
-        left: Math.round(r.left),
-        right: Math.round(r.right),
-        viewport: vw,
-      }));
+      if (!r.width || !r.height) continue;
+      if (r.left < -1 || r.right > vw + 1) {
+        issues.push({
+          problem: 'viewport-overflow',
+          tag: el.tagName,
+          cls: el.className || '',
+          left: Math.round(r.left),
+          right: Math.round(r.right),
+          viewport: vw,
+        });
+      }
+    }
+
+    const controls = [...document.querySelectorAll(
+      'input:not([type="hidden"]),select,textarea,button,a.btn,summary.btn'
+    )].filter((el) => {
+      const r = el.getBoundingClientRect();
+      const style = getComputedStyle(el);
+      return r.width > 1 && r.height > 1 &&
+        style.display !== 'none' && style.visibility !== 'hidden' &&
+        Number(style.opacity || 1) > 0;
     });
+
+    for (let i = 0; i < controls.length; i += 1) {
+      const a = controls[i];
+      const ar = a.getBoundingClientRect();
+      for (let j = i + 1; j < controls.length; j += 1) {
+        const b = controls[j];
+        if (a.contains(b) || b.contains(a)) continue;
+        const br = b.getBoundingClientRect();
+        const overlapX = Math.min(ar.right, br.right) - Math.max(ar.left, br.left);
+        const overlapY = Math.min(ar.bottom, br.bottom) - Math.max(ar.top, br.top);
+        if (overlapX > 3 && overlapY > 3) {
+          issues.push({
+            problem: 'interactive-overlap',
+            a: a.tagName + '.' + (a.className || ''),
+            b: b.tagName + '.' + (b.className || ''),
+            overlapX: Math.round(overlapX),
+            overlapY: Math.round(overlapY),
+          });
+        }
+      }
+    }
+    return issues;
   });
 }
 
