@@ -42,6 +42,8 @@ body.dispatcher-ui .route-kpi-grid .kpi:nth-child(4) .kpi-value{color:#d74956}
 .event-row>div{padding-left:8px}
 
 .run-tools{margin-top:12px}
+.run-tools>.tool-card{min-width:0}
+.run-tools .tool-card label,.run-tools .tool-card form,.run-tools .tool-card select{min-width:0;max-width:100%}
 .tool-card{border-radius:15px!important;border:1px solid #dfe7f1!important;box-shadow:0 4px 16px rgba(34,59,90,.035)!important}
 .tool-card h2{font-size:15px!important;letter-spacing:-.01em}
 .run-courier-select{margin-top:8px}
