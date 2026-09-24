@@ -29,6 +29,7 @@ jobs:
       - name: Responsive browser tests
         env:
           COURIER_UI_TESTING: '1'
+          ROUTE_UI_TESTING: '1'
         run: npx playwright test tests/ui/responsive.spec.js tests/ui/dispatcher.spec.js tests/ui/courier.spec.js
       - name: Visual regression
         run: |
