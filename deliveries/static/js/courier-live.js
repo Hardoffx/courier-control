@@ -90,7 +90,8 @@ document.addEventListener('submit',async e=>{
   const button=e.submitter||form.querySelector('button[type=submit]');
   if(button)button.disabled=true;
   try{
-    const payload=await post(form.action,new FormData(form));
+    const actionUrl=form.getAttribute('action')||form.action;
+    const payload=await post(actionUrl,new FormData(form));
     const target=new URL(window.location.href);
     if(action==='done'||action==='reopen')target.searchParams.delete('selected');
     await refreshCourierShell(target,{historyMode:'replace'});
