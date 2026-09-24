@@ -48,6 +48,8 @@ async function refreshCourierShell(target=window.location.href,{historyMode='non
   const controller=new AbortController();
   activeRefresh=controller;
   const current=document.getElementById('top');
+  const openIds=current?[...current.querySelectorAll('details.route-item[open][id]')].map(node=>node.id):[];
+  const scrollY=window.scrollY;
   current?.classList.add('is-live-refreshing');
   try{
     const response=await fetch(url,{
@@ -60,10 +62,15 @@ async function refreshCourierShell(target=window.location.href,{historyMode='non
     if(controller.signal.aborted)return;
     const fresh=new DOMParser().parseFromString(html,'text/html').getElementById('top');
     if(!fresh||!current)throw new Error('Не удалось обновить интерфейс маршрута');
+    openIds.forEach(id=>{
+      const node=fresh.querySelector('#'+CSS.escape(id));
+      if(node)node.open=true;
+    });
     current.replaceWith(fresh);
     if(historyMode==='push')window.history.pushState({},'',url);
     else if(historyMode==='replace')window.history.replaceState({},'',url);
     await rebindCourierUI();
+    requestAnimationFrame(()=>window.scrollTo({top:scrollY,behavior:'instant'}));
   }catch(err){
     if(err.name!=='AbortError')liveToast(err.message,true);
   }finally{
