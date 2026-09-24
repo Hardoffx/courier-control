@@ -4,6 +4,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from accounts.models import User
@@ -58,6 +59,17 @@ def _save_order(items):
 
 def _wants_json(request):
     return request.headers.get('x-requested-with') == 'XMLHttpRequest'
+
+
+def _duration_label(delta):
+    if delta is None:
+        return ''
+    seconds=max(0,int(delta.total_seconds()))
+    hours,rest=divmod(seconds,3600)
+    minutes=rest//60
+    if hours:
+        return f'{hours} ч {minutes:02d} мин' if minutes else f'{hours} ч'
+    return f'{minutes} мин' if minutes else '< 1 мин'
 
 
 def _point_from_post(request):
@@ -240,6 +252,36 @@ def template_item_update(request, pk):
 
 @dispatcher_required
 @require_POST
+def template_item_day_toggle(request, pk):
+    item=get_object_or_404(RouteTemplateItem.objects.select_related('template__route','point'),pk=pk)
+    try:
+        run_date=date.fromisoformat(request.POST.get('run_date',''))
+    except (TypeError,ValueError):
+        return JsonResponse({'ok':False,'error':'Сначала выберите дату маршрута'},status=400)
+    enabled=request.POST.get('enabled','1') in ('1','true','on','yes')
+    run=(RouteRun.objects.filter(route=item.template.route,template=item.template,run_date=run_date)
+         .exclude(status=RouteRun.Status.DONE).order_by('-created_at').first())
+    if not run:
+        return JsonResponse({'ok':True,'pending':True,'enabled':enabled,'message':'Состав будет применён при создании маршрута'})
+    delivery=run.deliveries.filter(point=item.point).order_by('id').first()
+    if enabled:
+        if not delivery:
+            last=run.deliveries.order_by('-route_order').first()
+            delivery=_add_point_to_run(run,item.point,item.time_window,request.user,(last.route_order+1 if last else 1))
+            delivery.comment=item.comment
+            delivery.save(update_fields=['comment','updated_at'])
+        return JsonResponse({'ok':True,'enabled':True,'run_id':run.pk,'delivery_id':delivery.pk,'message':'Точка добавлена в маршрут на этот день'})
+    if delivery and delivery.status==Delivery.Status.DONE:
+        return JsonResponse({'ok':False,'error':'Выполненную точку нельзя убрать из маршрута'},status=409)
+    if delivery:
+        DeliveryEvent.objects.create(delivery=delivery,actor=request.user,action='day_point_removed',note='Точка исключена диспетчером из маршрута на этот день')
+        delivery.delete()
+        _save_order(list(run.deliveries.order_by('route_order','id')))
+    return JsonResponse({'ok':True,'enabled':False,'run_id':run.pk,'message':'Точка убрана из маршрута на этот день'})
+
+
+@dispatcher_required
+@require_POST
 def template_reorder(request, pk):
     template = get_object_or_404(RouteTemplate, pk=pk)
     items = list(template.items.order_by('route_order', 'id'))
@@ -298,8 +340,13 @@ def run_detail(request, pk):
     done = sum(d.status == Delivery.Status.DONE for d in rows)
     problem = sum(d.status == Delivery.Status.PROBLEM for d in rows)
     problem_rows = [d for d in rows if d.status == Delivery.Status.PROBLEM]
-    completed = [d for d in rows if d.status == Delivery.Status.DONE and d.completed_at]
-    last_done = max(completed, key=lambda d: d.completed_at) if completed else None
+    completed = sorted([d for d in rows if d.status == Delivery.Status.DONE and d.completed_at], key=lambda d:d.completed_at)
+    first_done = completed[0] if completed else None
+    last_done = completed[-1] if completed else None
+    route_completed = bool(total) and done == total
+    timing_end = last_done.completed_at if route_completed and last_done else (timezone.now() if first_done else None)
+    route_duration_label = _duration_label(timing_end-first_done.completed_at) if first_done and timing_end else ''
+    avg_interval_label = _duration_label((last_done.completed_at-first_done.completed_at)/(len(completed)-1)) if len(completed)>1 else ''
     next_stop = next((d for d in rows if d.status != Delivery.Status.DONE), None)
     remaining = total - done
     percent = round(done * 100 / total) if total else 0
@@ -322,7 +369,11 @@ def run_detail(request, pk):
         'order_after': after,
         'order_moved_count': moved_count,
         'route_kpis': {'total': total, 'done': done, 'remaining': remaining, 'problem': problem, 'percent': percent},
+        'first_done': first_done,
         'last_done': last_done,
+        'route_completed': route_completed,
+        'route_duration_label': route_duration_label,
+        'avg_interval_label': avg_interval_label,
         'next_stop': next_stop,
         'problem_rows': problem_rows,
         'recent_events': DeliveryEvent.objects.filter(delivery__route_run=run).select_related('delivery','actor').order_by('-created_at')[:20],
@@ -485,7 +536,10 @@ def run_reassign(request, pk):
     courier_id = request.POST.get('courier_id', '')
     courier = _couriers().filter(pk=courier_id).first() if courier_id else None
     reassign_route_run(run, courier)
-    messages.success(request, f'{run.route.name}: ' + ('курьер изменён' if courier else 'назначение курьера снято'))
+    message=f'{run.route.name}: ' + ('курьер изменён' if courier else 'назначение курьера снято')
+    if _wants_json(request):
+        return JsonResponse({'ok':True,'run_id':run.pk,'courier_id':courier.pk if courier else None,'courier':(courier.get_full_name() or courier.username) if courier else '','message':message})
+    messages.success(request,message)
     return redirect(request.POST.get('next') or f'/dispatcher/?date={run.run_date.isoformat()}')
 
 
