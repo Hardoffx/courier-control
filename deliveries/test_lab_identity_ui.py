@@ -64,7 +64,7 @@ class LabIdentityUiTests(TestCase):
             address='Москва г, ул Митинская 27', status=Delivery.Status.NEW,
         )
         self.client.login(username='lab-dispatcher', password='pass')
-        response = self.client.get(reverse('dispatcher_dashboard'))
+        response = self.client.get(reverse('dispatcher_deliveries'))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'lab-badge--invitro')
         self.assertContains(response, 'ИНВИТРО')
