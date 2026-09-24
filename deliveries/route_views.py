@@ -149,7 +149,23 @@ def route_detail(request, pk):
     template_id = request.GET.get('template')
     template = templates.filter(pk=template_id).first() if template_id else templates.order_by('kind', 'id').first()
     points = DeliveryPoint.objects.filter(is_active=True).order_by('kind', 'name')
-    return render(request, 'dispatcher/routes/detail.html', {'route': route, 'templates': templates, 'template': template, 'points': points, 'couriers': _couriers(), 'point_kinds': DeliveryPoint.Kind.choices, 'today': timezone.localdate()})
+    planning_date=timezone.localdate()
+    raw_date=request.GET.get('date','').strip()
+    if raw_date:
+        try: planning_date=date.fromisoformat(raw_date)
+        except ValueError: pass
+    planning_run=None
+    day_point_ids=set()
+    if template:
+        planning_run=(RouteRun.objects.filter(route=route,template=template,run_date=planning_date)
+                      .exclude(status=RouteRun.Status.DONE).order_by('-created_at').first())
+        if planning_run:
+            day_point_ids=set(planning_run.deliveries.values_list('point_id',flat=True))
+    return render(request, 'dispatcher/routes/detail.html', {
+        'route':route,'templates':templates,'template':template,'points':points,'couriers':_couriers(),
+        'point_kinds':DeliveryPoint.Kind.choices,'today':timezone.localdate(),'planning_date':planning_date,
+        'planning_run':planning_run,'day_point_ids':day_point_ids,
+    })
 
 
 @dispatcher_required
