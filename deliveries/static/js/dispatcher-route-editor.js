@@ -275,6 +275,24 @@ document.querySelectorAll('.day-item-toggle').forEach(toggle=>toggle.addEventLis
   }
 }));
 
+document.querySelectorAll('.run-reassign-select').forEach(select=>select.addEventListener('change',async()=>{
+  select.classList.add('is-saving');
+  select.disabled=true;
+  try{
+    const payload=await post(select.dataset.url,{courier_id:select.value});
+    const badge=document.querySelector('.route-now-courier');
+    if(badge)badge.textContent=payload.courier||'Курьер не назначен';
+    toast(payload.message||'Курьер изменён');
+  }catch(err){
+    toast(err.message,true);
+  }finally{
+    select.disabled=false;
+    select.classList.remove('is-saving');
+  }
+}));
+
+document.querySelectorAll('[data-flash]').forEach((node,index)=>setTimeout(()=>toast(node.dataset.flash||node.textContent),index*300));
+
 document.querySelectorAll('.point-search').forEach(input=>input.addEventListener('input',()=>{
   const q=input.value.toLowerCase();
   input.closest('form')?.querySelectorAll('.point-option').forEach(row=>{
