@@ -59,3 +59,20 @@ test('deliveries: search and quick filters do not reload the document', async ({
   expect(await page.evaluate(() => window.__deliveryWorkspaceMarker)).toBe('alive');
 });
 
+
+
+test('dashboard day navigation stays in the same document', async ({ dispatcherPage: page }) => {
+  await page.goto('/dispatcher/');
+  await page.evaluate(() => { window.__liveDayMarker = 'alive'; });
+  await page.locator('[data-live-day]').first().click();
+  await expect(page.locator('#dispatcher-day-workspace')).toBeVisible();
+  await expect.poll(() => page.evaluate(() => window.__liveDayMarker || '')).toBe('alive');
+});
+
+test('delivery day navigation stays in the same document', async ({ dispatcherPage: page }) => {
+  await page.goto('/dispatcher/deliveries/');
+  await page.evaluate(() => { window.__liveDayMarker = 'alive'; });
+  await page.locator('[data-live-delivery-date]').first().click();
+  await expect(page.locator('.deliveries-workspace')).toBeVisible();
+  await expect.poll(() => page.evaluate(() => window.__liveDayMarker || '')).toBe('alive');
+});

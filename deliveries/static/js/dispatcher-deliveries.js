@@ -30,30 +30,34 @@ function bindSelection(){
   }
   updateSelected();
 }
-bindSelection();
 
-document.getElementById('bulk-form')?.addEventListener('submit',async e=>{
-  e.preventDefault();
-  const form=e.currentTarget;
-  const selected=checks().filter(x=>x.checked);
-  if(!selected.length){toast('Сначала выберите доставки',true);return}
-  const button=form.querySelector('button[type=submit]');
-  const courierSelect=form.querySelector('[name=courier_id]');
-  button.disabled=true;
-  try{
-    const response=await fetch(form.action,{method:'POST',headers:{'X-Requested-With':'XMLHttpRequest','X-CSRFToken':csrf()},body:new FormData(form)});
-    const payload=await response.json();
-    if(!response.ok||payload.ok===false)throw new Error(payload.error||'Не удалось сохранить');
-    const courier=courierSelect.value?courierSelect.options[courierSelect.selectedIndex].textContent:'Курьер не назначен';
-    selected.forEach(box=>{
-      const id=box.value;
-      document.querySelectorAll('[data-delivery-id="'+CSS.escape(id)+'"] .courier-cell').forEach(el=>el.textContent=courier);
-      box.checked=false;
-    });
-    updateSelected();toast('Обновлено доставок: '+payload.updated);
-  }catch(err){toast(err.message,true)}
-  finally{button.disabled=false}
-});
+function bindBulkForm(){
+  const form=document.getElementById('bulk-form');
+  if(!form||form.dataset.bound==='1')return;
+  form.dataset.bound='1';
+  form.addEventListener('submit',async e=>{
+    e.preventDefault();
+    const selected=checks().filter(x=>x.checked);
+    if(!selected.length){toast('Сначала выберите доставки',true);return}
+    const button=form.querySelector('button[type=submit]');
+    const courierSelect=form.querySelector('[name=courier_id]');
+    button.disabled=true;
+    try{
+      const response=await fetch(form.action,{method:'POST',headers:{'X-Requested-With':'XMLHttpRequest','X-CSRFToken':csrf()},body:new FormData(form)});
+      const payload=await response.json();
+      if(!response.ok||payload.ok===false)throw new Error(payload.error||'Не удалось сохранить');
+      const courier=courierSelect.value?courierSelect.options[courierSelect.selectedIndex].textContent:'Курьер не назначен';
+      selected.forEach(box=>{
+        const id=box.value;
+        document.querySelectorAll('[data-delivery-id="'+CSS.escape(id)+'"] .courier-cell').forEach(el=>el.textContent=courier);
+        box.checked=false;
+      });
+      updateSelected();
+      toast('Обновлено доставок: '+payload.updated);
+    }catch(err){toast(err.message,true)}
+    finally{button.disabled=false}
+  });
+}
 
 function filterUrl(form){
   const url=new URL(window.location.href);
@@ -65,8 +69,25 @@ function filterUrl(form){
   return url;
 }
 
+function syncGlobalDate(url){
+  const search=document.querySelector('.global-search');
+  if(!search)return;
+  const value=url.searchParams.get('date')||'';
+  let hidden=search.querySelector('input[type=hidden][name=date]');
+  if(value&&!hidden){
+    hidden=document.createElement('input');
+    hidden.type='hidden';
+    hidden.name='date';
+    search.prepend(hidden);
+  }
+  if(hidden){
+    if(value)hidden.value=value;
+    else hidden.remove();
+  }
+}
+
 let activeFilterRequest=null;
-async function refreshDeliveries(target,{historyMode='replace',syncForm=false}={}){
+async function refreshDeliveries(target,{historyMode='replace',syncForm=false,fullWorkspace=false}={}){
   const url=target instanceof URL?target:new URL(target,window.location.href);
   if(activeFilterRequest)activeFilterRequest.abort();
   const controller=new AbortController();
@@ -79,25 +100,33 @@ async function refreshDeliveries(target,{historyMode='replace',syncForm=false}={
     const html=await response.text();
     if(controller.signal.aborted)return;
     const fresh=new DOMParser().parseFromString(html,'text/html');
-    for(const selector of ['.delivery-quick','.delivery-panel']){
-      const current=document.querySelector(selector);
-      const replacement=fresh.querySelector(selector);
-      if(current&&replacement)current.replaceWith(replacement);
+
+    if(fullWorkspace){
+      const replacement=fresh.querySelector('.deliveries-workspace');
+      if(!workspace||!replacement)throw new Error('Не удалось обновить день');
+      workspace.replaceWith(replacement);
+    }else{
+      for(const selector of ['.delivery-quick','.delivery-panel']){
+        const current=document.querySelector(selector);
+        const replacement=fresh.querySelector(selector);
+        if(current&&replacement)current.replaceWith(replacement);
+      }
+      if(syncForm){
+        const current=document.querySelector('.delivery-filter-card');
+        const replacement=fresh.querySelector('.delivery-filter-card');
+        if(current&&replacement)current.replaceWith(replacement);
+      }
     }
-    if(syncForm){
-      const current=document.querySelector('.delivery-filter-card');
-      const replacement=fresh.querySelector('.delivery-filter-card');
-      if(current&&replacement)current.replaceWith(replacement);
-    }
+
     if(historyMode==='push')window.history.pushState({},'',url);
     else if(historyMode==='replace')window.history.replaceState({},'',url);
-    bindSelection();
-    bindFilters();
+    syncGlobalDate(url);
+    bindDeliveryWorkspace();
   }catch(err){
     if(err.name!=='AbortError')toast(err.message,true);
   }finally{
     if(activeFilterRequest===controller)activeFilterRequest=null;
-    workspace?.classList.remove('is-refreshing');
+    document.querySelector('.deliveries-workspace')?.classList.remove('is-refreshing');
   }
 }
 
@@ -111,8 +140,7 @@ function bindFilters(){
     clearTimeout(filterTimer);
     void refreshDeliveries(filterUrl(form),{historyMode:'push'});
   });
-  const search=form.querySelector('input[name=q]');
-  search?.addEventListener('input',()=>{
+  form.querySelector('input[name=q]')?.addEventListener('input',()=>{
     clearTimeout(filterTimer);
     filterTimer=setTimeout(()=>void refreshDeliveries(filterUrl(form),{historyMode:'replace'}),280);
   });
@@ -121,9 +149,23 @@ function bindFilters(){
     void refreshDeliveries(filterUrl(form),{historyMode:'replace'});
   }));
 }
-bindFilters();
+
+function bindDeliveryWorkspace(){
+  bindSelection();
+  bindBulkForm();
+  bindFilters();
+}
+bindDeliveryWorkspace();
 
 document.addEventListener('click',e=>{
+  const dayLink=e.target.closest('[data-live-delivery-date][href]');
+  if(dayLink&&!e.defaultPrevented&&e.button===0&&!e.metaKey&&!e.ctrlKey&&!e.shiftKey&&!e.altKey){
+    e.preventDefault();
+    clearTimeout(filterTimer);
+    void refreshDeliveries(dayLink.href,{historyMode:'push',fullWorkspace:true});
+    return;
+  }
+
   const link=e.target.closest('.delivery-quick a[href],.delivery-filter-card a[href]');
   if(!link||e.defaultPrevented||e.button!==0||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey)return;
   e.preventDefault();
@@ -133,5 +175,5 @@ document.addEventListener('click',e=>{
 
 window.addEventListener('popstate',()=>{
   clearTimeout(filterTimer);
-  void refreshDeliveries(window.location.href,{historyMode:'none',syncForm:true});
+  void refreshDeliveries(window.location.href,{historyMode:'none',fullWorkspace:true});
 });

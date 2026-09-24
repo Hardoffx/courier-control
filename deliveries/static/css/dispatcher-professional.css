@@ -166,3 +166,5 @@
 .ops-toast.show{opacity:1;transform:translate(-50%,0)}
 .ops-toast.error{background:#a72e39}
 .route-assign-select.is-saving{opacity:.6;pointer-events:none}
+
+.ops-dashboard.is-refreshing,.deliveries-workspace.is-refreshing{opacity:.62;pointer-events:none;transition:opacity .16s ease}
