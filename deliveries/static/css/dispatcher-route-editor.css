@@ -106,7 +106,7 @@
 /* Point editor: stable right-side controls, independent of address wrapping.
    The hidden pencil still owns its column so opening a card cannot shift text or chevron. */
 .editor-summary.template-point-summary{
-  grid-template-columns:36px minmax(0,1fr) auto 36px 24px;
+  grid-template-columns:36px minmax(0,1fr) 166px 36px 24px;
   column-gap:9px;
   padding-right:22px;
 }
