@@ -16,18 +16,17 @@
 .editor-address{font-weight:750;min-width:0;flex:0 1 auto;overflow-wrap:anywhere}
 .editor-address-pencil{display:inline-flex;align-items:center;justify-content:center;flex:0 0 36px;width:36px;height:36px;padding:7px;border:1px solid transparent;border-radius:9px;background:transparent;color:#477db8;cursor:pointer}
 .editor-address-pencil svg{width:19px;height:19px}
+/* Reserve the pencil's slot in both states: text wrapping and the chevron stay put. */
+.route-editor-item:not([open]) .editor-address-pencil{visibility:hidden;pointer-events:none}
+.editor-address-pencil[aria-expanded="true"]{background:#eaf3ff;border-color:#c2d9f7}
 .editor-address-pencil:hover,.editor-address-pencil:focus-visible{background:#eaf3ff;border-color:#c2d9f7;outline-offset:2px}
-.editor-address-inline{display:grid;grid-template-columns:minmax(0,1fr) 40px 40px;align-items:center;gap:7px;width:100%;min-width:0}
+.editor-address-inline{display:grid;grid-template-columns:minmax(0,1fr) 40px 40px;align-items:center;gap:7px;width:100%;min-width:0;margin:0 0 10px}
 .editor-address-inline[hidden],.editor-address-row[hidden]{display:none!important}
 .editor-address-inline input[name="address"]{min-width:0;width:100%;height:44px;min-height:44px;margin:0;padding:9px 11px;box-sizing:border-box;font-size:16px}
 .editor-address-inline button{display:flex;align-items:center;justify-content:center;width:40px;height:44px;min-width:40px;border:1px solid #cbd9eb;border-radius:10px;background:#f1f6fd;color:#456281;cursor:pointer}
 .editor-address-inline button svg{width:20px;height:20px}
 .editor-address-inline .editor-address-apply{color:#fff;background:#3478ee;border-color:#3478ee}
 .editor-address-inline button:disabled{opacity:.6;cursor:wait}
-.editor-summary.is-address-editing{grid-template-columns:minmax(0,1fr)}
-.editor-summary.is-address-editing>.editor-order,.editor-summary.is-address-editing>.day-toggle,.editor-summary.is-address-editing>.route-chevron,
-.editor-summary.is-address-editing .editor-identity,.editor-summary.is-address-editing .editor-meta{display:none!important}
-.editor-summary.is-address-editing>.editor-copy{grid-column:1/-1;width:100%;min-width:0}
 .editor-meta{font-size:12px;color:var(--muted);margin-top:4px;display:flex;gap:6px;flex-wrap:wrap}
 .day-toggle{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:750;color:#41546f;white-space:nowrap}
 .day-toggle input{width:20px;height:20px;margin:0}.day-toggle.is-saving{opacity:.55}.day-toggle:has(input:not(:checked)) span{color:#8a5a12}

@@ -138,31 +138,28 @@ function bindAddressEditors(root){
   root.querySelectorAll('.route-editor-item').forEach(card=>{
     const pencil=card.querySelector('.editor-address-pencil');
     const form=card.querySelector('.editor-address-inline');
-    const row=card.querySelector('.editor-address-row');
-    const summary=card.querySelector('.editor-summary');
     const input=form?.querySelector('input[name="address"]');
-    if(!pencil||!form||!row||!summary||!input)return;
+    if(!pencil||!form||!input)return;
 
     const close=(focusPencil=false)=>{
       form.hidden=true;
-      row.hidden=false;
-      summary.classList.remove('is-address-editing');
+      input.value=card.querySelector('.editor-address')?.textContent.trim()||'';
       pencil.setAttribute('aria-expanded','false');
-      if(focusPencil)pencil.focus({preventScroll:true});
+      if(focusPencil&&card.open)pencil.focus({preventScroll:true});
     };
 
     pencil.addEventListener('click',e=>{
       e.preventDefault();
       e.stopPropagation();
+      if(!card.open)return;
+      if(!form.hidden){close(true);return}
       input.value=card.querySelector('.editor-address')?.textContent.trim()||'';
-      row.hidden=true;
       form.hidden=false;
-      summary.classList.add('is-address-editing');
       pencil.setAttribute('aria-expanded','true');
       input.focus({preventScroll:true});
     });
-    // Controls inside the summary must never toggle its accordion.
-    form.addEventListener('click',e=>e.stopPropagation());
+    // Closing the accordion must also dismiss an unfinished edit.
+    card.addEventListener('toggle',()=>{if(!card.open)close()});
     form.addEventListener('keydown',e=>{
       if(e.key==='Escape'){
         e.preventDefault();
