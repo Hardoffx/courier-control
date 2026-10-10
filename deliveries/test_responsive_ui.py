@@ -41,6 +41,17 @@ class ResponsiveOperationalUiTests(TestCase):
         self.assertIn('data-template-kind="saturday"]{order:1}', html)
         self.assertIn('data-template-kind="sunday"]{order:2}', html)
 
+    def test_courier_names_have_no_role_prefixes_in_route_picker(self):
+        self.courier.first_name = 'Кирилл'
+        self.courier.is_reserve_courier = True
+        self.courier.save(update_fields=['first_name', 'is_reserve_courier'])
+        response = self.client.get(reverse('route_detail', args=[self.route.pk]))
+        self.assertContains(response, '<option value="">Кирилл</option>', html=False)
+        self.assertContains(response, f'<option value="{self.courier.pk}">Кирилл</option>', html=False)
+        html = response.content.decode()
+        for unwanted in ('Обычный курьер:', 'Обычный:', ' · РЕЗЕРВ', ' · Резерв'):
+            self.assertNotIn(unwanted, html)
+
     def test_route_generation_controls_remain_on_same_screen(self):
         response = self.client.get(reverse('route_detail', args=[self.route.pk]))
         self.assertContains(response, 'Создать маршрут на день')

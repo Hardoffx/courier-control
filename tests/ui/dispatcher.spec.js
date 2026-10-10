@@ -128,6 +128,13 @@ test('route-editor: pencil edits address inline without page reload', async ({ d
   await expect(address).toHaveText('Москва, ул Тестовая 22');
   await expect.poll(() => page.evaluate(() => window.__inlineAddressMarker || '')).toBe('alive');
   await expect(card).toHaveAttribute('open', '');
+  // A sticky header can cover scrolled-away controls without any layout overlap.
+  // Check the complete document geometry from its natural top position.
+  await page.evaluate(() => {
+    document.documentElement.style.scrollBehavior = 'auto';
+    window.scrollTo(0, 0);
+  });
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
   expect(await layoutViolations(page)).toEqual([]);
 });
 
@@ -405,4 +412,61 @@ test('route-run: phone KPI cards stay an equal 2x2 grid', async ({ dispatcherPag
   expect(Math.abs(geometry[2].top - geometry[3].top)).toBeLessThanOrEqual(2);
   expect(geometry[0].right).toBeLessThanOrEqual(page.viewportSize().width + 1);
   expect(geometry[1].right).toBeLessThanOrEqual(page.viewportSize().width + 1);
+});
+
+
+test('dashboard: KPI icons sit in top-right accents and route actions share a 58/42 row', async ({ dispatcherPage: page }) => {
+  await page.goto('/dispatcher/');
+  const kpis=page.locator('.ops-kpi');
+  await expect(kpis).toHaveCount(4);
+  const kpiBoxes=await kpis.evaluateAll(cards=>cards.map(card=>{
+    const outer=card.getBoundingClientRect();
+    const icon=card.querySelector('.ops-kpi-icon').getBoundingClientRect();
+    return {
+      top:icon.top-outer.top,
+      right:outer.right-icon.right,
+      width:icon.width,
+      height:icon.height,
+    };
+  }));
+  for(const kpi of kpiBoxes){
+    expect(kpi.top).toBeGreaterThanOrEqual(5);
+    expect(kpi.top).toBeLessThanOrEqual(13);
+    expect(kpi.right).toBeGreaterThanOrEqual(5);
+    expect(kpi.right).toBeLessThanOrEqual(13);
+    expect(kpi.width).toBeGreaterThanOrEqual(32);
+    expect(kpi.height).toBeGreaterThanOrEqual(32);
+  }
+
+  const card=page.locator('.ops-route-card:has(.route-card-actions a.btn)').first();
+  await expect(card).toBeVisible();
+  const actions=card.locator('.route-card-actions > a.btn');
+  await expect(actions).toHaveCount(2);
+  const bounds=await actions.evaluateAll(els=>els.map(el=>{
+    const r=el.getBoundingClientRect();
+    return {left:r.left,top:r.top,width:r.width,height:r.height};
+  }));
+  const [open,preview]=bounds;
+  expect(Math.abs(open.top-preview.top)).toBeLessThanOrEqual(1);
+  expect(Math.abs(open.height-preview.height)).toBeLessThanOrEqual(1);
+  expect(open.left+open.width).toBeLessThan(preview.left);
+  expect(open.width/(open.width+preview.width)).toBeGreaterThan(0.54);
+  expect(open.width/(open.width+preview.width)).toBeLessThan(0.62);
+  expect(await layoutViolations(page)).toEqual([]);
+});
+
+test('mobile Safari: editable form controls meet the 16px no-focus-zoom threshold', async ({ dispatcherPage: page }, testInfo) => {
+  test.skip(testInfo.project.name!=='iphone-webkit', 'iOS Safari input focus behavior');
+  await page.goto('/dispatcher/routes/910001/');
+  const controls=page.locator('#generate-route-form input[type="date"],#generate-route-form select');
+  await expect(controls).toHaveCount(2);
+  const result=await controls.evaluateAll(els=>els.map(el=>({
+    fontSize:parseFloat(getComputedStyle(el).fontSize),
+    kind:el.tagName.toLowerCase(),
+  })));
+  for(const field of result)expect(field.fontSize).toBeGreaterThanOrEqual(16);
+  const viewport=await page.locator('meta[name="viewport"]').getAttribute('content');
+  expect(viewport).not.toContain('maximum-scale');
+  expect(viewport).not.toContain('user-scalable=no');
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth+1)).toBe(true);
 });

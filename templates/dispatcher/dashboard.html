@@ -2,7 +2,7 @@
 {% load static %}
 {% block title %}Сегодня · Courier Control{% endblock %}
 {% block head %}
-<link rel="stylesheet" href="{% static 'css/dispatcher-professional.css' %}?v=20261010-2">
+<link rel="stylesheet" href="{% static 'css/dispatcher-professional.css' %}?v=20261011-1">
 {% endblock %}
 {% block content %}
 <div class="ops-dashboard" id="dispatcher-day-workspace">
@@ -129,14 +129,14 @@
 
       {% if item.order_suggestion %}<div class="route-order-note">Курьер изменил порядок · <a href="{% url 'run_detail' item.run.pk %}">нужно решение</a></div>{% endif %}
 
-      <div class="route-card-actions">
+      <div class="route-card-actions {% if item.run.assigned_courier %}has-preview{% endif %}">
         <a class="btn small primary" href="{% url 'run_detail' item.run.pk %}">Открыть маршрут</a>
         {% if item.run.assigned_courier %}<a class="btn alt small" href="{% url 'courier_preview' item.run.assigned_courier.pk %}?date={{ selected_date|date:'Y-m-d' }}">Как видит курьер</a>{% endif %}
         {% if not item.run.assigned_courier and item.state != 'completed' %}
         <div class="route-quick-assign">
           <select class="route-assign-select" data-url="{% url 'run_reassign' item.run.pk %}" aria-label="Назначить курьера">
             <option value="">Назначить курьера…</option>
-            {% for c in couriers %}<option value="{{ c.pk }}">{{ c.get_full_name|default:c.username }}{% if c.is_reserve_courier %} · Резерв{% endif %}</option>{% endfor %}
+            {% for c in couriers %}<option value="{{ c.pk }}">{{ c.get_full_name|default:c.username }}</option>{% endfor %}
           </select>
         </div>
         {% endif %}

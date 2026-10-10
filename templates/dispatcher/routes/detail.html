@@ -19,7 +19,7 @@
 <div class="route-head">
   <div>
     <h1>{{ route.name }}</h1>
-    <div class="muted">Обычный курьер: {% if route.default_courier %}{{ route.default_courier.get_full_name|default:route.default_courier.username }}{% else %}не назначен{% endif %}</div>
+    <div class="muted">{% if route.default_courier %}{{ route.default_courier.get_full_name|default:route.default_courier.username }}{% else %}Курьер не назначен{% endif %}</div>
   </div>
   <div class="route-head-actions">
     <a class="btn alt" href="{% url 'route_list' %}">Все маршруты</a>
@@ -51,8 +51,8 @@
     <label>Дата<input type="date" name="run_date" value="{{ planning_date|date:'Y-m-d' }}" required></label>
     <label>Кто едет
       <select name="courier_id">
-        <option value="">{% if route.default_courier %}Обычный: {{ route.default_courier.get_full_name|default:route.default_courier.username }}{% else %}Не назначен{% endif %}</option>
-        {% for c in couriers %}<option value="{{ c.pk }}">{{ c.get_full_name|default:c.username }}{% if c.is_reserve_courier %} · РЕЗЕРВ{% endif %}</option>{% endfor %}
+        <option value="">{% if route.default_courier %}{{ route.default_courier.get_full_name|default:route.default_courier.username }}{% else %}Не назначен{% endif %}</option>
+        {% for c in couriers %}<option value="{{ c.pk }}">{{ c.get_full_name|default:c.username }}</option>{% endfor %}
       </select>
     </label>
     <button class="btn good">Создать на этот день</button>

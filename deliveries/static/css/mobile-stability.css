@@ -916,3 +916,13 @@ body:not(.dispatcher-ui):not(.courier-ui) main.wrap > .card form .btn { margin-t
     white-space: nowrap;
   }
 }
+
+/* iOS Safari enlarges the viewport when a focused form control renders below 16px.
+   Keep native pinch zoom available; only raise editable fields to the safe threshold. */
+@media (hover:none) and (pointer:coarse) {
+  input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]):not([type="button"]):not([type="submit"]):not([type="reset"]),
+  select,
+  textarea {
+    font-size:16px!important;
+  }
+}
