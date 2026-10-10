@@ -47,7 +47,7 @@
     <label>Фактический курьер
       <select class="run-reassign-select" data-url="{% url 'run_reassign' run.pk %}" name="courier_id">
         <option value="">Не назначен</option>
-        {% for c in couriers %}<option value="{{ c.pk }}" {% if run.assigned_courier_id == c.pk %}selected{% endif %}>{{ c.get_full_name|default:c.username }}{% if c.is_reserve_courier %} · Резерв{% endif %}</option>{% endfor %}
+        {% for c in couriers %}<option value="{{ c.pk }}" {% if run.assigned_courier_id == c.pk %}selected{% endif %}>{{ c.get_full_name|default:c.username }}</option>{% endfor %}
       </select>
     </label>
     <div class="muted" style="margin-top:8px">Смена применяется сразу, без отдельной кнопки сохранения.</div>
