@@ -102,3 +102,37 @@
   .editor-address{font-size:15px}
   .editor-identity{font-size:14px}
 }
+
+/* Point editor: stable right-side controls, independent of address wrapping.
+   The hidden pencil still owns its column so opening a card cannot shift text or chevron. */
+.editor-summary.template-point-summary{
+  grid-template-columns:36px minmax(0,1fr) 166px 36px 24px;
+  column-gap:9px;
+  padding-right:22px;
+}
+.template-point-summary>.editor-order{grid-column:1;grid-row:1}
+.template-point-summary>.editor-copy{grid-column:2;grid-row:1}
+.template-point-summary>.day-toggle{grid-column:3;grid-row:1}
+.template-point-summary>.editor-address-pencil{
+  grid-column:4;grid-row:1;justify-self:center;align-self:center;
+  margin:0;
+}
+.template-point-summary>.route-chevron{
+  grid-column:5;grid-row:1;justify-self:center;align-self:center;
+  margin-right:0;
+}
+@media(max-width:800px){
+  .editor-summary.template-point-summary{
+    grid-template-columns:36px minmax(0,1fr) 36px 24px;
+    column-gap:8px;
+    padding-right:22px;
+  }
+  .template-point-summary>.editor-order{grid-row:1 / 3}
+  .template-point-summary>.editor-copy{grid-column:2;grid-row:1}
+  .template-point-summary>.day-toggle{grid-column:2;grid-row:2;justify-self:start}
+  .template-point-summary>.editor-address-pencil{grid-column:3;grid-row:1 / 3}
+  .template-point-summary>.route-chevron{grid-column:4;grid-row:1 / 3}
+}
+@media(max-width:480px){
+  .editor-summary.template-point-summary{column-gap:7px;padding-right:22px}
+}

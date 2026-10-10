@@ -2,7 +2,7 @@
 {% load static %}
 {% block title %}{{ route.name }} · Courier Control{% endblock %}
 {% block head %}
-<link rel="stylesheet" href="{% static 'css/dispatcher-route-editor.css' %}?v=20261011-1">
+<link rel="stylesheet" href="{% static 'css/dispatcher-route-editor.css' %}?v=20261011-2">
 <style>
 .route-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}.route-head h1{margin:0 0 5px}.route-head-actions{display:flex;gap:7px;flex-wrap:wrap}
 .variant-picker-label{display:block;margin-bottom:10px}
@@ -117,7 +117,7 @@
     <div class="route-editor-list">
       {% for item in template.items.all %}
       <details class="route-editor-item {% if not item.enabled_by_default %}is-disabled{% endif %}" data-id="{{ item.pk }}" data-point-id="{{ item.point_id }}" data-movable="1" draggable="true">
-        <summary class="editor-summary">
+        <summary class="editor-summary template-point-summary">
           <span class="editor-order">{{ item.route_order }}</span>
           <div class="editor-copy">
             <div class="editor-identity">
@@ -131,9 +131,6 @@
             </div>
             <div class="editor-address-row">
               <span class="editor-address">{{ item.point.address }}</span>
-              <button class="editor-address-pencil" type="button" title="Изменить адрес" aria-label="Изменить адрес" aria-controls="address-editor-{{ item.pk }}" aria-expanded="false">
-                <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.6 3.8a2.1 2.1 0 0 1 3 3L9.5 17l-4 1 1-4L16.6 3.8Z"/></svg>
-              </button>
             </div>
             <div class="editor-meta">
               <span class="meta-time" {% if not item.time_window %}hidden{% endif %}>{{ item.time_window }}</span>
@@ -145,6 +142,9 @@
             <input class="day-item-toggle" type="checkbox" form="generate-route-form" name="enabled_items" value="{{ item.pk }}" data-day-toggle-url="{% url 'template_item_day_toggle' item.pk %}" {% if item.pk in day_enabled_item_ids %}checked{% endif %}>
             <span>{% if item.pk in day_enabled_item_ids %}В этот день{% else %}Исключена на день{% endif %}</span>
           </label>
+          <button class="editor-address-pencil" type="button" title="Изменить адрес" aria-label="Изменить адрес" aria-controls="address-editor-{{ item.pk }}" aria-expanded="false">
+            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.6 3.8a2.1 2.1 0 0 1 3 3L9.5 17l-4 1 1-4L16.6 3.8Z"/></svg>
+          </button>
           <span class="route-chevron" aria-hidden="true"></span>
         </summary>
         <div class="editor-body">

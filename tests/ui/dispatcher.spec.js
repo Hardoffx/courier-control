@@ -176,6 +176,55 @@ test('route-editor: pencil appears only while open and chevron does not shift', 
   await expect(pencil).toBeHidden();
 });
 
+test('route-editor: fixed action columns on short and long addresses', async ({ dispatcherPage: page }) => {
+  await page.goto('/dispatcher/routes/910002/');
+  const cards=page.locator('#template-route-editor-workspace .route-editor-item');
+  expect(await cards.count()).toBeGreaterThan(12);
+
+  const measure=()=>cards.evaluateAll(elements=>elements.slice(0,12).map(card=>{
+    const summary=card.querySelector(':scope > .editor-summary');
+    const pencil=summary.querySelector(':scope > .editor-address-pencil');
+    const arrow=summary.querySelector(':scope > .route-chevron');
+    const rect=summary.getBoundingClientRect();
+    const pen=pencil.getBoundingClientRect();
+    const chevron=arrow.getBoundingClientRect();
+    return {
+      rightInset:rect.right-chevron.right,
+      pencilCenter:pen.left+pen.width/2-rect.left,
+      chevronCenter:chevron.left+chevron.width/2-rect.left,
+      pencilVisible:getComputedStyle(pencil).visibility==='visible',
+      address:summary.querySelector('.editor-address').textContent.trim(),
+    };
+  }));
+
+  const closed=await measure();
+  expect(new Set(closed.map(row=>row.address.length)).size).toBeGreaterThan(1);
+  const base=closed[0];
+  for(const row of closed){
+    expect(row.pencilVisible).toBe(false);
+    expect(Math.abs(row.pencilCenter-base.pencilCenter)).toBeLessThanOrEqual(2);
+    expect(Math.abs(row.chevronCenter-base.chevronCenter)).toBeLessThanOrEqual(2);
+    expect(row.rightInset).toBeGreaterThanOrEqual(18);
+    expect(row.pencilCenter).toBeLessThan(row.chevronCenter-20);
+  }
+
+  const card=cards.first();
+  await card.locator(':scope > .editor-summary').click();
+  await expect(card).toHaveAttribute('open','');
+  await expect.poll(()=>card.evaluate(el=>el.style.height)).toBe('');
+  const opened=(await measure())[0];
+  expect(opened.pencilVisible).toBe(true);
+  expect(Math.abs(opened.pencilCenter-base.pencilCenter)).toBeLessThanOrEqual(2);
+  expect(Math.abs(opened.chevronCenter-base.chevronCenter)).toBeLessThanOrEqual(2);
+
+  await card.locator('.editor-address-pencil').click();
+  await expect(card.locator('.editor-address-inline')).toBeVisible();
+  const editing=(await measure())[0];
+  expect(Math.abs(editing.pencilCenter-base.pencilCenter)).toBeLessThanOrEqual(2);
+  expect(Math.abs(editing.chevronCenter-base.chevronCenter)).toBeLessThanOrEqual(2);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth+1)).toBe(true);
+});
+
 test('route-editor: responsive geometry', async ({ dispatcherPage: page }) => {
   await page.goto('/dispatcher/routes/910001/');
   await expect(page.locator('#template-route-editor-workspace')).toBeVisible();
