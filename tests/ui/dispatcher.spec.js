@@ -128,6 +128,13 @@ test('route-editor: pencil edits address inline without page reload', async ({ d
   await expect(address).toHaveText('Москва, ул Тестовая 22');
   await expect.poll(() => page.evaluate(() => window.__inlineAddressMarker || '')).toBe('alive');
   await expect(card).toHaveAttribute('open', '');
+  // A sticky header can cover scrolled-away controls without any layout overlap.
+  // Check the complete document geometry from its natural top position.
+  await page.evaluate(() => {
+    document.documentElement.style.scrollBehavior = 'auto';
+    window.scrollTo(0, 0);
+  });
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
   expect(await layoutViolations(page)).toEqual([]);
 });
 
