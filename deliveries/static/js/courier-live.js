@@ -42,7 +42,16 @@ async function rebindCourierUI(){
   await import(`./courier-bindings.js?v=20261010-1&live=${bindingVersion}`);
 }
 
-async function refreshCourierShell(target=window.location.href,{historyMode='none'}={}){
+function scrollToSelectedCard(){
+  const card=document.querySelector('#top > .selected-card');
+  if(!card)return;
+  const headerBottom=document.querySelector('.courier-top')?.getBoundingClientRect().bottom||0;
+  const top=Math.max(0,window.scrollY+card.getBoundingClientRect().top-headerBottom-12);
+  const reduceMotion=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  window.scrollTo({top,behavior:reduceMotion?'auto':'smooth'});
+}
+
+async function refreshCourierShell(target=window.location.href,{historyMode='none',scrollToSelected=false}={}){
   const url=target instanceof URL?target:new URL(target,window.location.href);
   if(activeRefresh)activeRefresh.abort();
   const controller=new AbortController();
@@ -70,7 +79,11 @@ async function refreshCourierShell(target=window.location.href,{historyMode='non
     if(historyMode==='push')window.history.pushState({},'',url);
     else if(historyMode==='replace')window.history.replaceState({},'',url);
     await rebindCourierUI();
-    requestAnimationFrame(()=>window.scrollTo({top:scrollY,behavior:'auto'}));
+    requestAnimationFrame(()=>{
+      if(controller.signal.aborted)return;
+      if(scrollToSelected)scrollToSelectedCard();
+      else window.scrollTo({top:scrollY,behavior:'auto'});
+    });
   }catch(err){
     if(err.name!=='AbortError')liveToast(err.message,true);
   }finally{
@@ -129,7 +142,7 @@ document.addEventListener('click',e=>{
   const url=new URL(link.href,window.location.href);
   if(!url.searchParams.has('selected'))return;
   e.preventDefault();
-  void refreshCourierShell(url,{historyMode:'push'});
+  void refreshCourierShell(url,{historyMode:'push',scrollToSelected:link.classList.contains('route-select-btn')});
 });
 
 window.addEventListener('popstate',()=>{
