@@ -174,7 +174,7 @@ document.querySelectorAll('.ajax-reorder-form').forEach(form=>form.addEventListe
   if(!item||!list)return form.submit();
 
   const direction=form.querySelector('input[name=direction]')?.value;
-  const siblings=[...list.children].filter(el=>el.matches('.route-item:not(.done)'));
+  const siblings=[...list.children].filter(el=>el.matches('.route-item'));
   const index=siblings.indexOf(item);
   const other=direction==='up'?siblings[index-1]:siblings[index+1];
   if(!other)return;
