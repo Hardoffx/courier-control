@@ -12,7 +12,22 @@
 .editor-kind{font-size:11px;font-weight:850;letter-spacing:.03em;padding:4px 7px;border-radius:8px;background:#edf4ff;color:#2767ad}
 .editor-kind.cmd{background:#e8f8ee;color:#2f7d4b}
 .editor-kind.invitro{background:#eaf6ff;color:#2f78aa}
-.editor-address{font-weight:750;margin-top:3px;overflow-wrap:anywhere}
+.editor-address-row{display:flex;align-items:center;gap:6px;min-width:0;margin-top:3px}
+.editor-address{font-weight:750;min-width:0;flex:0 1 auto;overflow-wrap:anywhere}
+.editor-address-pencil{display:inline-flex;align-items:center;justify-content:center;flex:0 0 36px;width:36px;height:36px;padding:7px;border:1px solid transparent;border-radius:9px;background:transparent;color:#477db8;cursor:pointer}
+.editor-address-pencil svg{width:19px;height:19px}
+.editor-address-pencil:hover,.editor-address-pencil:focus-visible{background:#eaf3ff;border-color:#c2d9f7;outline-offset:2px}
+.editor-address-inline{display:grid;grid-template-columns:minmax(0,1fr) 40px 40px;align-items:center;gap:7px;width:100%;min-width:0}
+.editor-address-inline[hidden],.editor-address-row[hidden]{display:none!important}
+.editor-address-inline input[name="address"]{min-width:0;width:100%;height:44px;min-height:44px;margin:0;padding:9px 11px;box-sizing:border-box;font-size:16px}
+.editor-address-inline button{display:flex;align-items:center;justify-content:center;width:40px;height:44px;min-width:40px;border:1px solid #cbd9eb;border-radius:10px;background:#f1f6fd;color:#456281;cursor:pointer}
+.editor-address-inline button svg{width:20px;height:20px}
+.editor-address-inline .editor-address-apply{color:#fff;background:#3478ee;border-color:#3478ee}
+.editor-address-inline button:disabled{opacity:.6;cursor:wait}
+.editor-summary.is-address-editing{grid-template-columns:minmax(0,1fr)}
+.editor-summary.is-address-editing>.editor-order,.editor-summary.is-address-editing>.day-toggle,.editor-summary.is-address-editing>.route-chevron,
+.editor-summary.is-address-editing .editor-identity,.editor-summary.is-address-editing .editor-meta{display:none!important}
+.editor-summary.is-address-editing>.editor-copy{grid-column:1/-1;width:100%;min-width:0}
 .editor-meta{font-size:12px;color:var(--muted);margin-top:4px;display:flex;gap:6px;flex-wrap:wrap}
 .day-toggle{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:750;color:#41546f;white-space:nowrap}
 .day-toggle input{width:20px;height:20px;margin:0}.day-toggle.is-saving{opacity:.55}.day-toggle:has(input:not(:checked)) span{color:#8a5a12}
@@ -21,9 +36,6 @@
 .editor-fields{display:grid;grid-template-columns:180px minmax(0,1fr) auto;gap:7px;align-items:end}
 .editor-fields label{margin:0}
 .editor-fields .save-inline{min-height:44px}
-.editor-address-form{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px;align-items:end;margin-bottom:8px}
-.editor-address-form label{margin:0}
-.editor-address-form .btn{min-height:44px;margin:0}
 .create-point-grid [hidden]{display:none!important}
 .editor-secondary{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-top:8px}
 .editor-secondary .btn{margin:0}
@@ -75,8 +87,6 @@
   .day-toggle{grid-column:2/3;justify-self:start}
   .route-chevron{grid-column:3;grid-row:1/3}
   .editor-fields{grid-template-columns:1fr;gap:6px}
-  .editor-address-form{grid-template-columns:1fr;gap:6px}
-  .editor-address-form .btn{width:100%}
   .editor-fields>*{min-width:0}
   .editor-fields input{min-height:44px;padding:9px 11px}
   .editor-body{padding:9px 10px}
