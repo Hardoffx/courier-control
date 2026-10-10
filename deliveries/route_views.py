@@ -9,7 +9,7 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from accounts.models import User
 from .models import Delivery, DeliveryEvent, DeliveryPoint, Route, RouteOrderSuggestion, RouteRun, RouteTemplate, RouteTemplateItem
-from .route_services import generate_route_run, reassign_route_run, learn_template_from_run, dissolve_route_run, suggestion_comparison
+from .route_services import generate_route_run, reassign_route_run, learn_template_from_run, dissolve_route_run, suggestion_comparison, sync_template_order_from_run
 from .import_services import normalize_delivery_address
 
 
@@ -751,6 +751,7 @@ def run_delivery_move(request, pk, delivery_pk):
     if 0 <= target < len(items):
         items[idx], items[target] = items[target], items[idx]
         _save_order(items)
+        sync_template_order_from_run(run)
     if _wants_json(request):
         return JsonResponse({'ok': True, 'action': action})
     return redirect('run_detail', pk=pk)
@@ -771,6 +772,7 @@ def run_reorder(request, pk):
             if item.route_order != slot:
                 item.route_order = slot
                 item.save(update_fields=['route_order'])
+        sync_template_order_from_run(run)
     if _wants_json(request):
         return JsonResponse({'ok': True, 'order': [item.pk for item in ordered]})
     messages.success(request, 'Порядок маршрута сохранён')
