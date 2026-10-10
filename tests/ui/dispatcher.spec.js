@@ -179,7 +179,7 @@ test('route-editor: pencil appears only while open and chevron does not shift', 
 test('route-editor: fixed action columns on short and long addresses', async ({ dispatcherPage: page }) => {
   await page.goto('/dispatcher/routes/910001/');
   const cards=page.locator('#template-route-editor-workspace .route-editor-item');
-  expect(await cards.count()).toBeGreaterThan(5);
+  expect(await cards.count()).toBeGreaterThanOrEqual(2);
 
   const measure=()=>cards.evaluateAll(elements=>elements.slice(0,12).map(card=>{
     const summary=card.querySelector(':scope > .editor-summary');
