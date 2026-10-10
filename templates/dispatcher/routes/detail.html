@@ -23,7 +23,7 @@
 <div class="card variant-row">
   <b>Шаблон:</b>
   {% for t in templates %}
-    <a class="btn {% if template.pk != t.pk %}alt{% endif %}" href="?template={{ t.pk }}">{{ t.name|default:t.get_kind_display }}</a>
+    <a class="btn {% if template.pk != t.pk %}alt{% endif %}" href="?template={{ t.pk }}&date={{ planning_date|date:'Y-m-d' }}">{{ t.name|default:t.get_kind_display }}</a>
   {% endfor %}
 </div>
 
@@ -84,10 +84,10 @@
         {% csrf_token %}
         <div class="create-point-grid">
           <label>Тип
-            <select name="kind">{% for value,label in point_kinds %}<option value="{{ value }}">{{ label }}</option>{% endfor %}</select>
+            <select name="kind" class="create-point-kind">{% for value,label in point_kinds %}<option value="{{ value }}">{{ label }}</option>{% endfor %}</select>
           </label>
-          <label>Код ЦМД<input name="code" placeholder="Например 1370/4628/5180"></label>
-          <label class="wide">Название / обозначение<input name="name" placeholder="Необязательно для ИНВИТРО"></label>
+          <label data-point-field="code"><span>Код ЦМД</span><input name="code" placeholder="Например 1370/4628/5180"></label>
+          <label class="wide" data-point-field="name"><span class="point-name-label">Название / обозначение</span><input name="name" placeholder="Название"></label>
           <label class="wide">Адрес<input name="address" required placeholder="Москва, ул ..."></label>
           <label>Телефон<input name="phone" inputmode="tel"></label>
           <label>Время<input name="time_window" placeholder="12:00-15:00"></label>
@@ -128,12 +128,18 @@
             </div>
           </div>
           <label class="day-toggle" title="Только для создаваемого дня">
-            <input class="day-item-toggle" type="checkbox" form="generate-route-form" name="enabled_items" value="{{ item.pk }}" data-day-toggle-url="{% url 'template_item_day_toggle' item.pk %}" {% if planning_run %}{% if item.point_id in day_point_ids %}checked{% endif %}{% elif item.enabled_by_default %}checked{% endif %}>
-            <span>{% if planning_run and item.point_id not in day_point_ids %}Исключена на день{% else %}В этот день{% endif %}</span>
+            <input class="day-item-toggle" type="checkbox" form="generate-route-form" name="enabled_items" value="{{ item.pk }}" data-day-toggle-url="{% url 'template_item_day_toggle' item.pk %}" {% if item.pk in day_enabled_item_ids %}checked{% endif %}>
+            <span>{% if item.pk in day_enabled_item_ids %}В этот день{% else %}Исключена на день{% endif %}</span>
           </label>
           <span class="route-chevron" aria-hidden="true"></span>
         </summary>
         <div class="editor-body">
+          <form class="point-address-form editor-address-form" method="post" action="{% url 'template_item_update' item.pk %}">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="point_address">
+            <label>Адрес точки<input name="address" value="{{ item.point.address }}" maxlength="500" required></label>
+            <button class="btn alt" type="submit">Сохранить адрес</button>
+          </form>
           <form class="inline-edit-form editor-fields" method="post" action="{% url 'template_item_update' item.pk %}">
             {% csrf_token %}
             <input type="hidden" name="action" value="edit">
@@ -164,5 +170,5 @@
 {% endif %}
 {% endblock %}
 {% block scripts %}
-<script type="module" src="{% static 'js/dispatcher-route-editor.js' %}?v=20260924-4"></script>
+<script type="module" src="{% static 'js/dispatcher-route-editor.js' %}?v=20261010-1"></script>
 {% endblock %}

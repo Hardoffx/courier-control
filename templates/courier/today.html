@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
 {% block title %}Мой маршрут · Courier Control{% endblock %}
-{% block head %}<link rel="stylesheet" href="{% static 'css/route-accordion.css' %}">
+{% block head %}<link rel="stylesheet" href="{% static 'css/route-accordion.css' %}?v=20261010-1">
 <style>
 
 .route-item.motion-accordion{will-change:height}
@@ -120,5 +120,5 @@
 </div>
 {% endblock %}
 {% block scripts %}
-<script type="module" src="{% static 'js/courier-live.js' %}?v=20260924-1"></script>
+<script type="module" src="{% static 'js/courier-live.js' %}?v=20261010-1"></script>
 {% endblock %}

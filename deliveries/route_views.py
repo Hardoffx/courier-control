@@ -61,6 +61,32 @@ def _wants_json(request):
     return request.headers.get('x-requested-with') == 'XMLHttpRequest'
 
 
+def _template_kind_for_date(run_date):
+    weekday = run_date.weekday()
+    if weekday == 5:
+        return RouteTemplate.Kind.SATURDAY
+    if weekday == 6:
+        return RouteTemplate.Kind.SUNDAY
+    return RouteTemplate.Kind.WEEKDAY
+
+
+def _day_selection_key(template_id, run_date):
+    return f'route-day-selection:{template_id}:{run_date.isoformat()}'
+
+
+def _day_selection_overrides(request, template_id, run_date):
+    raw = request.session.get(_day_selection_key(template_id, run_date), {})
+    result = {}
+    if not isinstance(raw, dict):
+        return result
+    for item_id, enabled in raw.items():
+        try:
+            result[int(item_id)] = bool(enabled)
+        except (TypeError, ValueError):
+            continue
+    return result
+
+
 def _duration_label(delta):
     if delta is None:
         return ''
@@ -77,21 +103,31 @@ def _point_from_post(request):
     kind = request.POST.get('kind', DeliveryPoint.Kind.UNKNOWN).strip()
     if kind not in kinds:
         kind = DeliveryPoint.Kind.UNKNOWN
-    code = request.POST.get('code', '').strip()[:100]
+
+    raw_code = request.POST.get('code', '').strip()[:100]
+    raw_name = request.POST.get('name', '').strip()[:255]
     address = normalize_delivery_address(request.POST.get('address', ''))[:500]
     phone = request.POST.get('phone', '').strip()[:64]
-    name = request.POST.get('name', '').strip()[:255]
     if not address:
         raise ValueError('Укажите адрес новой точки')
-    if not name:
-        if kind == DeliveryPoint.Kind.CMD:
-            name = code or 'ЦМД'
-        elif kind == DeliveryPoint.Kind.INVITRO:
-            name = 'ИНВИТРО'
-        elif kind == DeliveryPoint.Kind.SERVICE:
-            name = 'Служебная точка'
-        else:
-            name = address[:255]
+
+    if kind == DeliveryPoint.Kind.CMD:
+        code = raw_code
+        if not code:
+            raise ValueError('Укажите код ЦМД')
+        name = code
+    elif kind == DeliveryPoint.Kind.INVITRO:
+        code = ''
+        name = raw_name or 'ИНВИТРО'
+    elif kind == DeliveryPoint.Kind.EXTERNAL:
+        code = ''
+        name = raw_name or 'Сторонняя лаборатория'
+    elif kind == DeliveryPoint.Kind.SERVICE:
+        code = ''
+        name = raw_name or 'Служебная точка'
+    else:
+        code = ''
+        name = raw_name or address[:255]
 
     exact = DeliveryPoint.objects.filter(address=address, is_active=True)
     if code:
@@ -111,7 +147,6 @@ def _point_from_post(request):
         is_active=True,
     )
     return point, True
-
 
 @dispatcher_required
 def route_list(request):
@@ -136,7 +171,8 @@ def route_edit(request, pk=None):
             route.save()
             if not route.templates.exists():
                 RouteTemplate.objects.create(route=route, kind=RouteTemplate.Kind.WEEKDAY)
-                RouteTemplate.objects.create(route=route, kind=RouteTemplate.Kind.WEEKEND)
+                RouteTemplate.objects.create(route=route, kind=RouteTemplate.Kind.SATURDAY)
+                RouteTemplate.objects.create(route=route, kind=RouteTemplate.Kind.SUNDAY)
             messages.success(request, 'Маршрут сохранён')
             return redirect('route_detail', pk=route.pk)
     return render(request, 'dispatcher/routes/route_form.html', {'route': route, 'couriers': couriers})
@@ -145,28 +181,69 @@ def route_edit(request, pk=None):
 @dispatcher_required
 def route_detail(request, pk):
     route = get_object_or_404(Route, pk=pk)
-    templates = route.templates.filter(is_active=True)
-    template_id = request.GET.get('template')
-    template = templates.filter(pk=template_id).first() if template_id else templates.order_by('kind', 'id').first()
-    points = DeliveryPoint.objects.filter(is_active=True).order_by('kind', 'name')
-    planning_date=timezone.localdate()
-    raw_date=request.GET.get('date','').strip()
+    planning_date = timezone.localdate()
+    raw_date = request.GET.get('date', '').strip()
     if raw_date:
-        try: planning_date=date.fromisoformat(raw_date)
-        except ValueError: pass
-    planning_run=None
-    day_point_ids=set()
-    if template:
-        planning_run=(RouteRun.objects.filter(route=route,template=template,run_date=planning_date)
-                      .exclude(status=RouteRun.Status.DONE).order_by('-created_at').first())
-        if planning_run:
-            day_point_ids=set(planning_run.deliveries.values_list('point_id',flat=True))
-    return render(request, 'dispatcher/routes/detail.html', {
-        'route':route,'templates':templates,'template':template,'points':points,'couriers':_couriers(),
-        'point_kinds':DeliveryPoint.Kind.choices,'today':timezone.localdate(),'planning_date':planning_date,
-        'planning_run':planning_run,'day_point_ids':day_point_ids,
-    })
+        try:
+            planning_date = date.fromisoformat(raw_date)
+        except ValueError:
+            pass
 
+    templates = list(route.templates.filter(is_active=True).order_by('id'))
+    template_id = request.GET.get('template')
+    template = next((t for t in templates if str(t.pk) == str(template_id)), None) if template_id else None
+    if template is None and templates:
+        wanted_kind = _template_kind_for_date(planning_date)
+        template = next((t for t in templates if t.kind == wanted_kind), None)
+        if template is None and wanted_kind in (RouteTemplate.Kind.SATURDAY, RouteTemplate.Kind.SUNDAY):
+            template = next((t for t in templates if t.kind == RouteTemplate.Kind.WEEKEND), None)
+        template = template or next((t for t in templates if t.kind == RouteTemplate.Kind.WEEKDAY), None) or templates[0]
+
+    kind_order = {
+        RouteTemplate.Kind.WEEKDAY: 0,
+        RouteTemplate.Kind.SATURDAY: 1,
+        RouteTemplate.Kind.SUNDAY: 2,
+        RouteTemplate.Kind.WEEKEND: 3,
+        RouteTemplate.Kind.CUSTOM: 4,
+    }
+    templates.sort(key=lambda t: (kind_order.get(t.kind, 99), t.id))
+
+    points = DeliveryPoint.objects.filter(is_active=True).order_by('kind', 'name')
+    planning_run = None
+    day_point_ids = set()
+    day_enabled_item_ids = set()
+    if template:
+        planning_run = (
+            RouteRun.objects.filter(route=route, template=template, run_date=planning_date)
+            .exclude(status=RouteRun.Status.DONE)
+            .order_by('-created_at')
+            .first()
+        )
+        items = list(template.items.all())
+        if planning_run:
+            day_point_ids = set(planning_run.deliveries.values_list('point_id', flat=True))
+            day_enabled_item_ids = {item.pk for item in items if item.point_id in day_point_ids}
+        else:
+            day_enabled_item_ids = {item.pk for item in items if item.enabled_by_default}
+            for item_id, enabled in _day_selection_overrides(request, template.pk, planning_date).items():
+                if enabled:
+                    day_enabled_item_ids.add(item_id)
+                else:
+                    day_enabled_item_ids.discard(item_id)
+
+    return render(request, 'dispatcher/routes/detail.html', {
+        'route': route,
+        'templates': templates,
+        'template': template,
+        'points': points,
+        'couriers': _couriers(),
+        'point_kinds': DeliveryPoint.Kind.choices,
+        'today': timezone.localdate(),
+        'planning_date': planning_date,
+        'planning_run': planning_run,
+        'day_point_ids': day_point_ids,
+        'day_enabled_item_ids': day_enabled_item_ids,
+    })
 
 @dispatcher_required
 @require_POST
@@ -237,7 +314,7 @@ def template_create_point(request, pk):
 @dispatcher_required
 @require_POST
 def template_item_update(request, pk):
-    item = get_object_or_404(RouteTemplateItem.objects.select_related('template'), pk=pk)
+    item = get_object_or_404(RouteTemplateItem.objects.select_related('template', 'point'), pk=pk)
     action = request.POST.get('action')
     route_id = item.template.route_id
     template_id = item.template_id
@@ -258,6 +335,16 @@ def template_item_update(request, pk):
         item.comment = request.POST.get('comment', '').strip()[:255]
         item.save(update_fields=['time_window', 'comment'])
         payload.update({'time_window': item.time_window, 'comment': item.comment})
+    elif action == 'point_address':
+        address = normalize_delivery_address(request.POST.get('address', ''))[:500]
+        if not address:
+            if _wants_json(request):
+                return JsonResponse({'ok': False, 'error': 'Укажите адрес точки'}, status=400)
+            messages.error(request, 'Укажите адрес точки')
+            return redirect(f'/dispatcher/routes/{route_id}/?template={template_id}')
+        item.point.address = address
+        item.point.save(update_fields=['address', 'updated_at'])
+        payload.update({'address': item.point.address, 'point_id': item.point_id})
     elif action == 'remove':
         template = item.template
         item.delete()
@@ -283,7 +370,13 @@ def template_item_day_toggle(request, pk):
     run=(RouteRun.objects.filter(route=item.template.route,template=item.template,run_date=run_date)
          .exclude(status=RouteRun.Status.DONE).order_by('-created_at').first())
     if not run:
-        return JsonResponse({'ok':True,'pending':True,'enabled':enabled,'message':'Состав будет применён при создании маршрута'})
+        key = _day_selection_key(item.template_id, run_date)
+        overrides = request.session.get(key, {})
+        if not isinstance(overrides, dict):
+            overrides = {}
+        overrides[str(item.pk)] = enabled
+        request.session[key] = overrides
+        return JsonResponse({'ok':True,'pending':True,'enabled':enabled,'message':'Состав сохранён для выбранного дня'})
     delivery=run.deliveries.filter(point=item.point).order_by('id').first()
     if enabled:
         if not delivery:
@@ -329,6 +422,7 @@ def route_generate(request, pk):
     courier_id = request.POST.get('courier_id', '')
     courier = _couriers().filter(pk=courier_id).first() if courier_id else route.default_courier
     run = generate_route_run(template, run_date, courier=courier, enabled_item_ids=request.POST.getlist('enabled_items'))
+    request.session.pop(_day_selection_key(template.pk, run_date), None)
     messages.success(request, f'{route.name}: сформировано {run.deliveries.count()} точек на {run_date:%d.%m.%Y}')
     return redirect(f'/dispatcher/?date={run_date.isoformat()}')
 

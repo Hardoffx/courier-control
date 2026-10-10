@@ -1,4 +1,4 @@
-import "./courier-bindings.js";
+import "./courier-bindings.js?v=20261010-1";
 
 const csrf=()=>document.querySelector('[name=csrfmiddlewaretoken]')?.value||'';
 const courierActions=new Set(['done','problem','phone','daily_note','reopen']);
@@ -39,7 +39,7 @@ async function post(url,data,token=csrf()){
 
 async function rebindCourierUI(){
   bindingVersion+=1;
-  await import(`./courier-bindings.js?live=${bindingVersion}`);
+  await import(`./courier-bindings.js?v=20261010-1&live=${bindingVersion}`);
 }
 
 async function refreshCourierShell(target=window.location.href,{historyMode='none'}={}){

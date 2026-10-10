@@ -324,14 +324,78 @@ function bindPointSearch(scope=document){
     });
   });
 }
+
+function bindAddSourceAccordions(scope=document){
+  scope.querySelectorAll('.add-source-grid').forEach(grid=>{
+    grid.querySelectorAll('details.add-source-card:not([data-exclusive-bound])').forEach(card=>{
+      card.dataset.exclusiveBound='1';
+      card.addEventListener('toggle',()=>{
+        if(!card.open)return;
+        grid.querySelectorAll('details.add-source-card').forEach(other=>{
+          if(other!==card)other.open=false;
+        });
+      });
+    });
+  });
+}
+
+function syncCreatePointFields(form){
+  const kind=form.querySelector('.create-point-kind')?.value||'unknown';
+  const codeField=form.querySelector('[data-point-field="code"]');
+  const nameField=form.querySelector('[data-point-field="name"]');
+  const codeInput=codeField?.querySelector('input');
+  const nameInput=nameField?.querySelector('input');
+  const nameLabel=nameField?.querySelector('.point-name-label');
+
+  const isCmd=kind==='cmd';
+  if(codeField)codeField.hidden=!isCmd;
+  if(nameField)nameField.hidden=isCmd;
+  if(codeInput){codeInput.disabled=!isCmd;codeInput.required=isCmd}
+  if(nameInput)nameInput.disabled=isCmd;
+
+  if(!isCmd&&nameLabel&&nameInput){
+    if(kind==='invitro'){
+      nameLabel.textContent='Наименование ИНВИТРО';
+      nameInput.placeholder='Например, Митино-1';
+    }else if(kind==='external'){
+      nameLabel.textContent='Название лаборатории';
+      nameInput.placeholder='Необязательно — будет «Сторонняя лаборатория»';
+    }else if(kind==='service'){
+      nameLabel.textContent='Название служебной точки';
+      nameInput.placeholder='Необязательно — будет «Служебная точка»';
+    }else{
+      nameLabel.textContent='Название / обозначение';
+      nameInput.placeholder='Необязательно';
+    }
+  }
+}
+
+function bindCreatePointForms(scope=document){
+  scope.querySelectorAll('.ajax-template-form:not([data-kind-form-bound])').forEach(form=>{
+    const select=form.querySelector('.create-point-kind');
+    if(!select)return;
+    form.dataset.kindFormBound='1';
+    select.addEventListener('change',()=>syncCreatePointFields(form));
+    syncCreatePointFields(form);
+  });
+}
+
 bindPointSearch();
+bindAddSourceAccordions();
+bindCreatePointForms();
 
 async function refreshTemplateWorkspace(){
   const workspace=document.getElementById('template-route-editor-workspace');
   if(!workspace)return;
   workspace.classList.add('is-refreshing');
   try{
-    const response=await fetch(window.location.href,{headers:{'X-Requested-With':'XMLHttpRequest'}});
+    const target=new URL(window.location.href);
+    const generateForm=document.getElementById('generate-route-form');
+    const runDate=generateForm?.querySelector('[name="run_date"]')?.value||'';
+    const templateId=generateForm?.querySelector('[name="template_id"]')?.value||'';
+    if(runDate)target.searchParams.set('date',runDate);
+    if(templateId)target.searchParams.set('template',templateId);
+    const response=await fetch(target.toString(),{headers:{'X-Requested-With':'XMLHttpRequest'}});
     if(!response.ok)throw new Error('Не удалось обновить шаблон');
     const html=await response.text();
     const freshDoc=new DOMParser().parseFromString(html,'text/html');
@@ -341,6 +405,8 @@ async function refreshTemplateWorkspace(){
     initEditors(workspace);
     bindDayToggles(workspace);
     bindPointSearch(workspace);
+    bindAddSourceAccordions(workspace);
+    bindCreatePointForms(workspace);
     const count=workspace.querySelectorAll('.route-editor-item').length;
     const countLabel=document.querySelector('.template-point-count');
     if(countLabel)countLabel.textContent=count+' '+(count===1?'точка':(count>=2&&count<=4?'точки':'точек'))+' в шаблоне';
@@ -371,6 +437,28 @@ async function refreshRunWorkspace(){
     workspace.classList.remove('is-refreshing');
   }
 }
+
+document.addEventListener('submit',async e=>{
+  const form=e.target.closest('.point-address-form');
+  if(!form)return;
+  e.preventDefault();
+  if(form.dataset.busy==='1')return;
+  const button=e.submitter||form.querySelector('button[type="submit"]');
+  form.dataset.busy='1';
+  if(button)button.disabled=true;
+  try{
+    const payload=await post((form.getAttribute('action')||window.location.href),new FormData(form));
+    const card=form.closest('.route-editor-item');
+    const address=card?.querySelector('.editor-address');
+    if(address)address.textContent=payload.address||form.querySelector('[name="address"]')?.value.trim()||'';
+    toast('Адрес сохранён');
+  }catch(err){
+    toast(err.message,true);
+  }finally{
+    form.dataset.busy='0';
+    if(button)button.disabled=false;
+  }
+});
 
 document.addEventListener('submit',async e=>{
   const form=e.target.closest('.ajax-template-form');
