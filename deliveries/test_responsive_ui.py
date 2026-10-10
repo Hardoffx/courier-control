@@ -27,6 +27,20 @@ class ResponsiveOperationalUiTests(TestCase):
         self.assertIn('Создать новую точку', html)
         self.assertIn('name="phone"', html)
 
+    def test_template_picker_places_weekday_before_weekend_options(self):
+        RouteTemplate.objects.create(route=self.route, kind=RouteTemplate.Kind.SATURDAY)
+        RouteTemplate.objects.create(route=self.route, kind=RouteTemplate.Kind.SUNDAY)
+
+        response = self.client.get(reverse('route_detail', args=[self.route.pk]))
+        self.assertEqual(response.status_code, 200)
+        html = response.content.decode()
+        self.assertIn('class="variant-picker-grid"', html)
+        for kind in ('weekday', 'saturday', 'sunday'):
+            self.assertIn(f'data-template-kind="{kind}"', html)
+        self.assertIn('data-template-kind="weekday"]{grid-column:1/-1;order:0}', html)
+        self.assertIn('data-template-kind="saturday"]{order:1}', html)
+        self.assertIn('data-template-kind="sunday"]{order:2}', html)
+
     def test_route_generation_controls_remain_on_same_screen(self):
         response = self.client.get(reverse('route_detail', args=[self.route.pk]))
         self.assertContains(response, 'Создать маршрут на день')
