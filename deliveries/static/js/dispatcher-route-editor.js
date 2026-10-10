@@ -134,12 +134,58 @@ function setupDrag(root){
   list.addEventListener('dragend',()=>{dragged=null});
 }
 
+function bindAddressEditors(root){
+  root.querySelectorAll('.route-editor-item').forEach(card=>{
+    const pencil=card.querySelector('.editor-address-pencil');
+    const form=card.querySelector('.editor-address-inline');
+    const row=card.querySelector('.editor-address-row');
+    const summary=card.querySelector('.editor-summary');
+    const input=form?.querySelector('input[name="address"]');
+    if(!pencil||!form||!row||!summary||!input)return;
+
+    const close=(focusPencil=false)=>{
+      form.hidden=true;
+      row.hidden=false;
+      summary.classList.remove('is-address-editing');
+      pencil.setAttribute('aria-expanded','false');
+      if(focusPencil)pencil.focus({preventScroll:true});
+    };
+
+    pencil.addEventListener('click',e=>{
+      e.preventDefault();
+      e.stopPropagation();
+      input.value=card.querySelector('.editor-address')?.textContent.trim()||'';
+      row.hidden=true;
+      form.hidden=false;
+      summary.classList.add('is-address-editing');
+      pencil.setAttribute('aria-expanded','true');
+      input.focus({preventScroll:true});
+    });
+    // Controls inside the summary must never toggle its accordion.
+    form.addEventListener('click',e=>e.stopPropagation());
+    form.addEventListener('keydown',e=>{
+      if(e.key==='Escape'){
+        e.preventDefault();
+        e.stopPropagation();
+        close(true);
+      }
+    });
+    form.querySelector('.editor-address-cancel')?.addEventListener('click',e=>{
+      e.preventDefault();
+      e.stopPropagation();
+      close(true);
+    });
+    form.addEventListener('address:saved',()=>close(true));
+  });
+}
+
 function setupEditor(root){
   if(root.dataset.editorReady==='1')return;
   root.dataset.editorReady='1';
   const items=root.querySelectorAll('.route-editor-item');
   const accordion=new SingleAccordion(items,{bodySelector:':scope > .editor-body',summarySelector:':scope > .editor-summary'});
   setupDrag(root);
+  bindAddressEditors(root);
 
   root.addEventListener('click',async e=>{
     const interactive=e.target.closest('button,input,select,a,label');
@@ -449,8 +495,22 @@ document.addEventListener('submit',async e=>{
   try{
     const payload=await post((form.getAttribute('action')||window.location.href),new FormData(form));
     const card=form.closest('.route-editor-item');
-    const address=card?.querySelector('.editor-address');
-    if(address)address.textContent=payload.address||form.querySelector('[name="address"]')?.value.trim()||'';
+    const updatedAddress=payload.address||form.querySelector('[name="address"]')?.value.trim()||'';
+    const workspace=card?.closest('#template-route-editor-workspace');
+    const pointId=card?.dataset.pointId;
+    if(pointId&&workspace){
+      workspace.querySelectorAll('.route-editor-item').forEach(other=>{
+        if(other.dataset.pointId!==pointId)return;
+        const label=other.querySelector('.editor-address');
+        if(label)label.textContent=updatedAddress;
+        const field=other.querySelector('.editor-address-inline input[name="address"]');
+        if(field)field.value=updatedAddress;
+      });
+    }else{
+      const address=card?.querySelector('.editor-address');
+      if(address)address.textContent=updatedAddress;
+    }
+    form.dispatchEvent(new Event('address:saved'));
     toast('Адрес сохранён');
   }catch(err){
     toast(err.message,true);
