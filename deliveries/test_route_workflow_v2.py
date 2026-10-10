@@ -320,14 +320,16 @@ class CourierWorkspaceContractTests(TestCase):
         self.assertEqual(self.rows[2].route_order,original[self.rows[1].pk])
         self.assertIn(f'selected={self.rows[2].pk}',response.url)
 
-    def test_reorder_never_moves_completed_or_unrelated_rows(self):
+    def test_reorder_can_cross_completed_row_without_touching_unrelated_rows(self):
         extra=DeliveryPoint.objects.create(name='Extra',code='WX',address='Moscow, Extra')
         extra_delivery=Delivery.objects.create(delivery_date=self.day,courier=self.courier,point=extra,address=extra.address,source_label='Extra',route_order=99)
         self.rows[1].status=Delivery.Status.DONE; self.rows[1].completed_at=timezone.now(); self.rows[1].save()
+        moving_order=self.rows[2].route_order
         completed_order=self.rows[1].route_order
         self.client.post(reverse('courier_reorder',args=[self.rows[2].pk]),{'direction':'up'})
-        self.rows[1].refresh_from_db(); extra_delivery.refresh_from_db()
-        self.assertEqual(self.rows[1].route_order,completed_order)
+        self.rows[1].refresh_from_db(); self.rows[2].refresh_from_db(); extra_delivery.refresh_from_db()
+        self.assertEqual(self.rows[2].route_order,completed_order)
+        self.assertEqual(self.rows[1].route_order,moving_order)
         self.assertEqual(extra_delivery.route_order,99)
 
 
