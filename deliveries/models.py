@@ -39,7 +39,7 @@ class Route(models.Model):
 
 class RouteTemplate(models.Model):
     class Kind(models.TextChoices):
-        WEEKDAY='weekday','Будни'; WEEKEND='weekend','Выходные'; CUSTOM='custom','Особый'
+        WEEKDAY='weekday','Будни'; SATURDAY='saturday','Суббота'; SUNDAY='sunday','Воскресенье'; WEEKEND='weekend','Выходные'; CUSTOM='custom','Особый'
     route=models.ForeignKey(Route,on_delete=models.CASCADE,related_name='templates')
     kind=models.CharField(max_length=20,choices=Kind.choices)
     name=models.CharField(max_length=120,blank=True)
