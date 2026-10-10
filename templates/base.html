@@ -14,7 +14,7 @@
   <link rel="stylesheet" href="{% static 'css/ui-preview.css' %}">
   <title>{% block title %}Courier Control{% endblock %}</title>
   {% block head %}{% endblock %}
-  <link rel="stylesheet" href="{% static 'css/mobile-stability.css' %}">
+  <link rel="stylesheet" href="{% static 'css/mobile-stability.css' %}?v=20261010-2">
 </head>
 <body class="{% if user.is_authenticated and user.is_dispatcher %}dispatcher-ui{% elif user.is_authenticated %}courier-ui{% endif %}">
 {% if user.is_authenticated and user.is_dispatcher %}

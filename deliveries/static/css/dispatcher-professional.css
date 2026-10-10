@@ -15,10 +15,10 @@
 
 .ops-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:22px}
 .ops-kpi{position:relative;margin:0;padding:16px;border:1px solid #dfe7f1;border-radius:16px;background:#fff;box-shadow:0 5px 18px rgba(34,59,90,.045);min-height:116px;overflow:hidden}
-.ops-kpi::after{content:"";position:absolute;right:-26px;top:-36px;width:90px;height:90px;border-radius:50%;background:var(--kpi-soft,#edf5ff);opacity:.72}
+.ops-kpi::after{content:"";position:absolute;right:-26px;top:-36px;width:90px;height:90px;border-radius:50%;background:var(--kpi-soft,#edf5ff);opacity:.62}
 .ops-kpi-top{display:flex;align-items:center;justify-content:space-between;gap:10px;position:relative;z-index:1}
 .ops-kpi-label{font-size:13px;font-weight:800;color:#65748b}
-.ops-kpi-icon{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:var(--kpi-soft,#edf5ff);color:var(--kpi-color,#2877e7)}
+.ops-kpi-icon{width:34px;height:34px;min-width:34px;min-height:34px;aspect-ratio:1/1;border-radius:10px;display:grid;place-items:center;background:#fff;color:var(--kpi-color,#2877e7);border:1px solid rgba(37,104,190,.12);box-shadow:0 2px 8px rgba(32,76,128,.10);transform:translateY(-5px);flex:0 0 34px}
 .ops-kpi-icon svg{width:18px;height:18px}
 .ops-kpi-value{position:relative;z-index:1;font-size:34px;line-height:1;font-weight:900;letter-spacing:-.045em;color:#11213a;margin-top:8px}
 .ops-kpi-foot{position:relative;z-index:1;margin-top:7px;font-size:12px;color:#7a879b;font-weight:650;line-height:1.25}
@@ -34,7 +34,7 @@
 
 .attention-card{margin:0 0 22px;padding:14px 16px;border-radius:15px;border:1px solid #dfe7f1;background:#fff;box-shadow:0 4px 16px rgba(34,59,90,.04)}
 .attention-ok{display:flex;align-items:center;gap:11px}
-.attention-ok-icon{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:#eaf8ef;color:#179052;font-weight:950}
+.attention-ok-icon{width:34px;height:34px;min-width:34px;min-height:34px;aspect-ratio:1/1;flex:0 0 34px;border-radius:50%;display:grid;place-items:center;background:#eaf8ef;color:#179052;font-weight:950;line-height:1}
 .attention-title{font-size:15px;font-weight:850;color:#20324c}
 .attention-sub{font-size:12px;color:#7b889b;margin-top:2px}
 .attention-card.has-alerts{border-color:#efd39c;background:linear-gradient(180deg,#fffdf8,#fff)}

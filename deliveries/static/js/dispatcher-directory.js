@@ -37,6 +37,7 @@ async function refreshWorkspace(id,url=window.location.href,{historyMode='none'}
     if(historyMode==='push')window.history.pushState({},'',url);
     else if(historyMode==='replace')window.history.replaceState({},'',url);
     bindPointFilters();
+    bindCourierAccordions();
   }finally{
     document.getElementById(id)?.classList.remove('is-refreshing');
   }
@@ -59,6 +60,18 @@ document.addEventListener('submit',async e=>{
     if(button)button.disabled=false;
   }
 });
+
+function bindCourierAccordions(){
+  document.querySelectorAll('[data-courier-card]:not([data-accordion-bound])').forEach(card=>{
+    card.dataset.accordionBound='1';
+    card.addEventListener('toggle',()=>{
+      if(!card.open)return;
+      document.querySelectorAll('[data-courier-card][open]').forEach(other=>{
+        if(other!==card)other.open=false;
+      });
+    });
+  });
+}
 
 function pointFilterUrl(form){
   const url=new URL(window.location.href);
@@ -122,6 +135,7 @@ function bindPointFilters(){
   });
 }
 bindPointFilters();
+bindCourierAccordions();
 
 window.addEventListener('popstate',()=>{
   if(!document.getElementById('point-directory-workspace'))return;

@@ -1,1 +1,111 @@
-{% extends 'base.html' %}{% load static %}{% block title %}Курьеры · Courier Control{% endblock %}{% block head %}<link rel="stylesheet" href="{% static 'css/dispatcher-directory.css' %}?v=20260924-1"><style>.page-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}.page-head h1{margin:0 0 5px;font-size:28px}.courier-mobile{display:none}.active-state{color:var(--green);font-weight:750}.courier-name{display:flex;align-items:center;gap:9px}.avatar{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:var(--blue-soft);color:var(--blue);font-weight:850;flex:none}@media(max-width:900px){.page-head h1{font-size:23px}.page-head .btn{width:100%}.courier-desktop{display:none}.courier-mobile{display:block}.courier-card{padding:14px 0;border-bottom:1px solid var(--line)}.courier-card:last-child{border:0}.courier-top{display:flex;justify-content:space-between;gap:10px}.courier-meta{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:12px 0;font-size:13px}.courier-meta div{background:#f8fafc;border-radius:9px;padding:8px}.courier-meta span{display:block;color:var(--muted);font-size:11px;margin-bottom:2px}.courier-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px}.courier-actions>*{width:100%}.courier-actions form{display:flex}.courier-actions button{width:100%}.courier-actions .preview{grid-column:1/-1}}</style>{% endblock %}{% block content %}<div class="page-head"><div><h1>Курьеры</h1><div class="muted">Постоянные и резервные исполнители. Отключение доступа сохраняет историю доставок.</div></div><a class="btn" href="{% url 'courier_manage_create' %}">+ Добавить курьера</a></div>{% if messages %}{% for message in messages %}<div class="card">{{ message }}</div>{% endfor %}{% endif %}<div class="card" id="courier-list-workspace"><div class="courier-desktop table-wrap"><table><thead><tr><th>Курьер</th><th>Телефон</th><th>Логин</th><th>Тип</th><th>Маршрутов</th><th>Доступ</th><th></th></tr></thead><tbody>{% for c in couriers %}<tr><td><div class="courier-name"><span class="avatar">{{ c.get_full_name|default:c.username|slice:':1' }}</span><b>{{ c.get_full_name|default:c.username }}</b></div></td><td>{{ c.phone|default:'—' }}</td><td>{{ c.username }}</td><td>{% if c.is_reserve_courier %}<span class="type">Резерв</span>{% else %}Постоянный{% endif %}</td><td>{{ c.route_count }}</td><td>{% if c.is_active %}<span class="active-state">Активен</span>{% else %}<span class="muted">Отключён</span>{% endif %}</td><td style="white-space:nowrap"><a class="btn alt" href="{% url 'courier_preview' c.pk %}" target="_blank">Просмотр как курьер</a> <a class="btn alt" href="{% url 'courier_manage_edit' c.pk %}">Редактировать</a> <form class="ajax-state-toggle" method="post" action="{% url 'courier_manage_toggle' c.pk %}" style="display:inline">{% csrf_token %}<button class="btn {% if c.is_active %}bad{% else %}good{% endif %}">{% if c.is_active %}Отключить{% else %}Включить{% endif %}</button></form></td></tr>{% empty %}<tr><td colspan="7">Курьеров пока нет.</td></tr>{% endfor %}</tbody></table></div><div class="courier-mobile">{% for c in couriers %}<article class="courier-card"><div class="courier-top"><div class="courier-name"><span class="avatar">{{ c.get_full_name|default:c.username|slice:':1' }}</span><div><b>{{ c.get_full_name|default:c.username }}</b><div class="muted">@{{ c.username }}</div></div></div>{% if c.is_active %}<span class="active-state">Активен</span>{% else %}<span class="muted">Отключён</span>{% endif %}</div><div class="courier-meta"><div><span>Телефон</span>{{ c.phone|default:'—' }}</div><div><span>Тип</span>{% if c.is_reserve_courier %}Резерв{% else %}Постоянный{% endif %}</div><div><span>Постоянных маршрутов</span>{{ c.route_count }}</div><div><span>Доступ</span>{% if c.is_active %}Разрешён{% else %}Отключён{% endif %}</div></div><div class="courier-actions"><a class="btn alt preview" href="{% url 'courier_preview' c.pk %}" target="_blank">Просмотр как курьер</a><a class="btn alt" href="{% url 'courier_manage_edit' c.pk %}">Редактировать</a><form class="ajax-state-toggle" method="post" action="{% url 'courier_manage_toggle' c.pk %}">{% csrf_token %}<button class="btn {% if c.is_active %}bad{% else %}good{% endif %}">{% if c.is_active %}Отключить{% else %}Включить{% endif %}</button></form></div></article>{% empty %}<div class="muted">Курьеров пока нет.</div>{% endfor %}</div></div>{% endblock %}{% block scripts %}<script type="module" src="{% static 'js/dispatcher-directory.js' %}?v=20260924-1"></script>{% endblock %}
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Курьеры · Courier Control{% endblock %}
+{% block head %}
+<link rel="stylesheet" href="{% static 'css/dispatcher-directory.css' %}?v=20261010-1">
+<style>
+.page-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+.page-head h1{margin:0 0 5px;font-size:28px}
+.courier-mobile{display:none}
+.active-state{color:var(--green);font-weight:750}
+.courier-name{display:flex;align-items:center;gap:9px;min-width:0}
+.avatar{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:var(--blue-soft);color:var(--blue);font-weight:850;flex:none}
+
+@media(max-width:900px){
+  .page-head h1{font-size:23px}
+  .page-head .btn{width:100%}
+  .courier-desktop{display:none}
+  .courier-mobile{display:grid;gap:10px}
+  .courier-card{margin:0;border:1.5px solid #cfdbea;border-radius:14px;background:#fff;overflow:hidden;box-shadow:0 3px 12px rgba(31,62,101,.055)}
+  .courier-card[open]{border-color:#a9c4e4;box-shadow:0 7px 20px rgba(31,62,101,.09)}
+  .courier-card>summary{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px;cursor:pointer}
+  .courier-card>summary::-webkit-details-marker{display:none}
+  .courier-card>summary::after{content:"";width:10px;height:10px;border-right:2px solid #6b7d93;border-bottom:2px solid #6b7d93;transform:rotate(45deg);transition:transform .16s ease;flex:none;margin-left:4px}
+  .courier-card[open]>summary::after{transform:rotate(225deg);margin-top:6px}
+  .courier-summary-main{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0;flex:1}
+  .courier-summary-copy{min-width:0}
+  .courier-summary-copy b{display:block;font-size:16px;overflow:hidden;text-overflow:ellipsis}
+  .courier-card-body{border-top:1px solid #e1e8f1;padding:12px 14px 14px;background:#fbfdff}
+  .courier-meta{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 12px;font-size:13px}
+  .courier-meta div{background:#f5f8fc;border:1px solid #edf1f6;border-radius:10px;padding:9px;min-width:0}
+  .courier-meta span{display:block;color:var(--muted);font-size:11px;margin-bottom:2px}
+  .courier-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .courier-actions>*{width:100%;min-width:0;margin:0}
+  .courier-actions form{display:flex}
+  .courier-actions button{width:100%;margin:0}
+  .courier-actions .preview{grid-column:1/-1}
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Курьеры</h1>
+    <div class="muted">Постоянные и резервные исполнители. Отключение доступа сохраняет историю доставок.</div>
+  </div>
+  <a class="btn" href="{% url 'courier_manage_create' %}">+ Добавить курьера</a>
+</div>
+
+{% if messages %}{% for message in messages %}<div class="card">{{ message }}</div>{% endfor %}{% endif %}
+
+<div class="card" id="courier-list-workspace">
+  <div class="courier-desktop table-wrap">
+    <table>
+      <thead><tr><th>Курьер</th><th>Телефон</th><th>Логин</th><th>Тип</th><th>Маршрутов</th><th>Доступ</th><th></th></tr></thead>
+      <tbody>
+      {% for c in couriers %}
+        <tr>
+          <td><div class="courier-name"><span class="avatar">{{ c.get_full_name|default:c.username|slice:':1' }}</span><b>{{ c.get_full_name|default:c.username }}</b></div></td>
+          <td>{{ c.phone|default:'—' }}</td>
+          <td>{{ c.username }}</td>
+          <td>{% if c.is_reserve_courier %}<span class="type">Резерв</span>{% else %}Постоянный{% endif %}</td>
+          <td>{{ c.route_count }}</td>
+          <td>{% if c.is_active %}<span class="active-state">Активен</span>{% else %}<span class="muted">Отключён</span>{% endif %}</td>
+          <td style="white-space:nowrap">
+            <a class="btn alt" href="{% url 'courier_preview' c.pk %}" target="_blank">Просмотр как курьер</a>
+            <a class="btn alt" href="{% url 'courier_manage_edit' c.pk %}">Редактировать</a>
+            <form class="ajax-state-toggle" method="post" action="{% url 'courier_manage_toggle' c.pk %}" style="display:inline">{% csrf_token %}
+              <button class="btn {% if c.is_active %}bad{% else %}good{% endif %}">{% if c.is_active %}Отключить{% else %}Включить{% endif %}</button>
+            </form>
+          </td>
+        </tr>
+      {% empty %}<tr><td colspan="7">Курьеров пока нет.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="courier-mobile">
+    {% for c in couriers %}
+    <details class="courier-card" data-courier-card>
+      <summary>
+        <div class="courier-summary-main">
+          <div class="courier-name">
+            <span class="avatar">{{ c.get_full_name|default:c.username|slice:':1' }}</span>
+            <div class="courier-summary-copy"><b>{{ c.get_full_name|default:c.username }}</b><div class="muted">@{{ c.username }}</div></div>
+          </div>
+          {% if c.is_active %}<span class="active-state">Активен</span>{% else %}<span class="muted">Отключён</span>{% endif %}
+        </div>
+      </summary>
+      <div class="courier-card-body">
+        <div class="courier-meta">
+          <div><span>Телефон</span>{{ c.phone|default:'—' }}</div>
+          <div><span>Тип</span>{% if c.is_reserve_courier %}Резерв{% else %}Постоянный{% endif %}</div>
+          <div><span>Постоянных маршрутов</span>{{ c.route_count }}</div>
+          <div><span>Доступ</span>{% if c.is_active %}Разрешён{% else %}Отключён{% endif %}</div>
+        </div>
+        <div class="courier-actions">
+          <a class="btn alt preview" href="{% url 'courier_preview' c.pk %}" target="_blank">Просмотр как курьер</a>
+          <a class="btn alt" href="{% url 'courier_manage_edit' c.pk %}">Редактировать</a>
+          <form class="ajax-state-toggle" method="post" action="{% url 'courier_manage_toggle' c.pk %}">{% csrf_token %}
+            <button class="btn {% if c.is_active %}bad{% else %}good{% endif %}">{% if c.is_active %}Отключить{% else %}Включить{% endif %}</button>
+          </form>
+        </div>
+      </div>
+    </details>
+    {% empty %}<div class="muted">Курьеров пока нет.</div>{% endfor %}
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}<script type="module" src="{% static 'js/dispatcher-directory.js' %}?v=20261010-1"></script>{% endblock %}

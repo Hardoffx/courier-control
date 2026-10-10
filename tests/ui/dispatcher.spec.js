@@ -209,3 +209,70 @@ test('route-run: inline edit saves without document reload', async ({ dispatcher
   await persisted.locator(':scope > .editor-summary').click();
   await expect(persisted.locator('.inline-edit-form input[name="comment"]')).toHaveValue('Browser run note');
 });
+
+
+test('couriers: mobile card is compact and expandable', async ({ dispatcherPage: page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'mobile-375', 'mobile accordion behavior');
+  await page.goto('/dispatcher/couriers/');
+  const card = page.locator('[data-courier-card]').first();
+  await expect(card).toBeVisible();
+  await expect(card).not.toHaveAttribute('open', '');
+
+  const body = card.locator('.courier-card-body');
+  await expect(body).not.toBeVisible();
+  await card.locator(':scope > summary').click();
+  await expect(card).toHaveAttribute('open', '');
+  await expect(body).toBeVisible();
+});
+
+test('courier preview: date controls stay inside mobile card', async ({ dispatcherPage: page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'mobile-375', 'mobile preview geometry');
+  await page.goto('/dispatcher/couriers/');
+  const href = await page.locator('a[href*="/dispatcher/couriers/"][href*="/preview/"]').first().getAttribute('href');
+  expect(href).toBeTruthy();
+  await page.goto(href);
+  const form = page.locator('.preview-live-date');
+  await expect(form).toBeVisible();
+
+  const geometry = await form.evaluate((el) => {
+    const card = el.closest('.card').getBoundingClientRect();
+    const formRect = el.getBoundingClientRect();
+    const input = el.querySelector('input[type="date"]').getBoundingClientRect();
+    const button = el.querySelector('.btn').getBoundingClientRect();
+    return {
+      cardLeft: card.left,
+      cardRight: card.right,
+      formLeft: formRect.left,
+      formRight: formRect.right,
+      inputLeft: input.left,
+      inputRight: input.right,
+      buttonLeft: button.left,
+      buttonRight: button.right,
+      gap: button.top - input.bottom,
+    };
+  });
+  expect(geometry.formLeft).toBeGreaterThanOrEqual(geometry.cardLeft - 1);
+  expect(geometry.formRight).toBeLessThanOrEqual(geometry.cardRight + 1);
+  expect(geometry.inputLeft).toBeGreaterThanOrEqual(geometry.cardLeft - 1);
+  expect(geometry.inputRight).toBeLessThanOrEqual(geometry.cardRight + 1);
+  expect(geometry.buttonLeft).toBeGreaterThanOrEqual(geometry.cardLeft - 1);
+  expect(geometry.buttonRight).toBeLessThanOrEqual(geometry.cardRight + 1);
+  expect(geometry.gap).toBeGreaterThanOrEqual(8);
+});
+
+test('route-run: phone KPI cards stay an equal 2x2 grid', async ({ dispatcherPage: page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'mobile-375', 'phone KPI geometry');
+  await page.goto('/dispatcher/runs/910001/');
+  const cards = page.locator('.route-kpi-grid .kpi');
+  await expect(cards).toHaveCount(4);
+  const geometry = await cards.evaluateAll((nodes) => nodes.map((el) => {
+    const r = el.getBoundingClientRect();
+    return { left: r.left, top: r.top, width: r.width, right: r.right };
+  }));
+  const widths = geometry.map((item) => item.width);
+  expect(Math.max(...widths) - Math.min(...widths)).toBeLessThanOrEqual(2);
+  expect(Math.abs(geometry[0].top - geometry[1].top)).toBeLessThanOrEqual(2);
+  expect(Math.abs(geometry[2].top - geometry[3].top)).toBeLessThanOrEqual(2);
+  expect(geometry[0].right).toBeLessThanOrEqual(page.viewportSize().width + 1);
+  expect(geometry[1].right).toBeLessThanOrEqual(page.viewportSize().width + 1);
+});

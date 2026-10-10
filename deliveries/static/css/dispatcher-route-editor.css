@@ -67,6 +67,9 @@
 .run-stop-status.new{background:#f1f3f6;color:#576578}
 @media(max-width:800px){
   .compact-generate{grid-template-columns:1fr}
+  .compact-generate>*{min-width:0;max-width:100%}
+  .compact-generate label,.compact-generate input,.compact-generate select,.compact-generate .btn{width:100%;max-width:100%;min-width:0}
+  .compact-generate input[type="date"]{-webkit-appearance:none;appearance:none}
   .add-source-grid{grid-template-columns:1fr}
   .editor-summary{grid-template-columns:auto minmax(0,1fr) auto}
   .day-toggle{grid-column:2/3;justify-self:start}
