@@ -49,7 +49,7 @@ body.dispatcher-ui .route-kpi-grid .kpi:nth-child(4) .kpi-value{color:#d74956}
 .run-courier-select{margin-top:8px}
 .run-courier-select.is-saving{opacity:.55;pointer-events:none}
 .run-completed-note{display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:11px;background:#eaf8ef;color:#216f46;font-size:13px;font-weight:800}
-.run-completed-note span{display:grid;place-items:center;width:24px;height:24px;border-radius:50%;background:#fff;color:#1e9b58}
+.run-completed-note span{display:grid;place-items:center;width:24px;height:24px;min-width:24px;min-height:24px;flex:0 0 24px;aspect-ratio:1/1;border-radius:50%;background:#fff;color:#1e9b58;line-height:1}
 
 .flash-message-source{display:none}
 
@@ -59,6 +59,9 @@ body.dispatcher-ui .route-kpi-grid .kpi:nth-child(4) .kpi-value{color:#d74956}
  .route-time-stat:first-child{grid-column:1/-1}
 }
 @media(max-width:700px){
+ body.dispatcher-ui .route-kpi-grid .kpi{min-width:0!important;min-height:98px!important}
+ .run-tools .tool-card form{display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:10px!important}
+ .run-tools .tool-card form>label,.run-tools .tool-card form>select,.run-tools .tool-card form>input,.run-tools .tool-card form>.btn{width:100%!important;max-width:100%!important;min-width:0!important;margin:0!important}
  body.dispatcher-ui .route-kpi-grid .kpi{min-width:0!important;min-height:98px!important}
  body.dispatcher-ui .route-kpi-grid .kpi-value{font-size:27px!important}
  .route-now{padding:14px!important}
