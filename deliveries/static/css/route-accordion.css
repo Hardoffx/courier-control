@@ -1,4 +1,13 @@
 .route-accordion-list{overflow:hidden;display:grid;gap:6px}
+/* Active courier stops are separate cards on the page background, not inside a white panel.
+   Keep gaps transparent and let card shadows render without clipping. */
+.courier-ui .route-section > .route-list.route-accordion-list{
+  background:transparent;
+  border:0;
+  border-radius:0;
+  box-shadow:none;
+  overflow:visible;
+}
 .route-item{margin:0;background:#fff;border:1.5px solid #cbd7e5;border-radius:11px;overflow:hidden;box-shadow:0 2px 6px rgba(25,45,70,.055)}
 .route-item:last-child{border-bottom:1.5px solid #cbd7e5}
 .route-item[open]{border-color:#9fb8d6;box-shadow:0 5px 14px rgba(25,45,70,.10)}
