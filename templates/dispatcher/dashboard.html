@@ -129,7 +129,7 @@
 
       {% if item.order_suggestion %}<div class="route-order-note">Курьер изменил порядок · <a href="{% url 'run_detail' item.run.pk %}">нужно решение</a></div>{% endif %}
 
-      <div class="route-card-actions">
+      <div class="route-card-actions {% if item.run.assigned_courier %}has-preview{% endif %}">
         <a class="btn small primary" href="{% url 'run_detail' item.run.pk %}">Открыть маршрут</a>
         {% if item.run.assigned_courier %}<a class="btn alt small" href="{% url 'courier_preview' item.run.assigned_courier.pk %}?date={{ selected_date|date:'Y-m-d' }}">Как видит курьер</a>{% endif %}
         {% if not item.run.assigned_courier and item.state != 'completed' %}
