@@ -338,22 +338,29 @@ def courier_update(request,pk):
 def courier_reorder(request,pk):
     delivery=get_object_or_404(Delivery.objects.select_related('route_run__template'),pk=pk,courier=request.user,delivery_date=timezone.localdate()); direction=request.POST.get('direction')
     wants_json=request.headers.get('x-requested-with')=='XMLHttpRequest'
+    if direction not in ('up','down'):
+        if wants_json:
+            return JsonResponse({'ok':False,'error':'Неизвестное направление'},status=400)
+        return redirect('courier_today')
+    if delivery.status==Delivery.Status.DONE:
+        if wants_json:
+            return JsonResponse({'ok':False,'error':'Перемещайте невыполненную точку относительно выполненных'},status=409)
+        return redirect('courier_today')
     if delivery.route_run_id:
         full_items=list(Delivery.objects.filter(route_run_id=delivery.route_run_id,courier=request.user,delivery_date=delivery.delivery_date).order_by('route_order','id')); run=delivery.route_run
     else:
         full_items=list(Delivery.objects.filter(route_run__isnull=True,courier=request.user,delivery_date=delivery.delivery_date).order_by('route_order','id')); run=None
-    items=[item for item in full_items if item.status!=Delivery.Status.DONE]
-    try: index=items.index(delivery)
+    try: index=full_items.index(delivery)
     except ValueError: return redirect('courier_today')
     target=index-1 if direction=='up' else index+1
-    if direction not in ('up','down'): return redirect('courier_today')
-    if 0<=target<len(items):
-        other=items[target]
+    if 0<=target<len(full_items):
+        other=full_items[target]
         before=[item.point_id for item in full_items if item.point_id]
         old_order,other_order=delivery.route_order,other.route_order
         with transaction.atomic():
-            # Swap only the two unfinished positions. Completed rows and every unrelated
-            # delivery keep their exact route_order, so the route cannot "shuffle".
+            # Swap with the physically adjacent row, even when that row is already
+            # completed. This lets an unfinished stop pass through completed stops
+            # instead of treating them as a locked barrier.
             delivery.route_order,other.route_order=other_order,old_order
             delivery.save(update_fields=['route_order'])
             other.save(update_fields=['route_order'])
