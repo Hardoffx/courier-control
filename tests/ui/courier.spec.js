@@ -108,3 +108,34 @@ test('courier route cards expose the page background in their gaps', async ({ pa
   expect(appearance.cardGap).toBeLessThanOrEqual(7);
   expect(appearance.scrollWidth).toBeLessThanOrEqual(appearance.clientWidth + 1);
 });
+
+test('selecting a stop scrolls to the large card below the sticky header', async ({ page }, testInfo) => {
+  test.skip(!['mobile-375','iphone-webkit'].includes(testInfo.project.name), 'target mobile browsers');
+
+  await loginCourier(page);
+  const rows=page.locator('#route-list > .route-list > .route-item');
+  const selectedCard=page.locator('#top > .selected-card');
+
+  const selectAndCheck=async index=>{
+    const row=rows.nth(index);
+    const deliveryId=await row.getAttribute('data-delivery-id');
+    await row.locator(':scope > .route-row').click();
+    await row.locator('.route-select-btn').click();
+    await expect(selectedCard).toHaveAttribute('data-selected-id',deliveryId);
+    await expect.poll(() => new URL(page.url()).searchParams.get('selected')).toBe(deliveryId);
+    await expect.poll(() => page.evaluate(() => {
+      const card=document.querySelector('#top > .selected-card');
+      const header=document.querySelector('.courier-top');
+      return Math.round(card.getBoundingClientRect().top-header.getBoundingClientRect().bottom);
+    }),{timeout:5000}).toBeGreaterThanOrEqual(7);
+    const gap=await page.evaluate(() => {
+      const card=document.querySelector('#top > .selected-card');
+      const header=document.querySelector('.courier-top');
+      return card.getBoundingClientRect().top-header.getBoundingClientRect().bottom;
+    });
+    expect(gap).toBeLessThanOrEqual(45);
+  };
+
+  await selectAndCheck(31);
+  await selectAndCheck(20);
+});
