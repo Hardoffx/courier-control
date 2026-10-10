@@ -201,10 +201,10 @@ test('route-editor: chevron remains up while expanded and down when closed', asy
   };
   const assertOpen=async card=>{
     await expect(card).toHaveAttribute('open','');
-    await expect.poll(async()=>direction(card),{timeout:10000}).toEqual({angle:225,marginTop:4});
+    await expect.poll(async()=>direction(card),{timeout:10000}).toEqual({angle:225,marginTop:-4});
     await expect.poll(()=>card.evaluate(el=>el.style.height)).toBe('');
     // Regression: the arrow must not snap back down once its animation is cleaned up.
-    await expect(direction(card)).resolves.toEqual({angle:225,marginTop:4});
+    await expect(direction(card)).resolves.toEqual({angle:225,marginTop:-4});
   };
   const first=cards.first();
   const second=cards.nth(1);
