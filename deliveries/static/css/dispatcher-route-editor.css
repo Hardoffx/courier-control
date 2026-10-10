@@ -31,6 +31,8 @@
 .day-toggle{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:750;color:#41546f;white-space:nowrap}
 .day-toggle input{width:20px;height:20px;margin:0}.day-toggle.is-saving{opacity:.55}.day-toggle:has(input:not(:checked)) span{color:#8a5a12}
 .route-chevron{width:13px;height:13px;border-right:2px solid #677990;border-bottom:2px solid #677990;transform:rotate(45deg);margin-top:-4px;flex:none}
+/* The expanded state must persist after SingleAccordion clears its inline animation styles. */
+.route-editor-item[open]>.editor-summary .route-chevron{transform:rotate(225deg)}
 .editor-body{border-top:1px solid var(--line);padding:10px 12px;background:#fbfcfe}
 .editor-fields{display:grid;grid-template-columns:180px minmax(0,1fr) auto;gap:7px;align-items:end}
 .editor-fields label{margin:0}

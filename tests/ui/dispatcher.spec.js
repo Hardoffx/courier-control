@@ -183,6 +183,45 @@ test('route-editor: pencil appears only while open and chevron does not shift', 
   await expect(pencil).toBeHidden();
 });
 
+test('route-editor: chevron remains up while expanded and down when closed', async ({ dispatcherPage: page }, testInfo) => {
+  test.skip(!['mobile-375','iphone-webkit'].includes(testInfo.project.name), 'mobile accordion state');
+  await page.goto('/dispatcher/routes/910001/');
+  const cards=page.locator('#template-route-editor-workspace .route-editor-item');
+  const direction=async card=>card.locator('.route-chevron').evaluate(el=>{
+    const style=getComputedStyle(el);
+    const matrix=new DOMMatrixReadOnly(style.transform);
+    return {
+      angle:Math.round((Math.atan2(matrix.b,matrix.a)*180/Math.PI+360)%360),
+      marginTop:Math.round(parseFloat(style.marginTop)),
+    };
+  });
+  const assertClosed=async card=>{
+    await expect(card).not.toHaveAttribute('open','');
+    await expect.poll(async()=>direction(card)).toEqual({angle:45,marginTop:-4});
+  };
+  const assertOpen=async card=>{
+    await expect(card).toHaveAttribute('open','');
+    await expect.poll(async()=>direction(card),{timeout:10000}).toEqual({angle:225,marginTop:-4});
+    await expect.poll(()=>card.evaluate(el=>el.style.height)).toBe('');
+    // Regression: the arrow must not snap back down once its animation is cleaned up.
+    await expect(direction(card)).resolves.toEqual({angle:225,marginTop:-4});
+  };
+  const first=cards.first();
+  const second=cards.nth(1);
+  await assertClosed(first);
+  await first.locator(':scope > summary').click();
+  await assertOpen(first);
+  await first.locator(':scope > summary').click();
+  await assertClosed(first);
+  await first.locator(':scope > summary').click();
+  await assertOpen(first);
+  await second.locator(':scope > summary').click();
+  await assertOpen(second);
+  await assertClosed(first);
+  await second.locator(':scope > summary').click();
+  await assertClosed(second);
+});
+
 test('route-editor: fixed action columns on short and long addresses', async ({ dispatcherPage: page }) => {
   await page.goto('/dispatcher/routes/910002/');
   const cards=page.locator('#template-route-editor-workspace .route-editor-item');

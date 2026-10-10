@@ -232,10 +232,14 @@ export class SingleAccordion {
     ];
 
     if (chevron) {
-      animations.push(animateElement(chevron, {
+      const frames = {
         transform: open ? ["rotate(45deg)", "rotate(225deg)"] : ["rotate(225deg)", "rotate(45deg)"],
-        marginTop: open ? ["-4px", "4px"] : ["4px", "-4px"],
-      }, {
+      };
+      // Route point arrows rotate around their fixed center; shifting margin makes them twitch.
+      if (!item.classList.contains("route-editor-item")) {
+        frames.marginTop = open ? ["-4px", "4px"] : ["4px", "-4px"];
+      }
+      animations.push(animateElement(chevron, frames, {
         duration: MOTION.layout,
         ease: MOTION.ease,
       }));

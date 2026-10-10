@@ -1,4 +1,4 @@
-import { SingleAccordion, bindPressables, warmMotion } from "./motion-ui.js";
+import { SingleAccordion, bindPressables, warmMotion } from "./motion-ui.js?v=20261011-3";
 
 const csrf = () => document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
 
