@@ -66,3 +66,45 @@ test('long route stays dense on target phone widths', async ({ page }, testInfo)
   const viewport = await page.evaluate(() => document.documentElement.clientWidth);
   expect(right).toBeLessThanOrEqual(viewport + 1);
 });
+
+test('courier route cards expose the page background in their gaps', async ({ page }) => {
+  await loginCourier(page);
+  const list = page.locator('#route-list > .route-list.route-accordion-list');
+  const stops = list.locator(':scope > .route-item');
+  await expect(stops.first()).toBeVisible();
+  await expect(stops.nth(1)).toBeVisible();
+
+  const appearance = await page.evaluate(() => {
+    const listEl = document.querySelector('#route-list > .route-list.route-accordion-list');
+    const cards = [...listEl.querySelectorAll(':scope > .route-item')];
+    const first = cards[0].getBoundingClientRect();
+    const second = cards[1].getBoundingClientRect();
+    const listStyle = getComputedStyle(listEl);
+    const cardStyle = getComputedStyle(cards[0]);
+    const sectionStyle = getComputedStyle(listEl.parentElement);
+    const pageStyle = getComputedStyle(document.body);
+    return {
+      listBackground: listStyle.backgroundColor,
+      sectionBackground: sectionStyle.backgroundColor,
+      pageBackground: pageStyle.backgroundColor,
+      borderWidth: listStyle.borderTopWidth,
+      boxShadow: listStyle.boxShadow,
+      overflow: listStyle.overflow,
+      cardBackground: cardStyle.backgroundColor,
+      cardGap: second.top - first.bottom,
+      scrollWidth: document.documentElement.scrollWidth,
+      clientWidth: document.documentElement.clientWidth,
+    };
+  });
+
+  expect(appearance.listBackground).toBe('rgba(0, 0, 0, 0)');
+  expect(appearance.sectionBackground).toBe('rgba(0, 0, 0, 0)');
+  expect(appearance.pageBackground).toBe('rgb(243, 246, 250)');
+  expect(appearance.borderWidth).toBe('0px');
+  expect(appearance.boxShadow).toBe('none');
+  expect(appearance.overflow).toBe('visible');
+  expect(appearance.cardBackground).toBe('rgb(255, 255, 255)');
+  expect(appearance.cardGap).toBeGreaterThanOrEqual(5);
+  expect(appearance.cardGap).toBeLessThanOrEqual(7);
+  expect(appearance.scrollWidth).toBeLessThanOrEqual(appearance.clientWidth + 1);
+});
