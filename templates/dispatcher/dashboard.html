@@ -2,7 +2,7 @@
 {% load static %}
 {% block title %}Сегодня · Courier Control{% endblock %}
 {% block head %}
-<link rel="stylesheet" href="{% static 'css/dispatcher-professional.css' %}?v=20261010-2">
+<link rel="stylesheet" href="{% static 'css/dispatcher-professional.css' %}?v=20261011-1">
 {% endblock %}
 {% block content %}
 <div class="ops-dashboard" id="dispatcher-day-workspace">
@@ -136,7 +136,7 @@
         <div class="route-quick-assign">
           <select class="route-assign-select" data-url="{% url 'run_reassign' item.run.pk %}" aria-label="Назначить курьера">
             <option value="">Назначить курьера…</option>
-            {% for c in couriers %}<option value="{{ c.pk }}">{{ c.get_full_name|default:c.username }}{% if c.is_reserve_courier %} · Резерв{% endif %}</option>{% endfor %}
+            {% for c in couriers %}<option value="{{ c.pk }}">{{ c.get_full_name|default:c.username }}</option>{% endfor %}
           </select>
         </div>
         {% endif %}
