@@ -211,18 +211,18 @@ test('route-run: inline edit saves without document reload', async ({ dispatcher
 });
 
 
-test('couriers: mobile cards are exclusive accordions', async ({ dispatcherPage: page }, testInfo) => {
+test('couriers: mobile card is compact and expandable', async ({ dispatcherPage: page }, testInfo) => {
   test.skip(testInfo.project.name !== 'mobile-375', 'mobile accordion behavior');
   await page.goto('/dispatcher/couriers/');
-  const cards = page.locator('[data-courier-card]');
-  expect(await cards.count()).toBeGreaterThanOrEqual(2);
+  const card = page.locator('[data-courier-card]').first();
+  await expect(card).toBeVisible();
+  await expect(card).not.toHaveAttribute('open', '');
 
-  await cards.nth(0).locator(':scope > summary').click();
-  await expect(cards.nth(0)).toHaveAttribute('open', '');
-
-  await cards.nth(1).locator(':scope > summary').click();
-  await expect(cards.nth(1)).toHaveAttribute('open', '');
-  await expect(cards.nth(0)).not.toHaveAttribute('open', '');
+  const body = card.locator('.courier-card-body');
+  await expect(body).not.toBeVisible();
+  await card.locator(':scope > summary').click();
+  await expect(card).toHaveAttribute('open', '');
+  await expect(body).toBeVisible();
 });
 
 test('courier preview: date controls stay inside mobile card', async ({ dispatcherPage: page }, testInfo) => {
