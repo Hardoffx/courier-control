@@ -95,6 +95,39 @@ for (const [path, name] of pages) {
 }
 
 
+test('route-editor: pencil edits address inline without page reload', async ({ dispatcherPage: page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'mobile-375', 'single mutating smoke profile');
+  await page.goto('/dispatcher/routes/910001/');
+  const card=page.locator('#template-route-editor-workspace .route-editor-item').first();
+  const address=card.locator('.editor-address');
+  const pencil=card.locator('.editor-address-pencil');
+  const form=card.locator('.editor-address-inline');
+  const original=(await address.textContent()).trim();
+  await expect(pencil).toBeVisible();
+  await expect(card.locator('.editor-body .point-address-form')).toHaveCount(0);
+  await page.evaluate(() => { window.__inlineAddressMarker = 'alive'; });
+
+  await pencil.click();
+  await expect(form).toBeVisible();
+  await expect(card).not.toHaveAttribute('open', '');
+  await expect(card.locator('.editor-address-row')).toBeHidden();
+  expect(await layoutViolations(page)).toEqual([]);
+
+  await form.locator('input[name="address"]').fill('Москва, ул Тестовая, д. 22');
+  await form.locator('.editor-address-cancel').click();
+  await expect(form).toBeHidden();
+  await expect(address).toHaveText(original);
+
+  await pencil.click();
+  await form.locator('input[name="address"]').fill('Москва, ул Тестовая, д. 22');
+  await form.locator('.editor-address-apply').click();
+  await expect(form).toBeHidden();
+  await expect(address).toHaveText('Москва, ул Тестовая 22');
+  await expect.poll(() => page.evaluate(() => window.__inlineAddressMarker || '')).toBe('alive');
+  await expect(card).not.toHaveAttribute('open', '');
+  expect(await layoutViolations(page)).toEqual([]);
+});
+
 test('route-editor: responsive geometry', async ({ dispatcherPage: page }) => {
   await page.goto('/dispatcher/routes/910001/');
   await expect(page.locator('#template-route-editor-workspace')).toBeVisible();
