@@ -1,9 +1,12 @@
+from datetime import timedelta
+
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
 from accounts.models import User
 from .models import Delivery, DeliveryPoint, Route, RouteRun, RouteTemplate, RouteTemplateItem
+from .route_services import generate_route_run
 
 
 class RouteWorkflowPolishTests(TestCase):
@@ -217,3 +220,78 @@ class CourierCompletedBarrierReorderTests(TestCase):
             HTTP_X_REQUESTED_WITH='XMLHttpRequest',
         )
         self.assertEqual(response.status_code, 409)
+
+
+
+class DispatcherPersistentRunOrderTests(TestCase):
+    def setUp(self):
+        self.dispatcher = User.objects.create_user(
+            username='persistent-order-dispatcher',
+            password='pass',
+            role=User.Role.DISPATCHER,
+        )
+        self.courier = User.objects.create_user(
+            username='persistent-order-courier',
+            password='pass',
+            role=User.Role.COURIER,
+        )
+        self.route = Route.objects.create(
+            name='Persistent order route',
+            default_courier=self.courier,
+        )
+        self.template = RouteTemplate.objects.create(
+            route=self.route,
+            kind=RouteTemplate.Kind.WEEKDAY,
+        )
+        self.points = [
+            DeliveryPoint.objects.create(
+                name=f'Persistent P{i}',
+                address=f'Москва, постоянный адрес {i}',
+            )
+            for i in range(1, 5)
+        ]
+        for index, point in enumerate(self.points, start=1):
+            RouteTemplateItem.objects.create(
+                template=self.template,
+                point=point,
+                route_order=index,
+                enabled_by_default=True,
+            )
+        self.run = generate_route_run(
+            self.template,
+            timezone.localdate(),
+            courier=self.courier,
+        )
+        self.client.force_login(self.dispatcher)
+
+    def test_dispatcher_run_reorder_becomes_next_day_template_order(self):
+        rows = list(self.run.deliveries.order_by('route_order', 'id'))
+        requested = [rows[2], rows[0], rows[3], rows[1]]
+
+        response = self.client.post(
+            reverse('run_reorder', args=[self.run.pk]),
+            {'order': ','.join(str(row.pk) for row in requested)},
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+        self.assertEqual(response.status_code, 200)
+
+        self.assertEqual(
+            list(
+                self.template.items.order_by('route_order', 'id')
+                .values_list('point_id', flat=True)
+            ),
+            [row.point_id for row in requested],
+        )
+
+        next_run = generate_route_run(
+            self.template,
+            timezone.localdate() + timedelta(days=1),
+            courier=self.courier,
+        )
+        self.assertEqual(
+            list(
+                next_run.deliveries.order_by('route_order', 'id')
+                .values_list('point_id', flat=True)
+            ),
+            [row.point_id for row in requested],
+        )

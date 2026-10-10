@@ -270,6 +270,54 @@ def dissolve_route_run(run):
 
 
 @transaction.atomic
+def sync_template_order_from_run(run):
+    """Persist dispatcher day-route ordering back into the route template.
+
+    Only template points that are present in this concrete day are reordered.
+    Template points excluded for the day keep their existing slots, and day-only
+    points that are not part of the template are ignored.
+    """
+    if not run.template_id:
+        return 0
+
+    template_items = list(
+        run.template.items.select_related('point').order_by('route_order', 'id')
+    )
+    if not template_items:
+        return 0
+
+    by_point = {item.point_id: item for item in template_items}
+    ordered_participating = []
+    seen = set()
+    for point_id in (
+        run.deliveries.exclude(point__isnull=True)
+        .order_by('route_order', 'id')
+        .values_list('point_id', flat=True)
+    ):
+        if point_id in by_point and point_id not in seen:
+            seen.add(point_id)
+            ordered_participating.append(by_point[point_id])
+
+    if len(ordered_participating) < 2:
+        return 0
+
+    participating_ids = {item.pk for item in ordered_participating}
+    replacements = iter(ordered_participating)
+    merged = [
+        next(replacements) if item.pk in participating_ids else item
+        for item in template_items
+    ]
+
+    changed = 0
+    for order, item in enumerate(merged, start=1):
+        if item.route_order != order:
+            item.route_order = order
+            item.save(update_fields=['route_order'])
+            changed += 1
+    return changed
+
+
+@transaction.atomic
 def learn_template_from_run(run, template):
     if template.route_id != run.route_id:
         raise ValueError('Шаблон принадлежит другому маршруту')
