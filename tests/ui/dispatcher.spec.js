@@ -103,14 +103,17 @@ test('route-editor: pencil edits address inline without page reload', async ({ d
   const pencil=card.locator('.editor-address-pencil');
   const form=card.locator('.editor-address-inline');
   const original=(await address.textContent()).trim();
-  await expect(pencil).toBeVisible();
-  await expect(card.locator('.editor-body .point-address-form')).toHaveCount(0);
+  await expect(pencil).toBeHidden();
+  await expect(card.locator('.editor-body .point-address-form')).toHaveCount(1);
   await page.evaluate(() => { window.__inlineAddressMarker = 'alive'; });
 
+  await card.locator(':scope > .editor-summary').click();
+  await expect(card).toHaveAttribute('open', '');
+  await expect(pencil).toBeVisible();
   await pencil.click();
   await expect(form).toBeVisible();
-  await expect(card).not.toHaveAttribute('open', '');
-  await expect(card.locator('.editor-address-row')).toBeHidden();
+  await expect(card).toHaveAttribute('open', '');
+  await expect(card.locator('.editor-address-row')).toBeVisible();
   expect(await layoutViolations(page)).toEqual([]);
 
   await form.locator('input[name="address"]').fill('Москва, ул Тестовая, д. 22');
@@ -124,8 +127,53 @@ test('route-editor: pencil edits address inline without page reload', async ({ d
   await expect(form).toBeHidden();
   await expect(address).toHaveText('Москва, ул Тестовая 22');
   await expect.poll(() => page.evaluate(() => window.__inlineAddressMarker || '')).toBe('alive');
-  await expect(card).not.toHaveAttribute('open', '');
+  await expect(card).toHaveAttribute('open', '');
   expect(await layoutViolations(page)).toEqual([]);
+});
+
+test('route-editor: pencil appears only while open and chevron does not shift', async ({ dispatcherPage: page }) => {
+  await page.goto('/dispatcher/routes/910001/');
+  const card=page.locator('#template-route-editor-workspace .route-editor-item').first();
+  const summary=card.locator(':scope > .editor-summary');
+  const pencil=card.locator('.editor-address-pencil');
+  const editor=card.locator('.editor-address-inline');
+
+  const geometry=()=>card.evaluate(el=>{
+    const summary=el.querySelector(':scope > .editor-summary').getBoundingClientRect();
+    const arrow=el.querySelector('.route-chevron').getBoundingClientRect();
+    const address=el.querySelector('.editor-address').getBoundingClientRect();
+    return {
+      arrowX:arrow.left-summary.left,
+      arrowY:arrow.top-summary.top,
+      addressHeight:address.height,
+      scrollWidth:document.documentElement.scrollWidth,
+      viewportWidth:document.documentElement.clientWidth,
+    };
+  });
+
+  await expect(pencil).toBeHidden();
+  const closed=await geometry();
+  await summary.click();
+  await expect(card).toHaveAttribute('open', '');
+  await expect.poll(()=>card.evaluate(el=>el.style.height)).toBe('');
+  await expect(pencil).toBeVisible();
+  const opened=await geometry();
+  expect(Math.abs(opened.arrowX-closed.arrowX)).toBeLessThanOrEqual(1);
+  expect(Math.abs(opened.arrowY-closed.arrowY)).toBeLessThanOrEqual(1);
+  expect(Math.abs(opened.addressHeight-closed.addressHeight)).toBeLessThanOrEqual(1);
+
+  await pencil.click();
+  await expect(editor).toBeVisible();
+  const editing=await geometry();
+  expect(Math.abs(editing.arrowX-opened.arrowX)).toBeLessThanOrEqual(1);
+  expect(Math.abs(editing.arrowY-opened.arrowY)).toBeLessThanOrEqual(1);
+  expect(editing.scrollWidth).toBeLessThanOrEqual(editing.viewportWidth+1);
+
+  await editor.locator('.editor-address-cancel').click();
+  await expect(editor).toBeHidden();
+  await summary.click();
+  await expect(card).not.toHaveAttribute('open', '');
+  await expect(pencil).toBeHidden();
 });
 
 test('route-editor: responsive geometry', async ({ dispatcherPage: page }) => {
