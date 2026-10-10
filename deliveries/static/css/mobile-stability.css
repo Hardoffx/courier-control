@@ -886,3 +886,33 @@ body:not(.dispatcher-ui):not(.courier-ui) main.wrap > .card form .btn { margin-t
 .dispatcher-ui button:disabled,.courier-ui button:disabled{
   opacity:.58!important;cursor:not-allowed!important;box-shadow:none!important;transform:none!important;
 }
+
+
+/* Daily route: keep four KPI cards as a contained, equal 2x2 grid on phones.
+   This intentionally overrides the generic swipe-card KPI treatment above. */
+@media (max-width: 700px) {
+  body.dispatcher-ui .route-kpi-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 0 12px !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    scroll-snap-type: none !important;
+  }
+  body.dispatcher-ui .route-kpi-grid .kpi {
+    display: flex !important;
+    width: auto !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    flex: initial !important;
+    scroll-snap-align: none !important;
+    overflow: hidden !important;
+  }
+  body.dispatcher-ui .route-kpi-grid .kpi-value {
+    font-size: 24px !important;
+    white-space: nowrap;
+  }
+}
