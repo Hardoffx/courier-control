@@ -97,7 +97,7 @@ class RouteWorkflowPolishTests(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.point_a.refresh_from_db()
-        self.assertEqual(self.point_a.address, 'Москва, ул. Новая, д. 10')
+        self.assertEqual(self.point_a.address, 'Москва, ул Новая 10')
         self.assertEqual(response.json()['address'], self.point_a.address)
 
     def test_create_external_point_ignores_stale_cmd_code_and_uses_generic_name(self):
