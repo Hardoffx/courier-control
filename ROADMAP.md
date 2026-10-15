@@ -121,3 +121,16 @@ See docs/COURIER_WORKSPACE.md.
 
 ## Later / not blocking MVP
 OCR in web product; automatic route optimization; continuous tracking; Telegram integration; notifications; customer portal; SaaS multi-tenancy; native apps.
+
+
+## Phase 6.5 — Графики курьеров (2026-10-15)
+- [x] Границы достоверного учёта и уникальные запланированные выходные
+- [x] Независимая история назначений, аудит и ручное исправление
+- [x] Личный месячный календарь, раздельные счётчики, AJAX-диапазоны
+- [x] Общий график команды с локальной прокруткой на телефоне
+- [x] Проверка доступности во всех существующих путях назначения
+- [x] Прогноз подмены постоянного курьера и актуальные предупреждения
+- [x] Backend/migration и браузерные сценарии добавлены в CI
+- [ ] Приёмка владельцем и отдельное разрешение на VPS deployment
+
+Правила, ограничения старых данных и порядок обновления: [docs/COURIER_SCHEDULES.md](docs/COURIER_SCHEDULES.md).

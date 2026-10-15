@@ -67,3 +67,8 @@ Provider decision is reopened for this future feature: prefer the simplest low-c
 - Exact server completion timestamp remains authoritative.
 - Moving one courier stop must not reorder unrelated stops.
 - Global KPIs describe the day; route KPIs describe the selected RouteRun.
+
+
+## Courier schedules
+
+RouteRun остаётся основой смены, но долговременная история принадлежит сотруднику и хранится независимо от рейса. Default courier используется только для прогноза подмены. Все новые пути назначения должны соблюдать общий availability guard. Контракт: [COURIER_SCHEDULES.md](COURIER_SCHEDULES.md).

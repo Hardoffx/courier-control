@@ -15,6 +15,7 @@ async function post(url,data){
   const response=await fetch(url,{method:'POST',headers:{'X-Requested-With':'XMLHttpRequest','X-CSRFToken':csrf()},body});
   let payload={};
   try{payload=await response.json()}catch(_){}
+  if(response.status===409)window.showScheduleConflict?.(payload);
   if(!response.ok||payload.ok===false)throw new Error(payload.error||'Не удалось сохранить');
   return payload;
 }
@@ -85,9 +86,11 @@ function initDashboard(scope=document){
         }
       }
       select.closest('.route-quick-assign')?.remove();
+      void window.refreshScheduleWarnings?.();
       toast('Курьер назначен');
       applyRouteView();
     }catch(err){
+      select.value='';
       select.disabled=false;
       select.classList.remove('is-saving');
       toast(err.message,true);
@@ -158,3 +161,4 @@ window.addEventListener('popstate',()=>{
 });
 
 initDashboard();
+

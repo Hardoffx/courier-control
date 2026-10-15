@@ -205,5 +205,11 @@ class Command(BaseCommand):
             self.stdout.write(self.style.SUCCESS("UI test dispatcher and courier ready"))
         elif os.getenv("ROUTE_UI_TESTING") != "1":
             Delivery.objects.filter(courier__username="ui_courier").delete()
+            from deliveries.models import CourierAssignment, CourierDayOff, CourierScheduleAudit
+            demo_users = User.objects.filter(username="ui_courier")
+            # Explicitly gated demo namespace cleanup; real employee history remains protected.
+            for model in (CourierAssignment, CourierDayOff, CourierScheduleAudit):
+                model.objects.filter(courier__in=demo_users).delete()
             User.objects.filter(username="ui_courier").delete()
             self.stdout.write(self.style.SUCCESS("UI test dispatcher ready"))
+

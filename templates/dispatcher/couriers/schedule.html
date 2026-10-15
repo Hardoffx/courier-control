@@ -1,0 +1,39 @@
+{% extends 'base.html' %}{% load static %}
+{% block title %}График курьеров · Courier Control{% endblock %}
+{% block head %}<link rel="stylesheet" href="{% static 'css/courier-schedule.css' %}?v=1">{% endblock %}
+{% block content %}
+<section id="courier-schedule" data-courier="{{ courier.pk|default:'' }}" data-api="{% if courier %}{% url 'courier_schedule_data' courier.pk %}{% else %}{% url 'courier_team_schedule_data' %}{% endif %}">
+  <header class="schedule-head"><div><p class="muted">Курьеры / Планирование</p><h1>{% if courier %}{{ courier.get_full_name|default:courier.username }}{% else %}График команды{% endif %}</h1></div>
+    <a class="btn alt" href="{% if courier %}{% url 'courier_team_schedule' %}{% else %}{% url 'courier_manage_list' %}{% endif %}">{% if courier %}График команды{% else %}Курьеры{% endif %}</a>
+  </header>
+  <p class="muted">Оперативный учёт назначенных смен. Сегодня и будущие даты в «Отработано» не входят.</p>
+  <div class="card schedule-toolbar">
+    <button type="button" class="btn alt" data-month-step="-1" aria-label="Предыдущий месяц">←</button>
+    <label>Месяц<input id="schedule-month" type="month" min="1901-01" max="2198-12" required></label>
+    <button type="button" class="btn alt" data-month-step="1" aria-label="Следующий месяц">→</button>
+    {% if not courier %}<label><input type="checkbox" id="schedule-active"> Только активные</label>{% endif %}
+  </div>
+  <div class="schedule-legend" aria-label="Обозначения"><span class="worked">✓ Отработано</span><span class="off">− Выходной</span><span class="shift">↗ Смена</span><span class="unplanned">· Без плана</span><span class="conflict">! Конфликт</span><span class="outside">Вне учёта</span></div>
+  <p id="schedule-feedback" role="status" aria-live="polite">Загрузка графика…</p>
+  <div id="schedule-summary" class="schedule-summary"></div>
+  <div id="schedule-grid" class="card schedule-grid"></div>
+  <section id="schedule-details" class="card" aria-label="Подробности дня" hidden></section>
+  <section id="schedule-edit" class="card" hidden>
+    <h2>Планирование выходных</h2>
+    <label class="schedule-multi"><input type="checkbox" id="schedule-multi"> Выбрать несколько дат в календаре</label>
+    <p id="schedule-selection" class="muted"></p>
+    <form id="schedule-range" class="schedule-fields">
+      <label>С даты<input type="date" name="from" required></label><label>По дату<input type="date" name="to" required></label>
+      <button class="btn alt" type="submit">Выбрать диапазон</button>
+    </form>
+    <label>Комментарий диспетчера<textarea id="schedule-comment" maxlength="500" rows="2"></textarea></label>
+    <div class="schedule-actions"><button class="btn" type="button" data-action="off">Отметить выходной</button><button class="btn alt" type="button" data-action="cancel">Отменить выходной</button></div>
+    <details id="schedule-correction"><summary>Исправить прошлую дату</summary><p class="muted">Изменение сохранится в аудите. Укажи причину в комментарии выше.</p><div class="schedule-actions"><button type="button" class="btn alt" data-correct="true">Учесть рабочий день</button><button type="button" class="btn alt" data-correct="false">Учесть выходной</button></div></details>
+  </section>
+  {% if courier %}<details class="card"><summary>Период достоверного учёта</summary><p class="muted">До начала и после окончания периода дни без назначения не считаются выходными. Сохранившиеся рабочие даты показываются отдельно. При возвращении сотрудника проверь окончание периода.</p>
+    <form id="schedule-period" class="schedule-fields"><label>Начало<input type="date" name="start" required></label><label>Окончание<input type="date" name="end"></label><button class="btn" type="submit">Сохранить период</button></form>
+  </details><details class="card"><summary>Последние изменения графика</summary><div id="schedule-audit"></div></details>{% endif %}
+  <form hidden>{% csrf_token %}</form><noscript>Для интерактивного графика включи JavaScript.</noscript>
+</section>
+{% endblock %}
+{% block scripts %}<script src="{% static 'js/courier-schedule.js' %}?v=1" defer></script>{% endblock %}

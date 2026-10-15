@@ -148,6 +148,7 @@ def _reorder_run_by_preference(run, courier):
 
 @transaction.atomic
 def reassign_route_run(run, courier):
+    run = RouteRun.objects.select_for_update().get(pk=run.pk)
     run.assigned_courier = courier
     run.save(update_fields=['assigned_courier', 'updated_at'])
     for delivery in run.deliveries.exclude(status=Delivery.Status.DONE):
@@ -348,3 +349,4 @@ def learn_template_from_run(run, template):
         item.comment = row.comment[:255]
         item.save(update_fields=['route_order', 'enabled_by_default', 'time_window', 'comment'])
     return len(learned)
+

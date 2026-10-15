@@ -1,0 +1,2 @@
+{% extends 'base.html' %}
+{% block content %}<div class="card"><h1>Проверь график курьера</h1><p>{{ error }}</p><p>Назначение не сохранено. Можно отменить действие или открыть график, отменить выходной и повторить назначение.</p>{% if schedule_url %}<a class="btn" href="{{ schedule_url }}">Открыть график</a>{% endif %}<a class="btn alt" href="{% url 'dispatcher_dashboard' %}">Отменить</a></div>{% endblock %}

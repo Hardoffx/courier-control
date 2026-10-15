@@ -61,3 +61,10 @@ DESIGN_SPEC.md, docs/ROUTE_CENTRIC_OPERATIONS.md, docs/COURIER_WORKSPACE.md и d
 
 ## Архитектурные ограничения
 SQLite остаётся намеренным single-server pilot выбором; PostgreSQL нужен перед серьезной concurrency/production стадией. Цвет Excel строки — только representation и никогда не определяет CMD/INVITRO/статус/бизнес-логику. Карта никогда не использует completion GPS как destination coordinates.
+
+
+## Feature update 2026-10-15 — графики курьеров
+
+Модуль встроен в существующий Django/SQLite: `CourierDayOff`, `CourierAssignment`, `CourierScheduleAudit`, границы учёта и версия графика на User. Личная и командная страницы, AJAX-операции, аудит/коррекция истории, серверная проверка всех путей назначения и прогноз завтрашних подмен. Исходный проверенный main: `689564b5c7819d0fbbf4d717e06c508bf71eb9f3`. Production/deploy/backup/авторизация/порядок доставок не изменены.
+
+Текущий контракт: `docs/COURIER_SCHEDULES.md`. Отдельное ограничение: миграция доказывает только сохранившиеся назначения; непрерывный учёт существующих сотрудников начинается в день обновления и настраивается диспетчером после проверки данных. Не пересчитывать старые пробелы как выходные без основания.

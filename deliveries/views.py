@@ -16,6 +16,7 @@ from .import_services import import_workbook, preview_workbook, validate_upload,
 from .import_staging import stage_upload, consume_upload
 from .point_matching import canonical_delivery_values, resolve_point
 from .route_services import record_courier_order_change
+from .schedule_services import availability, replacement_warnings
 
 PROBLEM_REASONS=('Нет доступа','Не принимают','Получатель недоступен','Неверный адрес','Нужно вернуться позже','Другая проблема')
 
@@ -85,6 +86,7 @@ def dispatcher_dashboard(request):
     selected_date=_dashboard_date(request)
     base=Delivery.objects.filter(delivery_date=selected_date).select_related('courier','point','route_run__route')
     couriers=User.objects.filter(role=User.Role.COURIER,is_active=True,is_superuser=False).order_by('first_name','username')
+    couriers=availability(couriers, selected_date)
     counts={key:base.filter(status=key).count() for key,_ in Delivery.Status.choices}
     route_q=request.GET.get('route_q','').strip()
     route_state=request.GET.get('route_state','').strip()
@@ -146,7 +148,7 @@ def dispatcher_dashboard(request):
         'route_filters':{'q':route_q,'state':route_state,'sort':route_sort},
         'unrouted_count':unrouted_count,'route_without_courier_count':route_without_courier_count,
         'pending_order_count':pending_order_count,'problem_count':problem_count,'attention_count':attention_count,
-        'active_courier_count':active_courier_count,
+        'active_courier_count':active_courier_count, 'schedule_warnings':replacement_warnings(),
     })
 
 
@@ -188,8 +190,12 @@ def dispatcher_deliveries(request):
 
 def _resolve_courier(courier_id):
     if not courier_id: return None
+    if not str(courier_id).isdigit():
+        from django.http import Http404
+        raise Http404
     return get_object_or_404(User,pk=courier_id,role=User.Role.COURIER,is_active=True,is_superuser=False)
 
+@transaction.atomic
 def _assign(delivery,courier,actor,action='assigned'):
     old=delivery.courier; delivery.courier=courier
     if courier and delivery.status==Delivery.Status.NEW: delivery.status=Delivery.Status.IN_PROGRESS
@@ -374,3 +380,4 @@ def courier_reorder(request,pk):
     if wants_json:
         return JsonResponse({'ok':False,'error':'Точку нельзя переместить дальше'},status=409)
     return redirect(f"{redirect('courier_today').url}?selected={delivery.pk}")
+

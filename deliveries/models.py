@@ -75,6 +75,12 @@ class CourierRouteOrderPreference(models.Model):
 
 
 class RouteRun(models.Model):
+    def save(self, *args, **kwargs):
+        from django.db import transaction
+        from .schedule_services import save_run_assignment
+        with transaction.atomic():
+            return save_run_assignment(self, lambda: super(RouteRun, self).save(*args, **kwargs), kwargs.get('update_fields'))
+
     class Status(models.TextChoices):
         DRAFT='draft','Черновик'; READY='ready','Готов'; IN_PROGRESS='in_progress','В работе'; DONE='done','Завершён'
     route=models.ForeignKey(Route,on_delete=models.PROTECT,related_name='runs')
@@ -108,6 +114,13 @@ class RouteOrderSuggestion(models.Model):
 
 
 class Delivery(models.Model):
+    def save(self, *args, **kwargs):
+        from django.db import transaction
+        from .schedule_services import guard_delivery_assignment
+        with transaction.atomic():
+            guard_delivery_assignment(self, kwargs.get('update_fields'))
+            return super().save(*args, **kwargs)
+
     class Status(models.TextChoices):
         NEW='new','Новая'; IN_PROGRESS='in_progress','В работе'; DONE='done','Выполнена'; PROBLEM='problem','Проблема'
     class RowColor(models.TextChoices):
@@ -172,3 +185,47 @@ class Delivery(models.Model):
 
 class DeliveryEvent(models.Model):
     delivery=models.ForeignKey(Delivery,on_delete=models.CASCADE,related_name='events'); actor=models.ForeignKey(settings.AUTH_USER_MODEL,null=True,on_delete=models.SET_NULL); action=models.CharField(max_length=64); note=models.TextField(blank=True); created_at=models.DateTimeField(auto_now_add=True)
+
+
+class CourierDayOff(models.Model):
+    courier = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='planned_days_off')
+    date = models.DateField()
+    active = models.BooleanField(default=True)
+    comment = models.CharField(max_length=500, blank=True)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name='+')
+    updated_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name='+')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=('courier', 'date'), name='unique_courier_day_off')]
+
+
+class CourierAssignment(models.Model):
+    """Assignment evidence survives deletion of a run. Future cancellations are retained but inactive."""
+    courier = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='shift_history')
+    date = models.DateField()
+    run = models.ForeignKey(RouteRun, null=True, on_delete=models.SET_NULL, related_name='assignment_history')
+    source_run_id = models.PositiveBigIntegerField()
+    route_name = models.CharField(max_length=120)
+    active = models.BooleanField(default=True)
+    frozen = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=('courier', 'date', 'source_run_id'), name='unique_courier_run_evidence')]
+        indexes = [models.Index(fields=('date', 'courier'))]
+
+
+class CourierScheduleAudit(models.Model):
+    courier = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='schedule_audit')
+    actor = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name='+')
+    action = models.CharField(max_length=32)
+    request_id = models.UUIDField(null=True, blank=True)
+    details = models.JSONField(default=dict)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=('courier', 'request_id'), name='unique_schedule_request')]
+

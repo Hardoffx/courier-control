@@ -47,7 +47,7 @@ class ResponsiveOperationalUiTests(TestCase):
         self.courier.save(update_fields=['first_name', 'is_reserve_courier'])
         response = self.client.get(reverse('route_detail', args=[self.route.pk]))
         self.assertContains(response, '<option value="">Кирилл</option>', html=False)
-        self.assertContains(response, f'<option value="{self.courier.pk}">Кирилл</option>', html=False)
+        self.assertContains(response, f'<option value="{self.courier.pk}">Кирилл · Доступен</option>', html=False)
         html = response.content.decode()
         for unwanted in ('Обычный курьер:', 'Обычный:', ' · РЕЗЕРВ', ' · Резерв'):
             self.assertNotIn(unwanted, html)
@@ -77,3 +77,4 @@ class ResponsiveOperationalUiTests(TestCase):
         item = RouteTemplateItem.objects.get(template=self.template, point=point)
         self.assertEqual(item.time_window, '12:00-15:00')
         self.assertEqual(item.comment, 'Тест')
+

@@ -11,6 +11,7 @@ from accounts.models import User
 from .models import Delivery, DeliveryEvent, DeliveryPoint, Route, RouteOrderSuggestion, RouteRun, RouteTemplate, RouteTemplateItem
 from .route_services import generate_route_run, reassign_route_run, learn_template_from_run, dissolve_route_run, suggestion_comparison, sync_template_order_from_run
 from .import_services import normalize_delivery_address
+from .schedule_services import availability
 
 
 def dispatcher_required(view):
@@ -236,7 +237,7 @@ def route_detail(request, pk):
         'templates': templates,
         'template': template,
         'points': points,
-        'couriers': _couriers(),
+        'couriers': availability(_couriers(), planning_date),
         'point_kinds': DeliveryPoint.Kind.choices,
         'today': timezone.localdate(),
         'planning_date': planning_date,
@@ -420,7 +421,10 @@ def route_generate(request, pk):
         messages.error(request, 'Некорректная дата')
         return redirect('route_detail', pk=pk)
     courier_id = request.POST.get('courier_id', '')
-    courier = _couriers().filter(pk=courier_id).first() if courier_id else route.default_courier
+    if courier_id and not courier_id.isdigit():
+        from django.http import Http404
+        raise Http404
+    courier = get_object_or_404(_couriers(), pk=courier_id) if courier_id else route.default_courier
     run = generate_route_run(template, run_date, courier=courier, enabled_item_ids=request.POST.getlist('enabled_items'))
     request.session.pop(_day_selection_key(template.pk, run_date), None)
     messages.success(request, f'{route.name}: сформировано {run.deliveries.count()} точек на {run_date:%d.%m.%Y}')
@@ -474,7 +478,7 @@ def run_detail(request, pk):
     return render(request, 'dispatcher/route_run_detail.html', {
         'run': run,
         'deliveries': deliveries,
-        'couriers': _couriers(),
+        'couriers': availability(_couriers(), run.run_date),
         'points': points,
         'point_kinds': DeliveryPoint.Kind.choices,
         'previous_run': previous,
@@ -666,7 +670,10 @@ def run_learn_template(request, pk):
 def run_reassign(request, pk):
     run = get_object_or_404(RouteRun, pk=pk)
     courier_id = request.POST.get('courier_id', '')
-    courier = _couriers().filter(pk=courier_id).first() if courier_id else None
+    if courier_id and not courier_id.isdigit():
+        from django.http import Http404
+        raise Http404
+    courier = get_object_or_404(_couriers(), pk=courier_id) if courier_id else None
     reassign_route_run(run, courier)
     message=f'{run.route.name}: ' + ('курьер изменён' if courier else 'назначение курьера снято')
     if _wants_json(request):
@@ -777,3 +784,4 @@ def run_reorder(request, pk):
         return JsonResponse({'ok': True, 'order': [item.pk for item in ordered]})
     messages.success(request, 'Порядок маршрута сохранён')
     return redirect('run_detail', pk=pk)
+
