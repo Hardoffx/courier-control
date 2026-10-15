@@ -136,6 +136,11 @@ class Command(BaseCommand):
 
         DeliveryPoint.objects.filter(pk__in=point_ids, code__startswith=POINT_PREFIX).delete()
         DeliveryPoint.objects.filter(code__startswith=POINT_PREFIX).delete()
+        from deliveries.models import CourierAssignment, CourierDayOff, CourierScheduleAudit
+        demo_users = User.objects.filter(username__startswith=USER_PREFIX)
+        # Explicitly gated demo namespace cleanup; real employee history remains protected.
+        for model in (CourierAssignment, CourierDayOff, CourierScheduleAudit):
+            model.objects.filter(courier__in=demo_users).delete()
         User.objects.filter(username__startswith=USER_PREFIX).delete()
 
     def _create_dispatcher(self):
@@ -357,3 +362,4 @@ class Command(BaseCommand):
             proposed_point_order=proposed,
             status=RouteOrderSuggestion.Status.PENDING,
         )
+

@@ -44,6 +44,7 @@
     <h1>Курьеры</h1>
     <div class="muted">Постоянные и резервные исполнители. Отключение доступа сохраняет историю доставок.</div>
   </div>
+  <a class="btn alt" href="{% url 'courier_team_schedule' %}">График команды</a>
   <a class="btn" href="{% url 'courier_manage_create' %}">+ Добавить курьера</a>
 </div>
 
@@ -64,6 +65,7 @@
           <td>{% if c.is_active %}<span class="active-state">Активен</span>{% else %}<span class="muted">Отключён</span>{% endif %}</td>
           <td style="white-space:nowrap">
             <a class="btn alt" href="{% url 'courier_preview' c.pk %}" target="_blank">Просмотр как курьер</a>
+            <a class="btn alt" href="{% url 'courier_schedule' c.pk %}">График</a>
             <a class="btn alt" href="{% url 'courier_manage_edit' c.pk %}">Редактировать</a>
             <form class="ajax-state-toggle" method="post" action="{% url 'courier_manage_toggle' c.pk %}" style="display:inline">{% csrf_token %}
               <button class="btn {% if c.is_active %}bad{% else %}good{% endif %}">{% if c.is_active %}Отключить{% else %}Включить{% endif %}</button>
@@ -96,7 +98,8 @@
         </div>
         <div class="courier-actions">
           <a class="btn alt preview" href="{% url 'courier_preview' c.pk %}" target="_blank">Просмотр как курьер</a>
-          <a class="btn alt" href="{% url 'courier_manage_edit' c.pk %}">Редактировать</a>
+          <a class="btn alt" href="{% url 'courier_schedule' c.pk %}">График</a>
+            <a class="btn alt" href="{% url 'courier_manage_edit' c.pk %}">Редактировать</a>
           <form class="ajax-state-toggle" method="post" action="{% url 'courier_manage_toggle' c.pk %}">{% csrf_token %}
             <button class="btn {% if c.is_active %}bad{% else %}good{% endif %}">{% if c.is_active %}Отключить{% else %}Включить{% endif %}</button>
           </form>
@@ -109,3 +112,4 @@
 {% endblock %}
 
 {% block scripts %}<script type="module" src="{% static 'js/dispatcher-directory.js' %}?v=20261010-1"></script>{% endblock %}
+

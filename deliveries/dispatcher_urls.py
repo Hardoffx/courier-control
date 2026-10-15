@@ -1,6 +1,13 @@
 from django.urls import path
-from . import views, point_views, route_views, route_import_views, courier_admin_views, report_views, ui_preview_views
+from . import views, point_views, route_views, route_import_views, courier_admin_views, report_views, ui_preview_views, schedule_views
 urlpatterns = [
+ path('couriers/schedule/', schedule_views.schedule_page, name='courier_team_schedule'),
+ path('couriers/schedule/data/', schedule_views.schedule_data, name='courier_team_schedule_data'),
+ path('couriers/schedule/availability/', schedule_views.schedule_availability, name='courier_availability'),
+ path('couriers/schedule/warnings/', schedule_views.schedule_warnings, name='courier_schedule_warnings'),
+ path('couriers/<int:pk>/schedule/', schedule_views.schedule_page, name='courier_schedule'),
+ path('couriers/<int:pk>/schedule/data/', schedule_views.schedule_data, name='courier_schedule_data'),
+ path('couriers/<int:pk>/schedule/change/', schedule_views.schedule_change, name='courier_schedule_change'),
  path('ui-preview/', ui_preview_views.ui_preview, name='ui_preview'),
  path('', views.dispatcher_dashboard, name='dispatcher_dashboard'),
  path('deliveries/', views.dispatcher_deliveries, name='dispatcher_deliveries'),
@@ -14,3 +21,4 @@ urlpatterns = [
  path('order-suggestions/<int:pk>/decide/', route_import_views.order_suggestion_decide, name='order_suggestion_decide'),
  path('import/', views.import_excel, name='import_excel'),
 ]
+

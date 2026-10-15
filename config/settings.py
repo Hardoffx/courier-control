@@ -57,6 +57,7 @@ MIDDLEWARE = [
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'config.middleware.PortalHostMiddleware',
+    'deliveries.schedule_middleware.ScheduleMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -94,3 +95,4 @@ LOGGING = {'version':1,'disable_existing_loggers':False,'formatters':{'standard'
 if os.getenv("UI_TESTING") == "1":
     SESSION_COOKIE_SECURE = False
     CSRF_COOKIE_SECURE = False
+

@@ -45,7 +45,8 @@ function bindBulkForm(){
     try{
       const response=await fetch((form.getAttribute('action')||window.location.href),{method:'POST',headers:{'X-Requested-With':'XMLHttpRequest','X-CSRFToken':csrf()},body:new FormData(form)});
       const payload=await response.json();
-      if(!response.ok||payload.ok===false)throw new Error(payload.error||'Не удалось сохранить');
+      if(response.status===409)window.showScheduleConflict?.(payload);
+  if(!response.ok||payload.ok===false)throw new Error(payload.error||'Не удалось сохранить');
       const courier=courierSelect.value?courierSelect.options[courierSelect.selectedIndex].textContent:'Курьер не назначен';
       selected.forEach(box=>{
         const id=box.value;
@@ -177,3 +178,4 @@ window.addEventListener('popstate',()=>{
   clearTimeout(filterTimer);
   void refreshDeliveries(window.location.href,{historyMode:'none',fullWorkspace:true});
 });
+

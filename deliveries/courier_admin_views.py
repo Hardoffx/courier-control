@@ -52,7 +52,7 @@ def courier_edit(request,pk=None):
             courier.is_active=request.POST.get('is_active')=='on'
             if password: courier.set_password(password)
             elif not courier.pk: courier.set_unusable_password()
-            courier.save()
+            courier.save(update_fields=['username', 'first_name', 'last_name', 'phone', 'is_reserve_courier', 'is_active', 'password'] if courier.pk else None)
             messages.success(request,'Курьер сохранён')
             next_url=request.POST.get('next') or request.GET.get('next')
             if next_url and url_has_allowed_host_and_scheme(next_url,allowed_hosts={request.get_host()},require_https=request.is_secure()):
@@ -84,3 +84,4 @@ def courier_toggle(request,pk):
         return JsonResponse({'ok':True,'courier_id':courier.pk,'is_active':courier.is_active,'message':message})
     messages.success(request,message)
     return redirect('courier_manage_list')
+

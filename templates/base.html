@@ -64,6 +64,8 @@
 <main class="wrap">{% block content %}{% endblock %}</main>
 
 {% if user.is_authenticated and user.is_dispatcher %}</div></div>{% endif %}
+{% if user.is_authenticated and user.is_dispatcher %}<script src="{% static 'js/schedule-assignment.js' %}?v=1"></script>{% endif %}
 {% block scripts %}{% endblock %}
 </body>
 </html>
+

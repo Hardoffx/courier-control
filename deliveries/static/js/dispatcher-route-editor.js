@@ -17,6 +17,7 @@ async function post(url, data) {
   const response=await fetch(url,{method:'POST',headers:{'X-Requested-With':'XMLHttpRequest','X-CSRFToken':csrf()},body});
   let payload={};
   try{payload=await response.json()}catch(_){}
+  if(response.status===409)window.showScheduleConflict?.(payload);
   if(!response.ok||payload.ok===false) throw new Error(payload.error||'Не удалось сохранить');
   return payload;
 }
@@ -334,6 +335,7 @@ bindDayToggles();
 function bindRunReassign(scope=document){
   scope.querySelectorAll('.run-reassign-select:not([data-bound])').forEach(select=>{
     select.dataset.bound='1';
+    let previous=select.value;
     select.addEventListener('change',async()=>{
       select.classList.add('is-saving');
       select.disabled=true;
@@ -341,9 +343,11 @@ function bindRunReassign(scope=document){
         const payload=await post(select.dataset.url,{courier_id:select.value});
         const badge=document.querySelector('.route-now-courier');
         if(badge)badge.textContent=payload.courier||'Курьер не назначен';
+        previous=select.value;
         toast(payload.message||'Курьер изменён');
         await refreshRunWorkspace();
       }catch(err){
+        select.value=previous;
         toast(err.message,true);
       }finally{
         select.disabled=false;
@@ -565,3 +569,4 @@ document.addEventListener('submit',async e=>{
 
 void bindPressables(document.querySelectorAll('.btn,.insert-zone'));
 void warmMotion();
+

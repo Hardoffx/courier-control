@@ -4,6 +4,8 @@ module.exports = defineConfig({
   testDir: './tests/ui',
   timeout: 30000,
   retries: process.env.CI ? 1 : 0,
+  // Browser scenarios share a deterministic SQLite fixture and mutate its routes.
+  workers: process.env.CI ? 1 : undefined,
   reporter: process.env.CI ? [['html', { open: 'never' }], ['list']] : 'list',
   expect: { toHaveScreenshot: { threshold: 0.2 } },
   use: {
@@ -12,6 +14,8 @@ module.exports = defineConfig({
   },
   projects: [
     { name: 'mobile-320', use: { viewport: { width: 320, height: 700 } } },
+    { name: 'mobile-360', use: { viewport: { width: 360, height: 800 } } },
+    { name: 'mobile-390', use: { viewport: { width: 390, height: 844 } } },
     { name: 'mobile-375', use: { viewport: { width: 375, height: 812 } } },
     { name: 'iphone-webkit', use: { ...devices['iPhone 13'], browserName: 'webkit' } },
     { name: 'mobile-430', use: { viewport: { width: 430, height: 932 } } },
@@ -31,3 +35,4 @@ module.exports = defineConfig({
     timeout: 120000,
   },
 });
+
