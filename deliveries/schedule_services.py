@@ -141,8 +141,8 @@ def month_data(couriers, first, last):
             worked = day < today and bool(assignments)
             in_period = bool(c.tracking_start_date and day >= c.tracking_start_date and (not c.tracking_end_date or day <= c.tracking_end_date))
             # Explicit historical evidence remains visible even outside conservative tracking boundaries.
-            status = 'worked' if worked else ('off' if day < today and in_period else 'unplanned')
-            if not in_period and not worked:
+            status = 'worked' if worked else ('off' if day < today and (in_period or key in off) else 'unplanned')
+            if not in_period and not worked and not (day < today and key in off):
                 status = 'outside'
             if day >= today and in_period:
                 status = 'shift' if planned else ('off' if key in off else 'unplanned')
@@ -150,7 +150,7 @@ def month_data(couriers, first, last):
                 status = 'conflict'
                 counts['conflicts'] += 1
             counts['worked'] += int(worked)
-            counts['off'] += int(day < today and in_period and not worked)
+            counts['off'] += int(day < today and (in_period or key in off) and not worked)
             counts['shifts'] += int(day >= today and bool(planned))
             counts['planned_off'] += int(day >= today and key in off)
             route_items = []
@@ -180,7 +180,9 @@ def mutate_schedule(courier, payload, actor):
     import uuid
     try:
         request_id = uuid.UUID(payload['request_id'])
-        revision = int(payload['revision'])
+        revision = payload['revision']
+        if type(revision) is not int or not 0 <= revision <= 2147483647:
+            raise ValueError
     except (KeyError, ValueError, TypeError, AttributeError):
         raise ValueError('Нужны идентификатор запроса и версия графика')
     previous = CourierScheduleAudit.objects.filter(courier=courier, request_id=request_id).first()
@@ -216,13 +218,21 @@ def mutate_schedule(courier, payload, actor):
             raise ValueError('Комментарий: не более 500 символов')
         today = timezone.localdate()
         if action == 'correct':
-            if any(d >= today for d in dates) or not comment or payload.get('worked') not in (True, False):
+            if any(d >= today for d in dates) or not comment or type(payload.get('worked')) is not bool:
                 raise ValueError('Исправление истории требует прошедшей даты, статуса и причины')
             details['before'] = list(CourierAssignment.objects.filter(courier=courier, date__in=dates).values('date', 'source_run_id', 'active'))
             details['before'] = [{**r, 'date': str(r['date'])} for r in details['before']]
             details['previous_days_off'] = [{**r, 'date': str(r['date'])} for r in CourierDayOff.objects.filter(courier=courier, date__in=dates).values('date', 'active', 'comment')]
             if payload['worked']:
                 CourierDayOff.objects.filter(courier=courier, date__in=dates, active=True).update(active=False, updated_by=actor, updated_at=timezone.now())
+            else:
+                for day in dates:
+                    row, _ = CourierDayOff.objects.get_or_create(courier=courier, date=day,
+                        defaults={'created_by': actor})
+                    row.active = True
+                    row.comment = comment
+                    row.updated_by = actor
+                    row.save()
             for day in dates:
                 CourierAssignment.objects.filter(courier=courier, date=day).update(active=False, frozen=True)
                 if payload['worked']:
@@ -276,7 +286,8 @@ def replacement_warnings(day=None):
         unresolved = [r for r in runs if not r.assigned_courier_id or r.assigned_courier_id in off]
         if runs and not unresolved:
             continue
-        expected = any(t.is_active and t.kind == kind and any(i.enabled_by_default for i in t.items.all()) for t in route.templates.all())
+        expected_kinds = {kind, 'weekend'} if tomorrow.weekday() >= 5 else {kind}
+        expected = any(t.is_active and t.kind in expected_kinds and any(i.enabled_by_default for i in t.items.all()) for t in route.templates.all())
         if not runs and not expected:
             continue
         name = route.default_courier.get_full_name() or route.default_courier.username

@@ -30,7 +30,7 @@ jobs:
         env:
           COURIER_UI_TESTING: '1'
           ROUTE_UI_TESTING: '1'
-        run: npx playwright test tests/ui/responsive.spec.js tests/ui/dispatcher.spec.js tests/ui/courier.spec.js tests/ui/schedules.spec.js
+        run: npx playwright test tests/ui/responsive.spec.js tests/ui/dispatcher.spec.js tests/ui/courier.spec.js tests/ui/schedules.spec.js tests/ui/schedule-audit.spec.js
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

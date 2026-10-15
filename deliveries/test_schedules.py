@@ -50,6 +50,7 @@ class ScheduleTests(TestCase):
         # Avoid crossing a month in assertions about one monthly count.
         self.assertEqual(row['days'][day.day-1]['status'],'worked')
         self.assertEqual(row['days'][day.day-1]['run_count'],3)
+        self.assertEqual(row['counts']['worked'],2 if day.month==(day-timedelta(days=1)).month else 1)
         self.assertEqual(len({a.date for a in CourierAssignment.objects.filter(courier=self.courier,active=True)}),2)
 
     def test_past_off_future_unplanned_and_today_not_worked(self):
@@ -137,7 +138,7 @@ class ScheduleTests(TestCase):
         self.assertEqual(self.status(day),'off')
         run.delete()
         self.assertEqual(self.status(day),'off')
-        CourierDayOff.objects.create(courier=self.courier,date=day,active=True)
+        self.assertTrue(CourierDayOff.objects.get(courier=self.courier,date=day).active)
         self.change('correct',dates=[day],worked=True,comment='Проверили смену')
         self.assertEqual(self.status(day),'worked')
         a=CourierScheduleAudit.objects.filter(action='correct').last()
@@ -234,6 +235,49 @@ class ScheduleTests(TestCase):
         choices=availability([self.courier,self.other],self.today)
         self.assertFalse(any(c.schedule_unavailable for c in choices))
 
+    def test_explicit_historical_off_outside_tracking_is_visible_and_reversible(self):
+        day = self.today - timedelta(days=90)
+        self.change('correct', dates=[day], worked=False, comment='Подтверждён выходной до начала учёта')
+        self.assertEqual(self.status(day), 'off')
+        self.assertEqual(self.data(day)['counts']['off'], 1)
+        self.assertEqual(self.status(day - timedelta(days=1)), 'outside')
+        self.change('correct', dates=[day], worked=True, comment='Уточнили: работал')
+        self.assertEqual(self.status(day), 'worked')
+        self.assertFalse(CourierDayOff.objects.get(courier=self.courier, date=day).active)
+
+    def test_weekend_template_predicts_replacement_only_on_weekends(self):
+        saturday = self.today + timedelta(days=(5-self.today.weekday()) % 7 + 7)
+        template = RouteTemplate.objects.create(route=self.route, kind='weekend')
+        point = DeliveryPoint.objects.create(name='Weekend', address='A')
+        RouteTemplateItem.objects.create(template=template, point=point)
+        self.change(dates=[saturday, saturday+timedelta(days=1), saturday+timedelta(days=2)])
+        self.assertEqual(len(replacement_warnings(saturday-timedelta(days=1))), 1)
+        self.assertEqual(len(replacement_warnings(saturday)), 1)
+        self.assertEqual(replacement_warnings(saturday+timedelta(days=1)), [])
+
+    def test_invalid_revision_returns_400_without_writing(self):
+        for revision in (10**100, -1, 1.5, True):
+            payload = {'request_id': str(uuid.uuid4()), 'revision': revision, 'action': 'off',
+                       'dates': [str(self.today+timedelta(days=1))]}
+            response = self.client.post(reverse('courier_schedule_change', args=[self.courier.pk]),
+                                        json.dumps(payload), content_type='application/json')
+            self.assertEqual(response.status_code, 400)
+        self.assertFalse(CourierDayOff.objects.exists())
+
+    def test_database_rejects_duplicate_evidence_days_off_and_request_ids(self):
+        from django.db import IntegrityError, transaction
+        day=self.today+timedelta(days=1)
+        run=self.run_for(day)
+        payload=self.change(dates=[day],allow_conflict=True)
+        duplicates=[
+            (CourierAssignment,{'courier':self.courier,'date':day,'source_run_id':run.pk,'route_name':'Duplicate'}),
+            (CourierDayOff,{'courier':self.courier,'date':day}),
+            (CourierScheduleAudit,{'courier':self.courier,'action':'off','request_id':payload['request_id']}),
+        ]
+        for model,fields in duplicates:
+            with self.assertRaises(IntegrityError),transaction.atomic():
+                model.objects.create(**fields)
+
 
 from django.test import TransactionTestCase
 from django.db import connection
@@ -269,3 +313,88 @@ class ScheduleMigrationTests(TransactionTestCase):
         finally:
             executor=MigrationExecutor(connection)
             executor.migrate(executor.loader.graph.leaf_nodes())
+
+    def test_empty_upgrade_and_repeated_migrate_are_safe(self):
+        old=[('deliveries','0008_split_weekend_templates'),('accounts','0002_user_is_reserve_courier')]
+        executor=MigrationExecutor(connection)
+        executor.migrate(old)
+        try:
+            executor=MigrationExecutor(connection)
+            executor.migrate(executor.loader.graph.leaf_nodes())
+            self.assertFalse(CourierAssignment.objects.exists())
+            self.assertFalse(CourierDayOff.objects.exists())
+            self.assertFalse(CourierScheduleAudit.objects.exists())
+            self.assertEqual(MigrationExecutor(connection).migration_plan(executor.loader.graph.leaf_nodes()), [])
+            with connection.cursor() as cursor:
+                cursor.execute('PRAGMA integrity_check')
+                self.assertEqual(cursor.fetchone(), ('ok',))
+                cursor.execute('PRAGMA foreign_key_check')
+                self.assertEqual(cursor.fetchall(), [])
+        finally:
+            executor=MigrationExecutor(connection)
+            executor.migrate(executor.loader.graph.leaf_nodes())
+
+    def test_backfill_failure_rolls_back_all_evidence_and_preserves_source(self):
+        from django.db.models.query import QuerySet
+        old=[('deliveries','0008_split_weekend_templates'),('accounts','0002_user_is_reserve_courier')]
+        executor=MigrationExecutor(connection)
+        executor.migrate(old)
+        apps=executor.loader.project_state(old).apps
+        user=apps.get_model('accounts','User').objects.create(username='rollback-courier',role='courier')
+        route=apps.get_model('deliveries','Route').objects.create(name='Rollback route')
+        run=apps.get_model('deliveries','RouteRun').objects.create(route=route,run_date=timezone.localdate(),assigned_courier=user)
+        apps.get_model('deliveries','Delivery').objects.create(route_run=run,delivery_date=run.run_date,courier=user,address='Keep me',status='done',route_order=7)
+        try:
+            executor=MigrationExecutor(connection)
+            executor.migrate([('deliveries','0009_courierassignment_courierdayoff_courierscheduleaudit'),
+                              ('accounts','0003_user_schedule_revision_user_tracking_end_date_and_more')])
+            original=QuerySet.get_or_create
+            def fail_after_write(qs,*args,**kwargs):
+                result=original(qs,*args,**kwargs)
+                if qs.model._meta.label_lower=='deliveries.courierassignment':
+                    raise RuntimeError('Simulated failure after inserting evidence')
+                return result
+            executor=MigrationExecutor(connection)
+            with patch.object(QuerySet,'get_or_create',fail_after_write),self.assertRaises(RuntimeError):
+                executor.migrate(executor.loader.graph.leaf_nodes())
+            self.assertEqual(CourierAssignment.objects.count(),0)
+            self.assertEqual(RouteRun.objects.get(pk=run.pk).assigned_courier_id,user.pk)
+            delivery=Delivery.objects.get(route_run_id=run.pk)
+            self.assertEqual((delivery.address,delivery.status,delivery.route_order),('Keep me','done',7))
+        finally:
+            executor=MigrationExecutor(connection)
+            executor.migrate(executor.loader.graph.leaf_nodes())
+
+
+class ScheduleConcurrencyTests(TransactionTestCase):
+    def test_simultaneous_dispatchers_never_overwrite_or_partially_save(self):
+        from concurrent.futures import ThreadPoolExecutor
+        from threading import Barrier
+        from django.db import connections, OperationalError
+        courier=User.objects.create_user(username='concurrent-courier')
+        actors=[User.objects.create_user(username=f'concurrent-dispatcher-{n}',role='dispatcher') for n in range(2)]
+        day=timezone.localdate()+timedelta(days=1)
+        payloads=[{'request_id':str(uuid.uuid4()),'revision':0,'action':'off',
+                   'dates':[str(day+timedelta(days=n))]} for n in range(2)]
+        barrier=Barrier(2)
+        def edit(n):
+            try:
+                barrier.wait(timeout=5)
+                mutate_schedule(courier,payloads[n],actors[n])
+                return True
+            except (ScheduleConflict,OperationalError):
+                return False
+            finally:
+                connections.close_all()
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            results=list(pool.map(edit,range(2)))
+        self.assertLessEqual(sum(results),1)
+        self.assertEqual(CourierDayOff.objects.count(),sum(results))
+        self.assertEqual(CourierScheduleAudit.objects.filter(action='off').count(),sum(results))
+        # SQLite can reject both read-to-write upgrades; a deliberate retry is safe.
+        if not any(results):
+            mutate_schedule(courier,payloads[0],actors[0])
+        self.assertEqual(CourierDayOff.objects.count(),1)
+        self.assertEqual(CourierScheduleAudit.objects.get(action='off').actor.role,'dispatcher')
+        courier.refresh_from_db()
+        self.assertEqual(courier.schedule_revision,1)

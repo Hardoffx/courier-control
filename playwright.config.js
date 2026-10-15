@@ -20,6 +20,7 @@ module.exports = defineConfig({
     { name: 'iphone-webkit', use: { ...devices['iPhone 13'], browserName: 'webkit' } },
     { name: 'mobile-430', use: { viewport: { width: 430, height: 932 } } },
     { name: 'tablet-768', use: { viewport: { width: 768, height: 1024 } } },
+    { name: 'tablet-1024', use: { viewport: { width: 1024, height: 900 } } },
     { name: 'desktop-1440', use: { viewport: { width: 1440, height: 900 } } },
   ],
   webServer: {
