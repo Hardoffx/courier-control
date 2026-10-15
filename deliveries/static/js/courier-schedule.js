@@ -65,7 +65,7 @@
     }
     $('schedule-correction').hidden=!d.past;
     root.querySelectorAll('[data-action]').forEach(e=>e.disabled=d.past||busy);
-    const range=$('schedule-range');range.elements.from.value=selectedDate;range.elements.to.value=selectedDate;
+    const range=$('schedule-range'), dates=[...selected].sort();range.elements.from.value=dates[0]||selectedDate;range.elements.to.value=dates[dates.length-1]||selectedDate;
   }
   async function load(history=false) {
     controller?.abort(); const current=new AbortController();controller=current;
