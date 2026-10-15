@@ -88,6 +88,7 @@ test('conflict warning resolves when replacement assigned; blocked assignment ro
   await page.goto('/dispatcher/');await expect(page.locator('#schedule-warnings')).toContainText(c.username);
   await page.goto(runUrl);const select=page.locator('.run-reassign-select');
   await select.selectOption(String(replacement.id));await expect(page.locator('.route-now-courier')).toContainText(replacement.username);
+  await expect(page.locator(`.run-reassign-select option[value="${c.id}"]`)).toContainText('Выходной');
   await page.goto('/dispatcher/');await expect(page.locator('#schedule-warnings')).not.toContainText(c.username);
   await page.goto(runUrl);await page.locator('.run-reassign-select').selectOption(String(c.id));
   await expect(page.locator('#schedule-assignment-conflict')).toBeVisible();

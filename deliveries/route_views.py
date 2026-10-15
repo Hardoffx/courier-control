@@ -11,6 +11,7 @@ from accounts.models import User
 from .models import Delivery, DeliveryEvent, DeliveryPoint, Route, RouteOrderSuggestion, RouteRun, RouteTemplate, RouteTemplateItem
 from .route_services import generate_route_run, reassign_route_run, learn_template_from_run, dissolve_route_run, suggestion_comparison, sync_template_order_from_run
 from .import_services import normalize_delivery_address
+from .schedule_services import availability
 
 
 def dispatcher_required(view):
@@ -236,7 +237,7 @@ def route_detail(request, pk):
         'templates': templates,
         'template': template,
         'points': points,
-        'couriers': _couriers(),
+        'couriers': availability(_couriers(), planning_date),
         'point_kinds': DeliveryPoint.Kind.choices,
         'today': timezone.localdate(),
         'planning_date': planning_date,
@@ -477,7 +478,7 @@ def run_detail(request, pk):
     return render(request, 'dispatcher/route_run_detail.html', {
         'run': run,
         'deliveries': deliveries,
-        'couriers': _couriers(),
+        'couriers': availability(_couriers(), run.run_date),
         'points': points,
         'point_kinds': DeliveryPoint.Kind.choices,
         'previous_run': previous,

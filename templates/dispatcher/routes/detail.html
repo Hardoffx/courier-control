@@ -52,7 +52,7 @@
     <label>Кто едет
       <select name="courier_id">
         <option value="">{% if route.default_courier %}{{ route.default_courier.get_full_name|default:route.default_courier.username }}{% else %}Не назначен{% endif %}</option>
-        {% for c in couriers %}<option value="{{ c.pk }}">{{ c.get_full_name|default:c.username }}</option>{% endfor %}
+        {% for c in couriers %}<option value="{{ c.pk }}">{{ c.get_full_name|default:c.username }}{{ c.schedule_label }}</option>{% endfor %}
       </select>
     </label>
     <button class="btn good">Создать на этот день</button>
@@ -191,3 +191,4 @@
 {% block scripts %}
 <script type="module" src="{% static 'js/dispatcher-route-editor.js' %}?v=20261011-3"></script>
 {% endblock %}
+
