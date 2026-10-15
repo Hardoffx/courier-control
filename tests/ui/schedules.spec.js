@@ -104,7 +104,9 @@ test('stale tab cannot overwrite newer schedule; courier cannot open dispatcher 
   await expect(page.locator('#schedule-feedback')).toContainText('изменён другим диспетчером');
   await expect(page.locator('[data-date="2032-02-20"]')).toHaveClass(/unplanned/);
   await page.request.post('/logout/',{form:{csrfmiddlewaretoken:await csrf(page)}});
-  await page.goto('/login/');await page.locator('[name=username]').fill(c.username);await page.locator('[name=password]').fill('local-ui-only-password');
-  await page.locator('button[type=submit]').click();await expect(page).toHaveURL(/\/courier\//);
+  await page.goto('/login/');
+  // This scenario checks authorization; native WebKit focus is covered by the login smoke tests.
+  const login=await page.request.post('/login/',{form:{csrfmiddlewaretoken:await csrf(page),username:c.username,password:'local-ui-only-password'}});
+  expect(login.ok()).toBeTruthy();expect(new URL(login.url()).pathname).toMatch(/\/courier\//);
   const response=await page.goto(c.href);expect(response.status()).toBe(403);
 });
