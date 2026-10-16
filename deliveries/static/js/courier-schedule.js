@@ -3,13 +3,14 @@
   if (!root) return;
   const $ = id => document.getElementById(id);
   const personal = !!root.dataset.courier;
-  const symbols = {worked:'✓', off:'−', shift:'↗', unplanned:'·', outside:'—', conflict:'!'};
+  const symbols = {worked:'✓', off:'−', shift:'↗', unplanned:'·', outside:'', conflict:'!'};
   const month = $('schedule-month');
   const initial = new URL(location.href);
   month.value = initial.searchParams.get('month') || new Date().toLocaleDateString('sv-SE', {timeZone:'Europe/Moscow'}).slice(0,7);
   let data, selectedDate = initial.searchParams.get('date'), selectedCourier = Number(root.dataset.courier) || null;
   let selected = new Set(), intent = null, mode = 'single', anchor = null, rangeComplete = false;
   let busy = false, loading = false, controller, noticeTimer, stale = false, pendingRequest;
+  let teamHintDismissed = false;
 
   function node(tag, text, cls) {
     const e = document.createElement(tag);
@@ -47,7 +48,7 @@
   function dayButton(r, d, team = false) {
     const e = node('button', undefined, `schedule-day ${d.status}${d.today?' today':''}`);
     e.type = 'button'; e.dataset.date = d.date; e.dataset.courier = r.id;
-    e.setAttribute('aria-label', `${team?r.name+', ':''}${dateText(d.date, {day:'numeric', month:'long', year:'numeric'})}: ${d.label}${d.today?', сегодня':''}`);
+    e.setAttribute('aria-label', `${team?r.name+', ':''}${dateText(d.date, {day:'numeric', month:'long', year:'numeric'})}${d.status === 'outside'?'':': '+d.label}${d.today?', сегодня':''}`);
     e.setAttribute('aria-pressed', String(r.id === selectedCourier && (intent ? selected.has(d.date) : d.date === selectedDate)));
     if (d.today) e.setAttribute('aria-current', 'date');
     e.append(node('b', d.number), node('small', symbols[d.status]));
@@ -72,8 +73,7 @@
     });
   }
   function renderAudit() {
-    const r = row(), period = $('schedule-period'), audit = $('schedule-audit');
-    period.elements.start.value = r.start; period.elements.end.value = r.end;
+    const audit = $('schedule-audit');
     audit.replaceChildren();
     const labels = {off:'Выходные отмечены', cancel:'Выходные отменены', correct:'История исправлена', period:'Период учёта изменён', assignment:'Назначение', assignment_removed:'Назначение изменено', legacy_snapshot:'Перенос сохранившихся данных'};
     (data.audit || []).forEach(a => {
@@ -86,6 +86,8 @@
   }
   function renderTeam(grid) {
     const filter = $('schedule-employee'), value = filter.value;
+    const shortCounts = new Map();
+    data.rows.forEach(r => { const label = r.short_name || r.name; shortCounts.set(label, (shortCounts.get(label) || 0) + 1); });
     filter.replaceChildren(new Option('Все сотрудники', ''));
     data.rows.forEach(r => filter.add(new Option(r.name, String(r.id))));
     filter.value = data.rows.some(r => String(r.id) === value) ? value : '';
@@ -93,16 +95,37 @@
     scroll.tabIndex = 0; scroll.setAttribute('aria-label', 'Календарь команды с горизонтальной прокруткой');
     const table = node('table', undefined, 'schedule-team'), head = node('thead'), tr = node('tr');
     const corner = node('th', 'Курьер'); corner.scope = 'col'; tr.append(corner);
-    (data.rows[0]?.days || []).forEach(d => {const th = node('th', d.number); th.scope = 'col'; tr.append(th);});
+    (data.rows[0]?.days || []).forEach(d => {
+      const th = node('th'), dateHead = node('span', undefined, 'schedule-team-date');
+      const weekday = ['Вс','Пн','Вт','Ср','Чт','Пт','Сб'][new Date(d.date+'T12:00:00Z').getUTCDay()];
+      dateHead.append(node('b', d.number), node('small', weekday));
+      th.scope = 'col'; th.setAttribute('aria-label', dateText(d.date, {day:'numeric', month:'long', year:'numeric', weekday:'long'}));
+      th.append(dateHead); tr.append(th);
+    });
     head.append(tr); table.append(head);
     const body = node('tbody');
     data.rows.filter(r => !filter.value || String(r.id) === filter.value).forEach(r => {
-      const line = node('tr'), name = node('th'), a = node('a', r.name);
-      a.href = `${r.url}?month=${data.month}`; name.scope = 'row'; name.append(a); line.append(name);
+      const line = node('tr'), name = node('th'), a = node('a');
+      const mobileName = r.short_name || r.name, duplicate = shortCounts.get(mobileName) > 1;
+      a.href = `${r.url}?month=${data.month}`; a.title = r.name;
+      a.setAttribute('aria-label', r.name + (duplicate ? ', сотрудник №'+r.id : ''));
+      const shortLabel = node('span', undefined, 'schedule-name-mobile');
+      const shortParts = mobileName.match(/^(.+)\s([^\s])\.$/u);
+      shortLabel.append(node('span', shortParts ? shortParts[1] : mobileName, 'schedule-name-surname'));
+      if (shortParts) shortLabel.append(node('span', ' '+shortParts[2]+'.', 'schedule-name-initial'));
+      a.append(node('span', r.name, 'schedule-name-desktop'), shortLabel);
+      if (duplicate) a.append(node('span', '№'+r.id, 'schedule-name-duplicate'));
+      name.scope = 'row'; name.append(a); line.append(name);
       r.days.forEach(d => {const td = node('td'); td.append(dayButton(r,d,true)); line.append(td);});
       body.append(line);
     });
     table.append(body); scroll.append(table); grid.append(scroll);
+    const hint = $('schedule-swipe-hint'); hint.hidden = teamHintDismissed || !data.rows.length;
+    scroll.addEventListener('scroll', () => {
+      if (scroll.scrollLeft > 12 && !teamHintDismissed) {
+        teamHintDismissed = true; hint.hidden = true;
+      }
+    }, {passive:true});
     if (!data.rows.length) grid.append(node('p', 'Курьеров для этого фильтра нет.'));
   }
   function render() {
@@ -129,19 +152,21 @@
     const r = row(), d = day(), details = $('schedule-details');
     details.hidden = !d || !!intent;
     if (!d) return;
-    details.replaceChildren(node('h2', `${personal?'':r.name+' · '}${dateText(d.date, {weekday:'long', day:'numeric', month:'long'})}`), node('p', `${d.label}${d.today?' · Сегодня':''} · Маршрутов: ${d.run_count}`));
-    if (d.day_off) details.append(node('p', `Запланирован выходной${d.comment?': '+d.comment:''}`));
+    const statusText = d.status === 'outside' ? '' : `${d.label}${d.today?' · Сегодня':''} · `;
+    details.replaceChildren(node('h2', `${personal?'':r.name+' · '}${dateText(d.date, {weekday:'long', day:'numeric', month:'long'})}`), node('p', `${statusText}Маршрутов: ${d.run_count}`));
+    const note = (d.comment || '').trim();
+    if (d.day_off && note && note !== '.') details.append(node('p', `Комментарий к выходному: ${note}`));
     if (d.loose_deliveries) details.append(node('p', `Отдельных доставок без маршрута: ${d.loose_deliveries}`));
     if (d.last_activity) details.append(node('p', `Последнее выполнение: ${new Date(d.last_activity).toLocaleString('ru-RU')}`));
     const links = node('div', undefined, 'schedule-route-links');
     d.routes.forEach(route => {const a = node(route.url?'a':'span', route.name); if(route.url) a.href = route.url; links.append(a);});
     details.append(links);
-    const actions = node('div', undefined, 'schedule-actions'), edit = node('button', d.past?'Исправить историю':d.day_off?'Изменить график':'Запланировать выходной', 'btn');
+    const actions = node('div', undefined, 'schedule-actions'), edit = node('button', d.past?'Исправить прошедший день':d.day_off?'Изменить график':'Запланировать выходной', d.past?'btn alt schedule-history-action':'btn');
     edit.type = 'button'; edit.dataset.begin = d.past?'history':'plan'; actions.append(edit);
     if (!personal) {
       const a = node('a', 'Личный график ↗', 'btn alt'); a.href = `${r.url}?month=${data.month}&date=${d.date}`; actions.append(a);
       const team = node('details'), list = node('ul'); team.append(node('summary', 'Команда на эту дату'));
-      data.rows.forEach(c => {const item = c.days.find(x => x.date === d.date); list.append(node('li', `${c.name}: ${item.label}${item.run_count?' · маршрутов: '+item.run_count:''}`));});
+      data.rows.forEach(c => {const item = c.days.find(x => x.date === d.date); list.append(node('li', `${c.name}${item.status === 'outside'?'':': '+item.label}${item.run_count?' · маршрутов: '+item.run_count:''}`));});
       team.append(list); details.append(team);
     }
     details.append(actions);
@@ -149,14 +174,15 @@
   function renderEditing() {
     $('schedule-edit').hidden = !intent; $('schedule-mode').hidden = !intent;
     $('schedule-planning').hidden = intent !== 'plan'; $('schedule-correction').hidden = intent !== 'history';
-    $('schedule-mode-title').textContent = intent === 'history'?'Исправление истории':'Планирование выходных';
+    $('schedule-mode-title').textContent = intent === 'history'?'Исправление прошедших дней':'Планирование выходных';
     root.querySelectorAll('[data-mode]').forEach(e => e.setAttribute('aria-pressed', String(e.dataset.mode === mode)));
     const hints = {single:'Нажми на одну дату. Повторное нажатие снимет выбор.', multiple:'Нажимай на нужные даты. Повторное нажатие снимет выбор.', range:anchor&&!rangeComplete?'Теперь нажми на последнюю дату диапазона.':'Нажми на первую, затем на последнюю дату диапазона.'};
     $('schedule-mode-hint').textContent = hints[mode];
     $('schedule-selection').textContent = `Выбрано дат: ${selected.size}`;
     const dates = [...selected].sort();
     $('schedule-selected-dates').textContent = dates.length ? (dates.length > 5 ? `${dateText(dates[0])} — ${dateText(dates.at(-1))} · ${dates.length} дат` : dates.map(d => dateText(d)).join(' · ')) : 'Выбери даты в календаре.';
-    $('schedule-current-status').textContent = 'Сейчас: '+[...new Set(dates.map(d => day(d)?.label))].filter(Boolean).join(', ');
+    const statuses = [...new Set(dates.map(date => day(date)).filter(d => d && d.status !== 'outside').map(d => d.label))];
+    $('schedule-current-status').textContent = statuses.length ? 'Сейчас: '+statuses.join(', ') : '';
     root.querySelector('[data-action=cancel]').hidden = !dates.some(d => day(d)?.day_off);
   }
   function updateControls() {
@@ -274,9 +300,6 @@
   root.querySelectorAll('[data-action]').forEach(e => e.addEventListener('click', () => void save(e.dataset.action)));
   $('schedule-correction').addEventListener('submit', e => {
     e.preventDefault(); void save('correct', {worked:e.target.elements.worked.value === 'true'});
-  });
-  $('schedule-period')?.addEventListener('submit', e => {
-    e.preventDefault(); void save('period', {start:e.target.elements.start.value, end:e.target.elements.end.value});
   });
   $('schedule-refresh').addEventListener('click', () => void load());
   window.addEventListener('popstate', () => {

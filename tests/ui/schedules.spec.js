@@ -161,7 +161,10 @@ test('history correction requires reason, supports past dates and records audite
   await expect(page.locator('.schedule-kpi-group').last()).toContainText('Предстоит');
   await expect(page.locator('#schedule-summary')).not.toContainText(/Смены|В плане/);
   await day(page,'2020-02-12');
-  await expect(page.locator('#schedule-details')).toContainText('Нет подтверждённых данных');
+  await expect(page.locator('#schedule-details')).not.toContainText('Нет подтверждённых данных');
+  await expect(page.locator('.schedule-legend')).not.toContainText('Нет подтверждённых данных');
+  await expect(page.locator('[data-begin=history]')).toHaveText('Исправить прошедший день');
+  await expect(page.locator('[data-begin=history]')).toHaveClass(/alt/);
   await expect(page.locator('#schedule-details')).not.toContainText(c.username);
   await page.locator('[data-begin=history]').click();
   await page.locator('[data-mode=multiple]').click();
@@ -184,8 +187,9 @@ test('history correction requires reason, supports past dates and records audite
   await expect(page.locator('[data-kpi=worked] strong')).toHaveText('0');
   await expect(page.locator('[data-kpi=off] strong')).toHaveText('2');
   await page.locator('#schedule-stop').click();
-  await page.getByText('История и настройки',{exact:true}).click();
-  await page.getByText('Последние изменения',{exact:true}).click();
+  await expect(page.locator('#schedule-details')).toContainText('Комментарий к выходному: Уточнение: подтверждены выходные');
+  await page.getByText('История изменений',{exact:true}).click();
+  await expect(page.locator('#schedule-period')).toHaveCount(0);
   await expect(page.locator('#schedule-audit')).toContainText('Подтверждено по журналу смен');
   await expect(page.locator('#schedule-audit')).toContainText('Уточнение: подтверждены выходные');
   await expect(page.locator('#schedule-audit')).toContainText('назначение действовало');
@@ -237,4 +241,116 @@ test('lost save reply retries the identical UUID without duplicate audit or stal
   expect(result.audit.filter(a=>a.action==='off')).toHaveLength(1);
   await page.emulateMedia({reducedMotion:'reduce'});
   expect(await page.locator('.schedule-day').first().evaluate(el=>getComputedStyle(el).animationName)).toBe('none');
+});
+
+test('schedule identity is one row with a single-line subtitle and wide month navigation',async({dispatcherPage:page})=>{
+  const c=await createCourier(page);await openSchedule(page,c);
+  const layout=await page.evaluate(()=>{
+    const bounds=selector=>document.querySelector(selector).getBoundingClientRect();
+    const avatar=bounds('.schedule-avatar'),name=bounds('.schedule-name-line h1');
+    const bar=bounds('.schedule-toolbar'),left=bounds('[data-month-step="-1"]'),right=bounds('[data-month-step="1"]');
+    return {avatarTop:avatar.top,avatarBottom:avatar.bottom,nameTop:name.top,nameBottom:name.bottom,
+      leftInset:left.left-bar.left,rightInset:bar.right-right.right,
+      subtitleWrap:getComputedStyle(document.querySelector('.schedule-identity-subtitle')).whiteSpace};
+  });
+  expect(layout.nameBottom).toBeGreaterThan(layout.avatarTop);
+  expect(layout.nameTop).toBeLessThan(layout.avatarBottom);
+  expect(layout.subtitleWrap).toBe('nowrap');
+  expect(layout.leftInset).toBeLessThanOrEqual(22);
+  expect(layout.rightInset).toBeLessThanOrEqual(22);
+  await page.locator('.schedule-name-line h1').evaluate(el=>{el.textContent='Александр Александрович Оченьдлиннаяфамилия';});
+  await noOverflow(page);
+  await expect(page.locator('.schedule-identity-subtitle')).toHaveText('График работы');
+});
+
+test('schedule navigation selects Graphs in sidebar and mobile drawer',async({dispatcherPage:page})=>{
+  const c=await createCourier(page);
+  await page.goto('/dispatcher/couriers/schedule/?month=2032-02');
+  await expect(page.locator('#courier-schedule')).toHaveAttribute('data-loaded','true');
+  await expect(page.locator('.dispatcher-side .side-nav a[href="/dispatcher/couriers/schedule/"]')).toHaveClass(/active/);
+  await expect(page.locator('#mobile-drawer a[href="/dispatcher/couriers/schedule/"]')).toHaveCount(1);
+  await page.goto(c.href+'?month=2032-02');
+  await expect(page.locator('.dispatcher-side .side-nav a[href="/dispatcher/couriers/schedule/"]')).toHaveClass(/active/);
+  await expect(page.locator('.dispatcher-side .side-nav a[href="/dispatcher/couriers/"]')).not.toHaveClass(/active/);
+  await noOverflow(page);
+});
+
+test('team dates show weekdays, mobile name shortens, and filter aligns with checkbox',async({dispatcherPage:page},testInfo)=>{
+  const c=await createCourier(page);
+  const response=await page.request.post(`/dispatcher/couriers/${c.id}/edit/`,{form:{
+    csrfmiddlewaretoken:await csrf(page),username:c.username,first_name:'Кирилл',last_name:'Оченьдлиннаяфамилия',
+    phone:'',password:'',is_active:'on'
+  }});
+  expect(response.ok()).toBeTruthy();
+  await page.goto('/dispatcher/couriers/schedule/?month=2032-02');
+  await expect(page.locator('#courier-schedule')).toHaveAttribute('data-loaded','true');
+  const link=page.locator(`.schedule-team tbody th a[href*="/couriers/${c.id}/schedule/"]`);
+  await expect(link).toHaveAttribute('title','Кирилл Оченьдлиннаяфамилия');
+  await expect(link.locator('.schedule-name-desktop')).toHaveText('Кирилл Оченьдлиннаяфамилия');
+  await expect(link.locator('.schedule-name-mobile')).toHaveText('Оченьдлиннаяфамилия К.');
+  await expect(link.locator('.schedule-name-initial')).toHaveText(' К.');
+  const duplicateMarker=link.locator('.schedule-name-duplicate');
+  if(await duplicateMarker.count()) {
+    await expect(duplicateMarker).toHaveText('№'+c.id);
+    await expect(link).toHaveAttribute('aria-label','Кирилл Оченьдлиннаяфамилия, сотрудник №'+c.id);
+  } else {
+    await expect(link).toHaveAttribute('aria-label','Кирилл Оченьдлиннаяфамилия');
+  }
+  await expect(page.locator('.schedule-team thead th').nth(1)).toContainText('Вс');
+  const mobile=testInfo.project.name.startsWith('mobile-')||testInfo.project.name.startsWith('iphone-');
+  if(mobile) {
+    await expect(link.locator('.schedule-name-mobile')).toBeVisible();
+    await expect(link.locator('.schedule-name-initial')).toBeVisible();
+    const initialFits = await link.locator('.schedule-name-initial').evaluate(el => {
+      const right = el.getBoundingClientRect().right;
+      const container = el.closest('.schedule-name-mobile').getBoundingClientRect();
+      return right <= container.right + 1;
+    });
+    expect(initialFits).toBeTruthy();
+  }
+  else await expect(link.locator('.schedule-name-desktop')).toBeVisible();
+  await expect(page.locator('#schedule-swipe-hint')).toBeVisible();
+  await page.locator('.schedule-team-scroll').evaluate(el=>el.scrollLeft=150);
+  await expect(page.locator('#schedule-swipe-hint')).toBeHidden();
+  await page.locator('#schedule-employee').selectOption(String(c.id));
+  await expect(page.locator('.schedule-team tbody tr')).toHaveCount(1);
+  await page.screenshot({path:testInfo.outputPath('team-real-names.png'),fullPage:true});
+  const geom=await page.evaluate(()=>{
+    const select=document.querySelector('#schedule-employee').getBoundingClientRect();
+    const check=document.querySelector('#schedule-active').getBoundingClientRect();
+    const sticky=document.querySelector('.schedule-team tbody th').getBoundingClientRect();
+    return {selectCenter:select.top+select.height/2,checkCenter:check.top+check.height/2,stickyWidth:sticky.width,overflow:document.documentElement.scrollWidth-document.documentElement.clientWidth};
+  });
+  expect(Math.abs(geom.selectCenter-geom.checkCenter)).toBeLessThan(18);
+  if(mobile)expect(geom.stickyWidth).toBeLessThanOrEqual(113);
+  expect(geom.overflow).toBeLessThanOrEqual(1);
+});
+
+test('team handles 50 rows and duplicate mobile names with sticky courier column',async({dispatcherPage:page},testInfo)=>{
+  test.skip(!['mobile-375','desktop-1440'].includes(testInfo.project.name),'large team visual geometry profiles');
+  const c=await createCourier(page);
+  await page.route('**/couriers/schedule/data/**',async route=>{
+    const response=await route.fetch(),data=await response.json();
+    const sample=data.rows.find(r=>r.id===c.id);
+    expect(sample).toBeTruthy();
+    data.rows=Array.from({length:50},(_,i)=>({
+      ...sample,id:100000+i,name:`Иванов Иван ${i+1}`,short_name:'Иванов И.',
+      days:sample.days.map(d=>({...d}))
+    }));
+    await route.fulfill({response,json:data});
+  });
+  await page.goto('/dispatcher/couriers/schedule/?month=2032-03');
+  await expect(page.locator('#courier-schedule')).toHaveAttribute('data-loaded','true');
+  await expect(page.locator('.schedule-team tbody tr')).toHaveCount(50);
+  await expect(page.locator('.schedule-team thead th')).toHaveCount(32);
+  await expect(page.locator('.schedule-name-duplicate').first()).toHaveText('№100000');
+  const grid=page.locator('.schedule-team-scroll');
+  await grid.evaluate(el=>{el.scrollLeft=350;el.scrollTop=230;});
+  const bounds=await page.evaluate(()=>{
+    const scroll=document.querySelector('.schedule-team-scroll').getBoundingClientRect();
+    const name=document.querySelector('.schedule-team tbody th').getBoundingClientRect();
+    return {left:Math.abs(name.left-scroll.left),overflow:document.documentElement.scrollWidth-document.documentElement.clientWidth};
+  });
+  expect(bounds.left).toBeLessThanOrEqual(8);
+  expect(bounds.overflow).toBeLessThanOrEqual(1);
 });
