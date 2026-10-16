@@ -161,7 +161,10 @@ test('history correction requires reason, supports past dates and records audite
   await expect(page.locator('.schedule-kpi-group').last()).toContainText('Предстоит');
   await expect(page.locator('#schedule-summary')).not.toContainText(/Смены|В плане/);
   await day(page,'2020-02-12');
-  await expect(page.locator('#schedule-details')).toContainText('Нет подтверждённых данных');
+  await expect(page.locator('#schedule-details')).not.toContainText('Нет подтверждённых данных');
+  await expect(page.locator('.schedule-legend')).not.toContainText('Нет подтверждённых данных');
+  await expect(page.locator('[data-begin=history]')).toHaveText('Исправить прошедший день');
+  await expect(page.locator('[data-begin=history]')).toHaveClass(/alt/);
   await expect(page.locator('#schedule-details')).not.toContainText(c.username);
   await page.locator('[data-begin=history]').click();
   await page.locator('[data-mode=multiple]').click();
@@ -184,8 +187,9 @@ test('history correction requires reason, supports past dates and records audite
   await expect(page.locator('[data-kpi=worked] strong')).toHaveText('0');
   await expect(page.locator('[data-kpi=off] strong')).toHaveText('2');
   await page.locator('#schedule-stop').click();
-  await page.getByText('История и настройки',{exact:true}).click();
-  await page.getByText('Последние изменения',{exact:true}).click();
+  await expect(page.locator('#schedule-details')).toContainText('Комментарий к выходному: Уточнение: подтверждены выходные');
+  await page.getByText('История изменений',{exact:true}).click();
+  await expect(page.locator('#schedule-period')).toHaveCount(0);
   await expect(page.locator('#schedule-audit')).toContainText('Подтверждено по журналу смен');
   await expect(page.locator('#schedule-audit')).toContainText('Уточнение: подтверждены выходные');
   await expect(page.locator('#schedule-audit')).toContainText('назначение действовало');
@@ -237,4 +241,24 @@ test('lost save reply retries the identical UUID without duplicate audit or stal
   expect(result.audit.filter(a=>a.action==='off')).toHaveLength(1);
   await page.emulateMedia({reducedMotion:'reduce'});
   expect(await page.locator('.schedule-day').first().evaluate(el=>getComputedStyle(el).animationName)).toBe('none');
+});
+
+test('schedule identity is one row with a single-line subtitle and wide month navigation',async({dispatcherPage:page})=>{
+  const c=await createCourier(page);await openSchedule(page,c);
+  const layout=await page.evaluate(()=>{
+    const bounds=selector=>document.querySelector(selector).getBoundingClientRect();
+    const avatar=bounds('.schedule-avatar'),name=bounds('.schedule-name-line h1');
+    const bar=bounds('.schedule-toolbar'),left=bounds('[data-month-step="-1"]'),right=bounds('[data-month-step="1"]');
+    return {avatarTop:avatar.top,avatarBottom:avatar.bottom,nameTop:name.top,nameBottom:name.bottom,
+      leftInset:left.left-bar.left,rightInset:bar.right-right.right,
+      subtitleWrap:getComputedStyle(document.querySelector('.schedule-identity-subtitle')).whiteSpace};
+  });
+  expect(layout.nameBottom).toBeGreaterThan(layout.avatarTop);
+  expect(layout.nameTop).toBeLessThan(layout.avatarBottom);
+  expect(layout.subtitleWrap).toBe('nowrap');
+  expect(layout.leftInset).toBeLessThanOrEqual(22);
+  expect(layout.rightInset).toBeLessThanOrEqual(22);
+  await page.locator('.schedule-name-line h1').evaluate(el=>{el.textContent='Александр Александрович Оченьдлиннаяфамилия';});
+  await noOverflow(page);
+  await expect(page.locator('.schedule-identity-subtitle')).toHaveText('График работы');
 });

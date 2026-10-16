@@ -1,10 +1,16 @@
 {% extends 'base.html' %}{% load static %}
 {% block title %}График курьеров · Courier Control{% endblock %}
-{% block head %}<link rel="stylesheet" href="{% static 'css/courier-schedule.css' %}?v=2">{% endblock %}
+{% block head %}<link rel="stylesheet" href="{% static 'css/courier-schedule.css' %}?v=3">{% endblock %}
 {% block content %}
 <section id="courier-schedule" data-courier="{{ courier.pk|default:'' }}" data-api="{% if courier %}{% url 'courier_schedule_data' courier.pk %}{% else %}{% url 'courier_team_schedule_data' %}{% endif %}">
   <header class="schedule-head">
-    <div class="schedule-identity"><span class="schedule-avatar" aria-hidden="true">{% if courier %}{{ courier.get_full_name|default:courier.username|first|upper }}{% else %}К{% endif %}</span><div><h1>{% if courier %}{{ courier.get_full_name|default:courier.username }}{% else %}График команды{% endif %}</h1><p class="muted">{% if courier %}График работы{% else %}Курьеры · Планирование{% endif %}</p></div></div>
+    <div class="schedule-identity">
+      <div class="schedule-name-line">
+        <span class="schedule-avatar" aria-hidden="true">{% if courier %}{{ courier.get_full_name|default:courier.username|first|upper }}{% else %}К{% endif %}</span>
+        <h1>{% if courier %}{{ courier.get_full_name|default:courier.username }}{% else %}График команды{% endif %}</h1>
+      </div>
+      <p class="muted schedule-identity-subtitle">{% if courier %}График работы{% else %}Курьеры · Планирование{% endif %}</p>
+    </div>
     <a class="schedule-back" href="{% if courier %}{% url 'courier_team_schedule' %}{% else %}{% url 'courier_manage_list' %}{% endif %}">{% if courier %}График команды ↗{% else %}Курьеры ↗{% endif %}</a>
   </header>
   <nav class="schedule-toolbar" aria-label="Месяц графика">
@@ -22,7 +28,7 @@
       <p id="schedule-mode-hint" class="muted"></p>
     </div>
     <div id="schedule-grid" class="schedule-grid"></div>
-    <div class="schedule-legend" aria-label="Обозначения"><span class="worked">✓ Отработано</span><span class="off">− Выходной</span><span class="shift">↗ Назначено</span><details><summary>Все статусы</summary><div><span class="unplanned">· Без плана</span><span class="conflict">! Конфликт</span><span class="outside">— Нет подтверждённых данных</span></div></details></div>
+    <div class="schedule-legend" aria-label="Обозначения"><span class="worked">✓ Отработано</span><span class="off">− Выходной</span><span class="shift">↗ Назначено</span><details><summary>Все статусы</summary><div><span class="unplanned">· Без плана</span><span class="conflict">! Конфликт</span></div></details></div>
   </section>
   <section id="schedule-details" class="card schedule-details" aria-label="Подробности дня" hidden></section>
   <section id="schedule-edit" class="card schedule-edit" aria-label="Выбранные даты" hidden>
@@ -41,13 +47,9 @@
     </form>
     <button id="schedule-stop" class="btn alt" type="button">Отменить выбор</button>
   </section>
-  {% if courier %}<details class="card schedule-settings"><summary>История и настройки</summary>
-    <details><summary>Период достоверного учёта</summary><p class="muted">За границами периода дни без назначений не считаются выходными. Сохранившиеся рабочие даты показываются отдельно.</p>
-      <form id="schedule-period" class="schedule-fields"><label>Начало<input type="date" name="start" required></label><label>Окончание<input type="date" name="end"></label><button class="btn" type="submit">Сохранить период</button></form>
-    </details><details><summary>Последние изменения</summary><div id="schedule-audit"></div></details>
-  </details>{% endif %}
+  {% if courier %}<details class="card schedule-settings"><summary>История изменений</summary><div id="schedule-audit"></div></details>{% endif %}
   <div id="schedule-notice" class="schedule-notice" hidden><p id="schedule-feedback" role="status" aria-live="polite" aria-atomic="true"></p><button id="schedule-refresh" type="button" class="btn alt" hidden>Обновить график</button></div>
   <form hidden>{% csrf_token %}</form><noscript>Для интерактивного графика включи JavaScript.</noscript>
 </section>
 {% endblock %}
-{% block scripts %}<script src="{% static 'js/courier-schedule.js' %}?v=2" defer></script>{% endblock %}
+{% block scripts %}<script src="{% static 'js/courier-schedule.js' %}?v=3" defer></script>{% endblock %}
