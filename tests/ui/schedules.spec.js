@@ -388,7 +388,7 @@ test('iPhone acceptance: compact personal and team headers never split short nam
   }
 });
 
-test('day details and audit cards retain real information in compact hierarchy',async({dispatcherPage:page})=>{
+test('day details and audit cards retain real information in compact hierarchy',async({dispatcherPage:page},testInfo)=>{
   const c=await createCourier(page);
   await page.route('**/couriers/'+c.id+'/schedule/data/**',async route=>{
     const original=await route.fetch(),payload=await original.json();
@@ -416,6 +416,7 @@ test('day details and audit cards retain real information in compact hierarchy',
   await expect(page.locator('.schedule-route-links a')).toHaveAttribute('href','/dispatcher/runs/42/');
   await expect(page.locator('.schedule-detail-info strong')).toHaveText(/\d{2}:\d{2}$/);
   await expect(page.locator('.schedule-detail-info')).not.toContainText('18:54:12');
+  await page.locator('#schedule-details').screenshot({path:testInfo.outputPath('schedule-details-refined.png')});
   await expect(page.locator('[data-begin=history]')).toHaveText('Исправить прошедший день');
   await page.getByText('История изменений',{exact:true}).click();
   await expect(page.locator('.schedule-audit-item')).toHaveCount(3);
@@ -426,5 +427,6 @@ test('day details and audit cards retain real information in compact hierarchy',
   await expect(page.locator('.schedule-audit-system')).not.toHaveAttribute('open','');
   await page.locator('.schedule-audit-system summary').first().click();
   await expect(page.locator('.schedule-audit-system .schedule-audit-item')).toHaveCount(2);
+  await page.locator('.schedule-settings').screenshot({path:testInfo.outputPath('schedule-audit-refined.png')});
   await noOverflow(page);
 });
