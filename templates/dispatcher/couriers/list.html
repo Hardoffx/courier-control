@@ -2,7 +2,7 @@
 {% load static %}
 {% block title %}Курьеры · Courier Control{% endblock %}
 {% block head %}
-<link rel="stylesheet" href="{% static 'css/dispatcher-directory.css' %}?v=20261010-1">
+<link rel="stylesheet" href="{% static 'css/dispatcher-directory.css' %}?v=20261016-1">
 <style>
 .page-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
 .page-head h1{margin:0 0 5px;font-size:28px}
@@ -63,14 +63,14 @@
           <td>{% if c.is_reserve_courier %}<span class="type">Резерв</span>{% else %}Постоянный{% endif %}</td>
           <td>{{ c.route_count }}</td>
           <td>{% if c.is_active %}<span class="active-state">Активен</span>{% else %}<span class="muted">Отключён</span>{% endif %}</td>
-          <td style="white-space:nowrap">
+          <td><div class="courier-desktop-actions">
             <a class="btn alt" href="{% url 'courier_preview' c.pk %}" target="_blank">Просмотр как курьер</a>
             <a class="btn alt" href="{% url 'courier_schedule' c.pk %}">График</a>
             <a class="btn alt" href="{% url 'courier_manage_edit' c.pk %}">Редактировать</a>
-            <form class="ajax-state-toggle" method="post" action="{% url 'courier_manage_toggle' c.pk %}" style="display:inline">{% csrf_token %}
+            <form class="ajax-state-toggle" method="post" action="{% url 'courier_manage_toggle' c.pk %}">{% csrf_token %}
               <button class="btn {% if c.is_active %}bad{% else %}good{% endif %}">{% if c.is_active %}Отключить{% else %}Включить{% endif %}</button>
             </form>
-          </td>
+          </div></td>
         </tr>
       {% empty %}<tr><td colspan="7">Курьеров пока нет.</td></tr>{% endfor %}
       </tbody>
