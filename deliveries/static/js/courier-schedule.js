@@ -72,17 +72,81 @@
       group.append(cards); summary.append(group);
     });
   }
+  function humanAuditDate(value) {
+    if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      return dateText(value, {day:'numeric', month:'long', year:'numeric'});
+    }
+    return String(value || '');
+  }
+  function auditCard(a) {
+    const detail = a.details || {}, request = detail.request || {};
+    const labels = {off:'Выходной отмечен', cancel:'Выходной отменён',
+      correct:'Статус исправлен', period:'Период учёта', assignment:'Назначение',
+      assignment_removed:'Назначение изменено', legacy_snapshot:'Перенос данных'};
+    const kind = a.action === 'assignment_removed' ? 'assignment' : a.action === 'legacy_snapshot' ? 'system' : a.action;
+    const card = node('article', undefined, 'schedule-audit-item');
+    const meta = node('div', undefined, 'schedule-audit-meta');
+    const time = node('time'), instant = new Date(a.at);
+    time.dateTime = a.at;
+    time.textContent = Number.isNaN(instant.getTime()) ? String(a.at) :
+      instant.toLocaleString('ru-RU', {day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit'});
+    meta.append(time, node('span', a.actor || 'Система', 'schedule-audit-actor'));
+    card.append(meta, node('span', labels[a.action] || a.action, 'schedule-audit-badge '+(kind || 'system')));
+    const dates = Array.isArray(request.dates) ? request.dates : detail.date ? [detail.date] : [];
+    let summary = '';
+    const datesBrief = dates.length <= 2 ? dates.map(humanAuditDate).join(', ') :
+      dates.slice(0,2).map(humanAuditDate).join(', ')+' и ещё '+(dates.length-2);
+    if (a.action === 'correct') summary = 'Исправлен день: '+datesBrief;
+    else if (a.action === 'off' || a.action === 'cancel') summary = 'Даты: '+datesBrief;
+    else if (a.action === 'assignment') summary = 'Маршрут '+(detail.route || '')+(detail.date?' · '+humanAuditDate(detail.date):'');
+    else if (a.action === 'assignment_removed') summary = 'Изменено назначение'+(detail.date?' · '+humanAuditDate(detail.date):'');
+    else if (a.action === 'legacy_snapshot') summary = 'Сохранены исторические сведения'+(detail.date?' · '+humanAuditDate(detail.date):'');
+    else if (a.action === 'period') summary = 'Границы периода учёта';
+    else summary = detail.date ? humanAuditDate(detail.date) : 'Изменение графика';
+    card.append(node('p', summary, 'schedule-audit-primary'));
+    if (a.action === 'correct') card.append(node('p', request.worked ? 'Установлен статус: работал' : 'Установлен статус: выходной', 'schedule-audit-secondary'));
+    if (a.action === 'assignment_removed' && detail.retained) card.append(node('p', 'Свидетельство за прошедший день сохранено', 'schedule-audit-secondary'));
+    if (dates.length > 2) {
+      const all = node('details', undefined, 'schedule-audit-more');
+      all.append(node('summary', 'Все даты ('+dates.length+')'),
+        node('p', dates.map(humanAuditDate).join(', '), 'schedule-audit-secondary'));
+      card.append(all);
+    }
+    const comment = String(request.comment || '').trim();
+    if (comment && comment !== '.') card.append(node('p', (a.action === 'correct'?'Причина: ':'Комментарий: ')+comment, 'schedule-audit-secondary'));
+    const before = detail.before;
+    if (Array.isArray(before) && before.length) {
+      const previous = before.map(d => {
+        const event = a.action === 'correct' ? 'назначение' : 'выходной';
+        return humanAuditDate(d.date)+': '+event+' '+(d.active?'действовало':'отменено');
+      }).join('; ');
+      card.append(node('p', 'Было: '+previous, 'schedule-audit-secondary'));
+    } else if (before && !Array.isArray(before)) {
+      card.append(node('p', 'Прежний период: '+humanAuditDate(before.start)+' — '+
+        (before.end && before.end !== 'None'?humanAuditDate(before.end):'без окончания'), 'schedule-audit-secondary'));
+    }
+    if (Array.isArray(detail.previous_days_off) && detail.previous_days_off.length) {
+      const earlier = detail.previous_days_off.map(d => humanAuditDate(d.date)+' — '+(d.active?'отмечен':'отменён')).join('; ');
+      card.append(node('p', 'Прежние выходные: '+earlier, 'schedule-audit-secondary'));
+    }
+    return card;
+  }
   function renderAudit() {
     const audit = $('schedule-audit');
     audit.replaceChildren();
-    const labels = {off:'Выходные отмечены', cancel:'Выходные отменены', correct:'История исправлена', period:'Период учёта изменён', assignment:'Назначение', assignment_removed:'Назначение изменено', legacy_snapshot:'Перенос сохранившихся данных'};
-    (data.audit || []).forEach(a => {
-      const before = a.details.before;
-      const previous = Array.isArray(before) ? before.map(d => `${d.date}: ${a.action === 'correct'?'назначение':'выходной'} ${d.active?'действовало':'отменено'}`).join(', ') : before ? `${before.start} — ${before.end === 'None'?'без окончания':before.end}` : '';
-      const previousOff = (a.details.previous_days_off || []).map(d => `${d.date}: выходной ${d.active?'действовал':'отменён'}`).join(', ');
-      audit.append(node('p', `${new Date(a.at).toLocaleString('ru-RU')} · ${a.actor} · ${labels[a.action] || a.action}${previous?' · Было: '+previous:''}${previousOff?' · '+previousOff:''} · ${a.details.request?.comment || a.details.date || ''}`, 'schedule-audit-item'));
-    });
-    if (!data.audit?.length) audit.append(node('p', 'Изменений пока нет.', 'muted'));
+    const entries = data.audit || [];
+    if (!entries.length) {
+      audit.append(node('p', 'Изменений пока нет.', 'muted'));
+      return;
+    }
+    entries.filter(a => a.action !== 'legacy_snapshot').forEach(a => audit.append(auditCard(a)));
+    const technical = entries.filter(a => a.action === 'legacy_snapshot');
+    if (technical.length) {
+      const group = node('details', undefined, 'schedule-audit-system');
+      group.append(node('summary', 'Системные записи ('+technical.length+')'));
+      technical.forEach(a => group.append(auditCard(a)));
+      audit.append(group);
+    }
   }
   function renderTeam(grid) {
     const filter = $('schedule-employee'), value = filter.value;
