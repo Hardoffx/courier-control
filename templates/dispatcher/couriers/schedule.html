@@ -1,15 +1,17 @@
 {% extends 'base.html' %}{% load static %}
 {% block title %}График курьеров · Courier Control{% endblock %}
-{% block head %}<link rel="stylesheet" href="{% static 'css/courier-schedule.css' %}?v=4">{% endblock %}
+{% block head %}<link rel="stylesheet" href="{% static 'css/courier-schedule.css' %}?v=5">{% endblock %}
 {% block content %}
 <section id="courier-schedule" data-courier="{{ courier.pk|default:'' }}" data-api="{% if courier %}{% url 'courier_schedule_data' courier.pk %}{% else %}{% url 'courier_team_schedule_data' %}{% endif %}">
   <header class="schedule-head{% if not courier %} schedule-team-head{% endif %}">
     <div class="schedule-identity">
       <div class="schedule-name-line">
         <span class="schedule-avatar" aria-hidden="true">{% if courier %}{{ courier.get_full_name|default:courier.username|first|upper }}{% else %}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><path d="M3.5 19v-2a5.5 5.5 0 0 1 11 0v2M16 5.5a3 3 0 0 1 0 5.5M17 14a4.5 4.5 0 0 1 3.5 4.5V19"/></svg>{% endif %}</span>
-        <h1>{% if courier %}{{ courier.get_full_name|default:courier.username }}{% else %}График команды{% endif %}</h1>
+        <div class="schedule-name-text">
+          <h1 {% if courier %}title="{{ courier.get_full_name|default:courier.username }}"{% endif %}>{% if courier %}{{ courier.get_full_name|default:courier.username }}{% else %}График команды{% endif %}</h1>
+          <p class="muted schedule-identity-subtitle">{% if courier %}График работы{% else %}Планирование работы курьеров{% endif %}</p>
+        </div>
       </div>
-      <p class="muted schedule-identity-subtitle">{% if courier %}График работы{% else %}Планирование работы курьеров{% endif %}</p>
     </div>
     <a class="schedule-back" href="{% if courier %}{% url 'courier_team_schedule' %}{% else %}{% url 'courier_manage_list' %}{% endif %}">{% if courier %}График команды ↗{% else %}Курьеры ↗{% endif %}</a>
   </header>
@@ -53,4 +55,4 @@
   <form hidden>{% csrf_token %}</form><noscript>Для интерактивного графика включи JavaScript.</noscript>
 </section>
 {% endblock %}
-{% block scripts %}<script src="{% static 'js/courier-schedule.js' %}?v=4" defer></script>{% endblock %}
+{% block scripts %}<script src="{% static 'js/courier-schedule.js' %}?v=5" defer></script>{% endblock %}
