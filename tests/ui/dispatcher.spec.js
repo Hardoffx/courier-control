@@ -97,6 +97,8 @@ for (const [path, name] of pages) {
 
 test('route-editor: pencil edits address inline without page reload', async ({ dispatcherPage: page }, testInfo) => {
   test.skip(testInfo.project.name !== 'mobile-375', 'single mutating smoke profile');
+  // Exercise the built-in animation fallback even when the CDN is unavailable.
+  await page.route('https://cdn.jsdelivr.net/**',route=>route.abort());
   await page.goto('/dispatcher/routes/910001/');
   const card=page.locator('#template-route-editor-workspace .route-editor-item').first();
   const address=card.locator('.editor-address');
@@ -110,6 +112,7 @@ test('route-editor: pencil edits address inline without page reload', async ({ d
   await card.locator(':scope > .editor-summary').click();
   await expect(card).toHaveAttribute('open', '');
   await expect(pencil).toBeVisible();
+  await expect.poll(()=>card.evaluate(el=>({height:el.style.height,animations:el.getAnimations().length})) ).toEqual({height:'',animations:0});
   await pencil.click();
   await expect(form).toBeVisible();
   await expect(card).toHaveAttribute('open', '');

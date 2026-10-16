@@ -32,6 +32,15 @@ jobs:
           ROUTE_UI_TESTING: '1'
         run: npx playwright test tests/ui/responsive.spec.js tests/ui/dispatcher.spec.js tests/ui/courier.spec.js tests/ui/schedules.spec.js tests/ui/schedule-audit.spec.js
       - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: schedule-ux-screenshots
+          path: |
+            test-results/**/personal-calendar.png
+            test-results/**/team-calendar.png
+            test-results/**/schedule-overview.png
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: ui-test-report

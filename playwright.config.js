@@ -21,6 +21,7 @@ module.exports = defineConfig({
     { name: 'mobile-430', use: { viewport: { width: 430, height: 932 } } },
     { name: 'tablet-768', use: { viewport: { width: 768, height: 1024 } } },
     { name: 'tablet-1024', use: { viewport: { width: 1024, height: 900 } } },
+    { name: 'desktop-1280', use: { viewport: { width: 1280, height: 900 } } },
     { name: 'desktop-1440', use: { viewport: { width: 1440, height: 900 } } },
   ],
   webServer: {

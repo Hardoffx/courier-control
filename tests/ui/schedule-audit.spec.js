@@ -4,7 +4,7 @@ async function openPersonal(page){
   await page.goto('/dispatcher/couriers/');
   const url=await page.locator('.courier-desktop a[href$="/schedule/"]').first().getAttribute('href');
   await page.goto(url+'?month=2032-02');
-  await expect(page.locator('#schedule-feedback')).toHaveText('График обновлён');
+  await expect(page.locator('#courier-schedule')).toHaveAttribute('data-loaded','true');
 }
 
 test('calendar keeps keyboard focus after day selection',async({dispatcherPage:page})=>{
@@ -18,6 +18,8 @@ test('calendar keeps keyboard focus after day selection',async({dispatcherPage:p
 
 test('month loading blocks stale edits and failure restores displayed month',async({dispatcherPage:page})=>{
   await openPersonal(page);
+  await page.locator('[data-date="2032-02-20"]').click();
+  await page.locator('[data-begin=plan]').click();
   await page.route('**/schedule/data/?month=2032-03',async route=>{
     await new Promise(resolve=>setTimeout(resolve,500));await route.abort();
   });
@@ -31,7 +33,7 @@ test('month loading blocks stale edits and failure restores displayed month',asy
 
 test('team day selection keeps horizontal scroll and focused cell',async({dispatcherPage:page})=>{
   await page.goto('/dispatcher/couriers/schedule/?month=2032-02');
-  await expect(page.locator('#schedule-feedback')).toHaveText('График обновлён');
+  await expect(page.locator('#courier-schedule')).toHaveAttribute('data-loaded','true');
   const day=page.locator('[data-date="2032-02-28"]').first();
   await day.scrollIntoViewIfNeeded();
   const before=await page.locator('.schedule-team-scroll').evaluate(el=>el.scrollLeft);
@@ -47,8 +49,10 @@ test('team header stays above employee names while scrolling a long list',async(
     data.rows=Array.from({length:40},(_,i)=>({...employee,id:100000+i,name:'Курьер '+i}));
     await route.fulfill({response,json:data});
   });
-  await page.goto('/dispatcher/couriers/schedule/?month=2032-02');
-  await expect(page.locator('#schedule-feedback')).toHaveText('График обновлён');
+  await page.goto('/dispatcher/couriers/schedule/?month=2032-03');
+  await expect(page.locator('#courier-schedule')).toHaveAttribute('data-loaded','true');
+  await expect(page.locator('.schedule-team tbody tr')).toHaveCount(40);
+  await expect(page.locator('.schedule-team thead th')).toHaveCount(32);
   await page.locator('.schedule-team-scroll').scrollIntoViewIfNeeded();
   await page.locator('.schedule-team-scroll').evaluate(el=>{el.scrollTop=80;el.scrollLeft=200;});
   await expect.poll(()=>page.locator('.schedule-team-scroll').evaluate(el=>{
