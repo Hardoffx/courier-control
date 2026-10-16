@@ -288,6 +288,7 @@ test('team dates show weekdays, mobile name shortens, and filter aligns with che
   await expect(link).toHaveAttribute('title','Кирилл Оченьдлиннаяфамилия');
   await expect(link.locator('.schedule-name-desktop')).toHaveText('Кирилл Оченьдлиннаяфамилия');
   await expect(link.locator('.schedule-name-mobile')).toHaveText('Оченьдлиннаяфамилия К.');
+  await expect(link.locator('.schedule-name-initial')).toHaveText(' К.');
   const duplicateMarker=link.locator('.schedule-name-duplicate');
   if(await duplicateMarker.count()) {
     await expect(duplicateMarker).toHaveText('№'+c.id);
@@ -297,13 +298,23 @@ test('team dates show weekdays, mobile name shortens, and filter aligns with che
   }
   await expect(page.locator('.schedule-team thead th').nth(1)).toContainText('Вс');
   const mobile=testInfo.project.name.startsWith('mobile-')||testInfo.project.name.startsWith('iphone-');
-  if(mobile)await expect(link.locator('.schedule-name-mobile')).toBeVisible();
+  if(mobile) {
+    await expect(link.locator('.schedule-name-mobile')).toBeVisible();
+    await expect(link.locator('.schedule-name-initial')).toBeVisible();
+    const initialFits = await link.locator('.schedule-name-initial').evaluate(el => {
+      const right = el.getBoundingClientRect().right;
+      const container = el.closest('.schedule-name-mobile').getBoundingClientRect();
+      return right <= container.right + 1;
+    });
+    expect(initialFits).toBeTruthy();
+  }
   else await expect(link.locator('.schedule-name-desktop')).toBeVisible();
   await expect(page.locator('#schedule-swipe-hint')).toBeVisible();
   await page.locator('.schedule-team-scroll').evaluate(el=>el.scrollLeft=150);
   await expect(page.locator('#schedule-swipe-hint')).toBeHidden();
   await page.locator('#schedule-employee').selectOption(String(c.id));
   await expect(page.locator('.schedule-team tbody tr')).toHaveCount(1);
+  await page.screenshot({path:testInfo.outputPath('team-real-names.png'),fullPage:true});
   const geom=await page.evaluate(()=>{
     const select=document.querySelector('#schedule-employee').getBoundingClientRect();
     const check=document.querySelector('#schedule-active').getBoundingClientRect();

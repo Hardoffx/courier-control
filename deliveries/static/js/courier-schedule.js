@@ -109,7 +109,11 @@
       const mobileName = r.short_name || r.name, duplicate = shortCounts.get(mobileName) > 1;
       a.href = `${r.url}?month=${data.month}`; a.title = r.name;
       a.setAttribute('aria-label', r.name + (duplicate ? ', сотрудник №'+r.id : ''));
-      a.append(node('span', r.name, 'schedule-name-desktop'), node('span', mobileName, 'schedule-name-mobile'));
+      const shortLabel = node('span', undefined, 'schedule-name-mobile');
+      const shortParts = mobileName.match(/^(.+)\s([^\s])\.$/u);
+      shortLabel.append(node('span', shortParts ? shortParts[1] : mobileName, 'schedule-name-surname'));
+      if (shortParts) shortLabel.append(node('span', ' '+shortParts[2]+'.', 'schedule-name-initial'));
+      a.append(node('span', r.name, 'schedule-name-desktop'), shortLabel);
       if (duplicate) a.append(node('span', '№'+r.id, 'schedule-name-duplicate'));
       name.scope = 'row'; name.append(a); line.append(name);
       r.days.forEach(d => {const td = node('td'); td.append(dayButton(r,d,true)); line.append(td);});
