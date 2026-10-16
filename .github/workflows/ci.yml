@@ -39,6 +39,10 @@ jobs:
             test-results/**/personal-calendar.png
             test-results/**/team-calendar.png
             test-results/**/schedule-overview.png
+            test-results/**/personal-header-refined.png
+            test-results/**/team-header-refined.png
+            test-results/**/schedule-details-refined.png
+            test-results/**/schedule-audit-refined.png
           retention-days: 14
       - uses: actions/upload-artifact@v4
         if: failure()
