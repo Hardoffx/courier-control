@@ -10,6 +10,7 @@
   let data, selectedDate = initial.searchParams.get('date'), selectedCourier = Number(root.dataset.courier) || null;
   let selected = new Set(), intent = null, mode = 'single', anchor = null, rangeComplete = false;
   let busy = false, loading = false, controller, noticeTimer, stale = false, pendingRequest;
+  let teamHintDismissed = false;
 
   function node(tag, text, cls) {
     const e = document.createElement(tag);
@@ -85,6 +86,8 @@
   }
   function renderTeam(grid) {
     const filter = $('schedule-employee'), value = filter.value;
+    const shortCounts = new Map();
+    data.rows.forEach(r => { const label = r.short_name || r.name; shortCounts.set(label, (shortCounts.get(label) || 0) + 1); });
     filter.replaceChildren(new Option('Все сотрудники', ''));
     data.rows.forEach(r => filter.add(new Option(r.name, String(r.id))));
     filter.value = data.rows.some(r => String(r.id) === value) ? value : '';
@@ -92,16 +95,33 @@
     scroll.tabIndex = 0; scroll.setAttribute('aria-label', 'Календарь команды с горизонтальной прокруткой');
     const table = node('table', undefined, 'schedule-team'), head = node('thead'), tr = node('tr');
     const corner = node('th', 'Курьер'); corner.scope = 'col'; tr.append(corner);
-    (data.rows[0]?.days || []).forEach(d => {const th = node('th', d.number); th.scope = 'col'; tr.append(th);});
+    (data.rows[0]?.days || []).forEach(d => {
+      const th = node('th'), dateHead = node('span', undefined, 'schedule-team-date');
+      const weekday = ['Вс','Пн','Вт','Ср','Чт','Пт','Сб'][new Date(d.date+'T12:00:00Z').getUTCDay()];
+      dateHead.append(node('b', d.number), node('small', weekday));
+      th.scope = 'col'; th.setAttribute('aria-label', dateText(d.date, {day:'numeric', month:'long', year:'numeric', weekday:'long'}));
+      th.append(dateHead); tr.append(th);
+    });
     head.append(tr); table.append(head);
     const body = node('tbody');
     data.rows.filter(r => !filter.value || String(r.id) === filter.value).forEach(r => {
-      const line = node('tr'), name = node('th'), a = node('a', r.name);
-      a.href = `${r.url}?month=${data.month}`; name.scope = 'row'; name.append(a); line.append(name);
+      const line = node('tr'), name = node('th'), a = node('a');
+      const mobileName = r.short_name || r.name, duplicate = shortCounts.get(mobileName) > 1;
+      a.href = `${r.url}?month=${data.month}`; a.title = r.name;
+      a.setAttribute('aria-label', r.name + (duplicate ? ', сотрудник №'+r.id : ''));
+      a.append(node('span', r.name, 'schedule-name-desktop'), node('span', mobileName, 'schedule-name-mobile'));
+      if (duplicate) a.append(node('span', '№'+r.id, 'schedule-name-duplicate'));
+      name.scope = 'row'; name.append(a); line.append(name);
       r.days.forEach(d => {const td = node('td'); td.append(dayButton(r,d,true)); line.append(td);});
       body.append(line);
     });
     table.append(body); scroll.append(table); grid.append(scroll);
+    const hint = $('schedule-swipe-hint'); hint.hidden = teamHintDismissed || !data.rows.length;
+    scroll.addEventListener('scroll', () => {
+      if (scroll.scrollLeft > 12 && !teamHintDismissed) {
+        teamHintDismissed = true; hint.hidden = true;
+      }
+    }, {passive:true});
     if (!data.rows.length) grid.append(node('p', 'Курьеров для этого фильтра нет.'));
   }
   function render() {
