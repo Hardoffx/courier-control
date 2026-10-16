@@ -354,3 +354,77 @@ test('team handles 50 rows and duplicate mobile names with sticky courier column
   expect(bounds.left).toBeLessThanOrEqual(8);
   expect(bounds.overflow).toBeLessThanOrEqual(1);
 });
+
+
+test('iPhone acceptance: compact personal and team headers never split short names',async({dispatcherPage:page},testInfo)=>{
+  const c=await createCourier(page);
+  for (const url of [c.href+'?month=2032-02','/dispatcher/couriers/schedule/?month=2032-02']) {
+    await page.goto(url);
+    await expect(page.locator('#courier-schedule')).toHaveAttribute('data-loaded','true');
+    const personal=url.includes('/'+c.id+'/');
+    if (personal) await page.locator('.schedule-name-line h1').evaluate(el=>{el.textContent='Кирилл';});
+    const metrics=await page.evaluate(()=>{
+      const rect=(query)=>document.querySelector(query).getBoundingClientRect();
+      const title=document.querySelector('.schedule-name-line h1');
+      const avatar=rect('.schedule-avatar'), name=rect('.schedule-name-line h1');
+      const link=rect('.schedule-back'), head=rect('.schedule-head');
+      const lineHeight=parseFloat(getComputedStyle(title).lineHeight);
+      return {avatarTop:avatar.top,avatarBottom:avatar.bottom,nameTop:name.top,nameBottom:name.bottom,
+        nameHeight:name.height,lineHeight,linkTop:link.top,headHeight:head.height,
+        wrap:getComputedStyle(title).overflowWrap,breakRule:getComputedStyle(title).wordBreak,
+        overflow:document.documentElement.scrollWidth-document.documentElement.clientWidth};
+    });
+    expect(metrics.nameTop).toBeLessThan(metrics.avatarBottom);
+    expect(metrics.nameBottom).toBeGreaterThan(metrics.avatarTop);
+    expect(metrics.linkTop).toBeGreaterThanOrEqual(metrics.nameBottom-1);
+    expect(metrics.wrap).toBe('normal');
+    expect(metrics.breakRule).toBe('normal');
+    expect(metrics.overflow).toBeLessThanOrEqual(1);
+    if (testInfo.project.name.startsWith('mobile-')||testInfo.project.name==='iphone-webkit') {
+      expect(metrics.headHeight).toBeLessThan(155);
+      if(personal)expect(metrics.nameHeight).toBeLessThan(metrics.lineHeight*1.5);
+    }
+    await page.screenshot({path:testInfo.outputPath(personal?'personal-header-refined.png':'team-header-refined.png'),fullPage:false});
+  }
+});
+
+test('day details and audit cards retain real information in compact hierarchy',async({dispatcherPage:page})=>{
+  const c=await createCourier(page);
+  await page.route('**/couriers/'+c.id+'/schedule/data/**',async route=>{
+    const original=await route.fetch(),payload=await original.json();
+    const selected=payload.rows[0].days.find(d=>d.date==='2020-02-12');
+    Object.assign(selected,{status:'worked',label:'Отработано',run_count:1,
+      routes:[{id:42,name:'Митино',url:'/dispatcher/runs/42/'}],
+      last_activity:'2020-02-12T18:54:12+03:00',comment:''});
+    payload.audit=[
+      {action:'correct',actor:'admin',at:'2026-10-16T15:45:42+03:00',
+        details:{request:{dates:['2020-02-12'],worked:true,comment:'Подтверждено по журналу смен'},
+          before:[{date:'2020-02-12',active:true,source_run_id:42}]}},
+      {action:'legacy_snapshot',actor:'Система',at:'2026-10-15T23:40:08+03:00',
+        details:{date:'2020-02-12'}},
+      {action:'legacy_snapshot',actor:'Система',at:'2026-10-15T23:40:08+03:00',
+        details:{date:'2020-02-13'}}
+    ];
+    await route.fulfill({response:original,json:payload});
+  });
+  await openSchedule(page,c,'2020-02');
+  await day(page,'2020-02-12');
+  await expect(page.locator('.schedule-detail-badges')).toContainText('Отработано');
+  await expect(page.locator('.schedule-detail-badges')).toContainText('1 маршрут');
+  await expect(page.locator('.schedule-route-heading')).toHaveText('Маршрут');
+  await expect(page.locator('.schedule-route-links a')).toHaveText('Митино');
+  await expect(page.locator('.schedule-route-links a')).toHaveAttribute('href','/dispatcher/runs/42/');
+  await expect(page.locator('.schedule-detail-info strong')).toHaveText(/\d{2}:\d{2}$/);
+  await expect(page.locator('.schedule-detail-info')).not.toContainText('18:54:12');
+  await expect(page.locator('[data-begin=history]')).toHaveText('Исправить прошедший день');
+  await page.getByText('История изменений',{exact:true}).click();
+  await expect(page.locator('.schedule-audit-item')).toHaveCount(3);
+  await expect(page.locator('.schedule-audit-badge.correct')).toHaveCount(1);
+  await expect(page.locator('.schedule-audit-system')).toContainText('Системные записи (2)');
+  await expect(page.locator('#schedule-audit')).toContainText('Подтверждено по журналу смен');
+  await expect(page.locator('#schedule-audit')).toContainText('назначение действовало');
+  await expect(page.locator('.schedule-audit-system')).not.toHaveAttribute('open','');
+  await page.locator('.schedule-audit-system summary').first().click();
+  await expect(page.locator('.schedule-audit-system .schedule-audit-item')).toHaveCount(2);
+  await noOverflow(page);
+});
