@@ -115,6 +115,15 @@ def month_bounds(raw):
     return first, first.replace(day=calendar.monthrange(first.year, first.month)[1])
 
 
+def short_courier_name(courier):
+    """Compact mobile name from explicitly stored fields; do not guess patronymics."""
+    first = (courier.first_name or '').strip()
+    last = (courier.last_name or '').strip()
+    if first and last:
+        return f'{last} {first[0].upper()}.'
+    return first or last or courier.username
+
+
 def month_data(couriers, first, last):
     couriers = list(couriers)
     ids = [c.pk for c in couriers]
@@ -168,7 +177,7 @@ def month_data(couriers, first, last):
                 'today': day == today, 'past': day < today, 'in_period': in_period, 'routes': route_items,
                 'run_count': len(route_items), 'loose_deliveries': loose.get(key, 0), 'last_activity': activity[key].isoformat() if key in activity else None,
                 'day_off': key in off, 'comment': off[key].comment if key in off else ''})
-        rows.append({'id': c.pk, 'name': c.get_full_name() or c.username, 'active': c.is_active,
+        rows.append({'id': c.pk, 'name': c.get_full_name() or c.username, 'short_name': short_courier_name(c), 'active': c.is_active,
             'revision': c.schedule_revision, 'start': str(c.tracking_start_date or ''), 'end': str(c.tracking_end_date or ''),
             'url': reverse('courier_schedule', args=[c.pk]), 'days': days, 'counts': counts})
     return {'month': first.strftime('%Y-%m'), 'title': first.strftime('%m.%Y'), 'weekday': first.weekday(), 'rows': rows,
