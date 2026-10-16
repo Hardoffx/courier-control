@@ -8,7 +8,7 @@ from django.utils import timezone
 from accounts.models import User
 from .models import (CourierAssignment, CourierDayOff, CourierScheduleAudit, Delivery, Route, RouteRun,
                      RouteTemplate, RouteTemplateItem, DeliveryPoint)
-from .schedule_services import (ScheduleConflict, availability, month_bounds, month_data, mutate_schedule,
+from .schedule_services import (ScheduleConflict, availability, month_bounds, month_data, short_courier_name, mutate_schedule,
                                 replacement_warnings)
 from .route_services import generate_route_run, reassign_route_run, dissolve_route_run
 
@@ -41,6 +41,20 @@ class ScheduleTests(TestCase):
                  'dates':[str(d) for d in (dates or [self.today+timedelta(days=1)])], **extra}
         mutate_schedule(self.courier,payload,self.dispatcher)
         return payload
+
+    def test_team_short_name_uses_only_structured_name_fields(self):
+        self.courier.first_name = 'Кирилл'
+        self.courier.last_name = 'Коробко'
+        self.courier.save(update_fields=['first_name', 'last_name'])
+        row = self.data()
+        self.assertEqual(row['name'], 'Кирилл Коробко')
+        self.assertEqual(row['short_name'], 'Коробко К.')
+        self.courier.last_name = ''
+        self.courier.save(update_fields=['last_name'])
+        self.assertEqual(self.data()['short_name'], 'Кирилл')
+        self.courier.first_name = ''
+        self.courier.save(update_fields=['first_name'])
+        self.assertEqual(short_courier_name(self.courier), self.courier.username)
 
     def test_multiple_runs_and_routes_count_unique_dates(self):
         day=self.today-timedelta(days=1)
