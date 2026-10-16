@@ -14,7 +14,7 @@ from .models import CourierAssignment, CourierDayOff, CourierScheduleAudit, Deli
 
 schedule_actor = ContextVar('schedule_actor', default=None)
 LABELS = {'worked': 'Отработано', 'off': 'Выходной', 'shift': 'Смена', 'unplanned': 'Без плана',
-          'outside': 'Вне учёта', 'conflict': 'Конфликт'}
+          'outside': 'Нет подтверждённых данных', 'conflict': 'Конфликт'}
 
 
 class ScheduleConflict(ValueError):

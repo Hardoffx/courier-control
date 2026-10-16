@@ -60,8 +60,13 @@ export async function animateElement(element, keyframes, options = {}) {
   });
   try {
     await animation.finished;
+    // Release the filled effect after committing its last frame. Otherwise a
+    // finished height animation pins an accordion to its old content height.
+    applyFinalStyles(element, keyframes);
   } catch (_) {
     // A cancelled animation is not a UI failure.
+  } finally {
+    animation.cancel();
   }
 }
 
