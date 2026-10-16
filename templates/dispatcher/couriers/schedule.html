@@ -1,15 +1,15 @@
 {% extends 'base.html' %}{% load static %}
 {% block title %}График курьеров · Courier Control{% endblock %}
-{% block head %}<link rel="stylesheet" href="{% static 'css/courier-schedule.css' %}?v=3">{% endblock %}
+{% block head %}<link rel="stylesheet" href="{% static 'css/courier-schedule.css' %}?v=4">{% endblock %}
 {% block content %}
 <section id="courier-schedule" data-courier="{{ courier.pk|default:'' }}" data-api="{% if courier %}{% url 'courier_schedule_data' courier.pk %}{% else %}{% url 'courier_team_schedule_data' %}{% endif %}">
-  <header class="schedule-head">
+  <header class="schedule-head{% if not courier %} schedule-team-head{% endif %}">
     <div class="schedule-identity">
       <div class="schedule-name-line">
-        <span class="schedule-avatar" aria-hidden="true">{% if courier %}{{ courier.get_full_name|default:courier.username|first|upper }}{% else %}К{% endif %}</span>
+        <span class="schedule-avatar" aria-hidden="true">{% if courier %}{{ courier.get_full_name|default:courier.username|first|upper }}{% else %}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><path d="M3.5 19v-2a5.5 5.5 0 0 1 11 0v2M16 5.5a3 3 0 0 1 0 5.5M17 14a4.5 4.5 0 0 1 3.5 4.5V19"/></svg>{% endif %}</span>
         <h1>{% if courier %}{{ courier.get_full_name|default:courier.username }}{% else %}График команды{% endif %}</h1>
       </div>
-      <p class="muted schedule-identity-subtitle">{% if courier %}График работы{% else %}Курьеры · Планирование{% endif %}</p>
+      <p class="muted schedule-identity-subtitle">{% if courier %}График работы{% else %}Планирование работы курьеров{% endif %}</p>
     </div>
     <a class="schedule-back" href="{% if courier %}{% url 'courier_team_schedule' %}{% else %}{% url 'courier_manage_list' %}{% endif %}">{% if courier %}График команды ↗{% else %}Курьеры ↗{% endif %}</a>
   </header>
@@ -19,7 +19,7 @@
     <button type="button" class="btn alt" data-month-step="1" aria-label="Следующий месяц">→</button>
     <small id="schedule-loading" role="status">Загрузка…</small>
   </nav>
-  {% if not courier %}<div class="schedule-team-filters"><label>Сотрудник<select id="schedule-employee"><option value="">Все сотрудники</option></select></label><label class="schedule-checkbox"><input type="checkbox" id="schedule-active"> Только активные</label></div>{% endif %}
+  {% if not courier %}<div class="schedule-team-filters" role="group" aria-label="Фильтры графика команды"><label class="schedule-employee-field">Сотрудник<select id="schedule-employee"><option value="">Все сотрудники</option></select></label><label class="schedule-checkbox schedule-active-filter"><input type="checkbox" id="schedule-active" aria-label="Только активные"> Активные</label></div>{% endif %}
   <div id="schedule-summary" class="schedule-summary"></div>
   <section class="card schedule-calendar-card" aria-label="Календарь">
     <div id="schedule-mode" class="schedule-mode" hidden>
@@ -27,6 +27,7 @@
       <div class="schedule-mode-switch" role="group" aria-label="Способ выбора дат"><button class="btn alt" type="button" data-mode="single" aria-pressed="true">Одна</button><button class="btn alt" type="button" data-mode="multiple" aria-pressed="false">Несколько</button><button class="btn alt" type="button" data-mode="range" aria-pressed="false">Диапазон</button></div>
       <p id="schedule-mode-hint" class="muted"></p>
     </div>
+    {% if not courier %}<p id="schedule-swipe-hint" class="schedule-swipe-hint"><span aria-hidden="true">↔</span> Листайте даты вправо →</p>{% endif %}
     <div id="schedule-grid" class="schedule-grid"></div>
     <div class="schedule-legend" aria-label="Обозначения"><span class="worked">✓ Отработано</span><span class="off">− Выходной</span><span class="shift">↗ Назначено</span><details><summary>Все статусы</summary><div><span class="unplanned">· Без плана</span><span class="conflict">! Конфликт</span></div></details></div>
   </section>
@@ -52,4 +53,4 @@
   <form hidden>{% csrf_token %}</form><noscript>Для интерактивного графика включи JavaScript.</noscript>
 </section>
 {% endblock %}
-{% block scripts %}<script src="{% static 'js/courier-schedule.js' %}?v=3" defer></script>{% endblock %}
+{% block scripts %}<script src="{% static 'js/courier-schedule.js' %}?v=4" defer></script>{% endblock %}
