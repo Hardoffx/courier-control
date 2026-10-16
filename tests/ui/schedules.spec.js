@@ -262,3 +262,78 @@ test('schedule identity is one row with a single-line subtitle and wide month na
   await noOverflow(page);
   await expect(page.locator('.schedule-identity-subtitle')).toHaveText('График работы');
 });
+
+test('schedule navigation selects Graphs in sidebar and mobile drawer',async({dispatcherPage:page})=>{
+  const c=await createCourier(page);
+  await page.goto('/dispatcher/couriers/schedule/?month=2032-02');
+  await expect(page.locator('#courier-schedule')).toHaveAttribute('data-loaded','true');
+  await expect(page.locator('.dispatcher-side .side-nav a[href="/dispatcher/couriers/schedule/"]')).toHaveClass(/active/);
+  await expect(page.locator('#mobile-drawer a[href="/dispatcher/couriers/schedule/"]')).toHaveCount(1);
+  await page.goto(c.href+'?month=2032-02');
+  await expect(page.locator('.dispatcher-side .side-nav a[href="/dispatcher/couriers/schedule/"]')).toHaveClass(/active/);
+  await expect(page.locator('.dispatcher-side .side-nav a[href="/dispatcher/couriers/"]')).not.toHaveClass(/active/);
+  await noOverflow(page);
+});
+
+test('team dates show weekdays, mobile name shortens, and filter aligns with checkbox',async({dispatcherPage:page},testInfo)=>{
+  const c=await createCourier(page);
+  const response=await page.request.post(`/dispatcher/couriers/${c.id}/edit/`,{form:{
+    csrfmiddlewaretoken:await csrf(page),username:c.username,first_name:'Кирилл',last_name:'Оченьдлиннаяфамилия',
+    phone:'',password:'',is_active:'on'
+  }});
+  expect(response.ok()).toBeTruthy();
+  await page.goto('/dispatcher/couriers/schedule/?month=2032-02');
+  await expect(page.locator('#courier-schedule')).toHaveAttribute('data-loaded','true');
+  const link=page.locator(`.schedule-team tbody th a[href*="/couriers/${c.id}/schedule/"]`);
+  await expect(link).toHaveAttribute('title','Кирилл Оченьдлиннаяфамилия');
+  await expect(link.locator('.schedule-name-desktop')).toHaveText('Кирилл Оченьдлиннаяфамилия');
+  await expect(link.locator('.schedule-name-mobile')).toHaveText('Оченьдлиннаяфамилия К.');
+  await expect(link).toHaveAttribute('aria-label','Кирилл Оченьдлиннаяфамилия');
+  await expect(page.locator('.schedule-team thead th').nth(1)).toContainText('Вс');
+  const mobile=testInfo.project.name.startsWith('mobile-')||testInfo.project.name.startsWith('iphone-');
+  if(mobile)await expect(link.locator('.schedule-name-mobile')).toBeVisible();
+  else await expect(link.locator('.schedule-name-desktop')).toBeVisible();
+  await expect(page.locator('#schedule-swipe-hint')).toBeVisible();
+  await page.locator('.schedule-team-scroll').evaluate(el=>el.scrollLeft=150);
+  await expect(page.locator('#schedule-swipe-hint')).toBeHidden();
+  await page.locator('#schedule-employee').selectOption(String(c.id));
+  await expect(page.locator('.schedule-team tbody tr')).toHaveCount(1);
+  const geom=await page.evaluate(()=>{
+    const select=document.querySelector('#schedule-employee').getBoundingClientRect();
+    const check=document.querySelector('#schedule-active').getBoundingClientRect();
+    const sticky=document.querySelector('.schedule-team tbody th').getBoundingClientRect();
+    return {selectCenter:select.top+select.height/2,checkCenter:check.top+check.height/2,stickyWidth:sticky.width,overflow:document.documentElement.scrollWidth-document.documentElement.clientWidth};
+  });
+  expect(Math.abs(geom.selectCenter-geom.checkCenter)).toBeLessThan(18);
+  if(mobile)expect(geom.stickyWidth).toBeLessThanOrEqual(113);
+  expect(geom.overflow).toBeLessThanOrEqual(1);
+});
+
+test('team handles 50 rows and duplicate mobile names with sticky courier column',async({dispatcherPage:page},testInfo)=>{
+  test.skip(!['mobile-375','desktop-1440'].includes(testInfo.project.name),'large team visual geometry profiles');
+  const c=await createCourier(page);
+  await page.route('**/couriers/schedule/data/**',async route=>{
+    const response=await route.fetch(),data=await response.json();
+    const sample=data.rows.find(r=>r.id===c.id);
+    expect(sample).toBeTruthy();
+    data.rows=Array.from({length:50},(_,i)=>({
+      ...sample,id:100000+i,name:`Иванов Иван ${i+1}`,short_name:'Иванов И.',
+      days:sample.days.map(d=>({...d}))
+    }));
+    await route.fulfill({response,json:data});
+  });
+  await page.goto('/dispatcher/couriers/schedule/?month=2032-03');
+  await expect(page.locator('#courier-schedule')).toHaveAttribute('data-loaded','true');
+  await expect(page.locator('.schedule-team tbody tr')).toHaveCount(50);
+  await expect(page.locator('.schedule-team thead th')).toHaveCount(32);
+  await expect(page.locator('.schedule-name-duplicate').first()).toHaveText('№100000');
+  const grid=page.locator('.schedule-team-scroll');
+  await grid.evaluate(el=>{el.scrollLeft=350;el.scrollTop=230;});
+  const bounds=await page.evaluate(()=>{
+    const scroll=document.querySelector('.schedule-team-scroll').getBoundingClientRect();
+    const name=document.querySelector('.schedule-team tbody th').getBoundingClientRect();
+    return {left:Math.abs(name.left-scroll.left),overflow:document.documentElement.scrollWidth-document.documentElement.clientWidth};
+  });
+  expect(bounds.left).toBeLessThanOrEqual(8);
+  expect(bounds.overflow).toBeLessThanOrEqual(1);
+});
