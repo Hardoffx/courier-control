@@ -212,25 +212,57 @@
     const scroll = grid.querySelector('.schedule-team-scroll');
     if (scroll && position) {scroll.scrollLeft = position.left; scroll.scrollTop = position.top;}
   }
+  function routeCountText(count) {
+    const word = count % 10 === 1 && count % 100 !== 11 ? 'маршрут' :
+      count % 10 >= 2 && count % 10 <= 4 && (count % 100 < 12 || count % 100 > 14) ? 'маршрута' : 'маршрутов';
+    return count+' '+word;
+  }
   function renderDetails() {
     const r = row(), d = day(), details = $('schedule-details');
     details.hidden = !d || !!intent;
     if (!d) return;
-    const statusText = d.status === 'outside' ? '' : `${d.label}${d.today?' · Сегодня':''} · `;
-    details.replaceChildren(node('h2', `${personal?'':r.name+' · '}${dateText(d.date, {weekday:'long', day:'numeric', month:'long'})}`), node('p', `${statusText}Маршрутов: ${d.run_count}`));
+    details.replaceChildren(node('h2', (personal?'':r.name+' · ')+
+      dateText(d.date, {weekday:'long', day:'numeric', month:'long'})));
+    const badges = node('div', undefined, 'schedule-detail-badges');
+    if (d.status !== 'outside') badges.append(node('span',
+      d.label+(d.today?' · Сегодня':''), 'schedule-detail-badge '+d.status));
+    badges.append(node('span', routeCountText(d.run_count), 'schedule-detail-badge'));
+    details.append(badges);
     const note = (d.comment || '').trim();
-    if (d.day_off && note && note !== '.') details.append(node('p', `Комментарий к выходному: ${note}`));
-    if (d.loose_deliveries) details.append(node('p', `Отдельных доставок без маршрута: ${d.loose_deliveries}`));
-    if (d.last_activity) details.append(node('p', `Последнее выполнение: ${new Date(d.last_activity).toLocaleString('ru-RU')}`));
-    const links = node('div', undefined, 'schedule-route-links');
-    d.routes.forEach(route => {const a = node(route.url?'a':'span', route.name); if(route.url) a.href = route.url; links.append(a);});
-    details.append(links);
-    const actions = node('div', undefined, 'schedule-actions'), edit = node('button', d.past?'Исправить прошедший день':d.day_off?'Изменить график':'Запланировать выходной', d.past?'btn alt schedule-history-action':'btn');
+    if (d.day_off && note && note !== '.') details.append(node('p', 'Комментарий к выходному: '+note, 'schedule-detail-note'));
+    if (d.loose_deliveries) details.append(node('p', 'Отдельных доставок без маршрута: '+d.loose_deliveries, 'schedule-detail-note'));
+    if (d.last_activity) {
+      const last = new Date(d.last_activity), info = node('p', undefined, 'schedule-detail-info');
+      const value = Number.isNaN(last.getTime()) ? d.last_activity :
+        last.toLocaleString('ru-RU', {day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit'});
+      info.append(node('small', 'Последнее выполнение'), node('strong', value));
+      details.append(info);
+    }
+    if (d.routes.length) {
+      const section = node('div', undefined, 'schedule-route-section'), links = node('div', undefined, 'schedule-route-links');
+      section.append(node('div', d.routes.length === 1 ? 'Маршрут' : 'Маршруты', 'schedule-route-heading'));
+      d.routes.forEach(route => {
+        const a = node(route.url?'a':'span', route.name);
+        if (route.url) a.href = route.url;
+        links.append(a);
+      });
+      section.append(links);
+      details.append(section);
+    }
+    const actions = node('div', undefined, 'schedule-actions');
+    const edit = node('button', d.past ? 'Исправить прошедший день' : d.day_off ? 'Изменить график' : 'Запланировать выходной',
+      d.past ? 'btn alt schedule-history-action' : 'btn');
     edit.type = 'button'; edit.dataset.begin = d.past?'history':'plan'; actions.append(edit);
     if (!personal) {
-      const a = node('a', 'Личный график ↗', 'btn alt'); a.href = `${r.url}?month=${data.month}&date=${d.date}`; actions.append(a);
-      const team = node('details'), list = node('ul'); team.append(node('summary', 'Команда на эту дату'));
-      data.rows.forEach(c => {const item = c.days.find(x => x.date === d.date); list.append(node('li', `${c.name}${item.status === 'outside'?'':': '+item.label}${item.run_count?' · маршрутов: '+item.run_count:''}`));});
+      const a = node('a', 'Личный график ↗', 'btn alt');
+      a.href = r.url+'?month='+data.month+'&date='+d.date;
+      actions.append(a);
+      const team = node('details'), list = node('ul');
+      team.append(node('summary', 'Команда на эту дату'));
+      data.rows.forEach(c => {
+        const item = c.days.find(x => x.date === d.date);
+        list.append(node('li', c.name+(item.status === 'outside'?'':': '+item.label)+(item.run_count?' · маршрутов: '+item.run_count:'')));
+      });
       team.append(list); details.append(team);
     }
     details.append(actions);
