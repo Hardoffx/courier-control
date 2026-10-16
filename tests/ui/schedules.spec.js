@@ -288,7 +288,13 @@ test('team dates show weekdays, mobile name shortens, and filter aligns with che
   await expect(link).toHaveAttribute('title','Кирилл Оченьдлиннаяфамилия');
   await expect(link.locator('.schedule-name-desktop')).toHaveText('Кирилл Оченьдлиннаяфамилия');
   await expect(link.locator('.schedule-name-mobile')).toHaveText('Оченьдлиннаяфамилия К.');
-  await expect(link).toHaveAttribute('aria-label','Кирилл Оченьдлиннаяфамилия');
+  const duplicateMarker=link.locator('.schedule-name-duplicate');
+  if(await duplicateMarker.count()) {
+    await expect(duplicateMarker).toHaveText('№'+c.id);
+    await expect(link).toHaveAttribute('aria-label','Кирилл Оченьдлиннаяфамилия, сотрудник №'+c.id);
+  } else {
+    await expect(link).toHaveAttribute('aria-label','Кирилл Оченьдлиннаяфамилия');
+  }
   await expect(page.locator('.schedule-team thead th').nth(1)).toContainText('Вс');
   const mobile=testInfo.project.name.startsWith('mobile-')||testInfo.project.name.startsWith('iphone-');
   if(mobile)await expect(link.locator('.schedule-name-mobile')).toBeVisible();
