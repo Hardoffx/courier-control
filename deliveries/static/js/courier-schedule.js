@@ -142,7 +142,7 @@
     if (!personal) {
       const a = node('a', 'Личный график ↗', 'btn alt'); a.href = `${r.url}?month=${data.month}&date=${d.date}`; actions.append(a);
       const team = node('details'), list = node('ul'); team.append(node('summary', 'Команда на эту дату'));
-      data.rows.forEach(c => {const item = c.days.find(x => x.date === d.date); list.append(node('li', `${c.name}: ${item.label}${item.run_count?' · маршрутов: '+item.run_count:''}`));});
+      data.rows.forEach(c => {const item = c.days.find(x => x.date === d.date); list.append(node('li', `${c.name}${item.status === 'outside'?'':': '+item.label}${item.run_count?' · маршрутов: '+item.run_count:''}`));});
       team.append(list); details.append(team);
     }
     details.append(actions);
@@ -157,7 +157,8 @@
     $('schedule-selection').textContent = `Выбрано дат: ${selected.size}`;
     const dates = [...selected].sort();
     $('schedule-selected-dates').textContent = dates.length ? (dates.length > 5 ? `${dateText(dates[0])} — ${dateText(dates.at(-1))} · ${dates.length} дат` : dates.map(d => dateText(d)).join(' · ')) : 'Выбери даты в календаре.';
-    $('schedule-current-status').textContent = 'Сейчас: '+[...new Set(dates.map(d => day(d)?.label))].filter(Boolean).join(', ');
+    const statuses = [...new Set(dates.map(date => day(date)).filter(d => d && d.status !== 'outside').map(d => d.label))];
+    $('schedule-current-status').textContent = statuses.length ? 'Сейчас: '+statuses.join(', ') : '';
     root.querySelector('[data-action=cancel]').hidden = !dates.some(d => day(d)?.day_off);
   }
   function updateControls() {
