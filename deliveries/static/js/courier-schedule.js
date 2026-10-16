@@ -72,17 +72,81 @@
       group.append(cards); summary.append(group);
     });
   }
+  function humanAuditDate(value) {
+    if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      return dateText(value, {day:'numeric', month:'long', year:'numeric'});
+    }
+    return String(value || '');
+  }
+  function auditCard(a) {
+    const detail = a.details || {}, request = detail.request || {};
+    const labels = {off:'Выходной отмечен', cancel:'Выходной отменён',
+      correct:'Статус исправлен', period:'Период учёта', assignment:'Назначение',
+      assignment_removed:'Назначение изменено', legacy_snapshot:'Перенос данных'};
+    const kind = a.action === 'assignment_removed' ? 'assignment' : a.action === 'legacy_snapshot' ? 'system' : a.action;
+    const card = node('article', undefined, 'schedule-audit-item');
+    const meta = node('div', undefined, 'schedule-audit-meta');
+    const time = node('time'), instant = new Date(a.at);
+    time.dateTime = a.at;
+    time.textContent = Number.isNaN(instant.getTime()) ? String(a.at) :
+      instant.toLocaleString('ru-RU', {day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit'});
+    meta.append(time, node('span', a.actor || 'Система', 'schedule-audit-actor'));
+    card.append(meta, node('span', labels[a.action] || a.action, 'schedule-audit-badge '+(kind || 'system')));
+    const dates = Array.isArray(request.dates) ? request.dates : detail.date ? [detail.date] : [];
+    let summary = '';
+    const datesBrief = dates.length <= 2 ? dates.map(humanAuditDate).join(', ') :
+      dates.slice(0,2).map(humanAuditDate).join(', ')+' и ещё '+(dates.length-2);
+    if (a.action === 'correct') summary = 'Исправлен день: '+datesBrief;
+    else if (a.action === 'off' || a.action === 'cancel') summary = 'Даты: '+datesBrief;
+    else if (a.action === 'assignment') summary = 'Маршрут '+(detail.route || '')+(detail.date?' · '+humanAuditDate(detail.date):'');
+    else if (a.action === 'assignment_removed') summary = 'Изменено назначение'+(detail.date?' · '+humanAuditDate(detail.date):'');
+    else if (a.action === 'legacy_snapshot') summary = 'Сохранены исторические сведения'+(detail.date?' · '+humanAuditDate(detail.date):'');
+    else if (a.action === 'period') summary = 'Границы периода учёта';
+    else summary = detail.date ? humanAuditDate(detail.date) : 'Изменение графика';
+    card.append(node('p', summary, 'schedule-audit-primary'));
+    if (a.action === 'correct') card.append(node('p', request.worked ? 'Установлен статус: работал' : 'Установлен статус: выходной', 'schedule-audit-secondary'));
+    if (a.action === 'assignment_removed' && detail.retained) card.append(node('p', 'Свидетельство за прошедший день сохранено', 'schedule-audit-secondary'));
+    if (dates.length > 2) {
+      const all = node('details', undefined, 'schedule-audit-more');
+      all.append(node('summary', 'Все даты ('+dates.length+')'),
+        node('p', dates.map(humanAuditDate).join(', '), 'schedule-audit-secondary'));
+      card.append(all);
+    }
+    const comment = String(request.comment || '').trim();
+    if (comment && comment !== '.') card.append(node('p', (a.action === 'correct'?'Причина: ':'Комментарий: ')+comment, 'schedule-audit-secondary'));
+    const before = detail.before;
+    if (Array.isArray(before) && before.length) {
+      const previous = before.map(d => {
+        const event = a.action === 'correct' ? 'назначение' : 'выходной';
+        return humanAuditDate(d.date)+': '+event+' '+(d.active?'действовало':'отменено');
+      }).join('; ');
+      card.append(node('p', 'Было: '+previous, 'schedule-audit-secondary'));
+    } else if (before && !Array.isArray(before)) {
+      card.append(node('p', 'Прежний период: '+humanAuditDate(before.start)+' — '+
+        (before.end && before.end !== 'None'?humanAuditDate(before.end):'без окончания'), 'schedule-audit-secondary'));
+    }
+    if (Array.isArray(detail.previous_days_off) && detail.previous_days_off.length) {
+      const earlier = detail.previous_days_off.map(d => humanAuditDate(d.date)+' — '+(d.active?'отмечен':'отменён')).join('; ');
+      card.append(node('p', 'Прежние выходные: '+earlier, 'schedule-audit-secondary'));
+    }
+    return card;
+  }
   function renderAudit() {
     const audit = $('schedule-audit');
     audit.replaceChildren();
-    const labels = {off:'Выходные отмечены', cancel:'Выходные отменены', correct:'История исправлена', period:'Период учёта изменён', assignment:'Назначение', assignment_removed:'Назначение изменено', legacy_snapshot:'Перенос сохранившихся данных'};
-    (data.audit || []).forEach(a => {
-      const before = a.details.before;
-      const previous = Array.isArray(before) ? before.map(d => `${d.date}: ${a.action === 'correct'?'назначение':'выходной'} ${d.active?'действовало':'отменено'}`).join(', ') : before ? `${before.start} — ${before.end === 'None'?'без окончания':before.end}` : '';
-      const previousOff = (a.details.previous_days_off || []).map(d => `${d.date}: выходной ${d.active?'действовал':'отменён'}`).join(', ');
-      audit.append(node('p', `${new Date(a.at).toLocaleString('ru-RU')} · ${a.actor} · ${labels[a.action] || a.action}${previous?' · Было: '+previous:''}${previousOff?' · '+previousOff:''} · ${a.details.request?.comment || a.details.date || ''}`, 'schedule-audit-item'));
-    });
-    if (!data.audit?.length) audit.append(node('p', 'Изменений пока нет.', 'muted'));
+    const entries = data.audit || [];
+    if (!entries.length) {
+      audit.append(node('p', 'Изменений пока нет.', 'muted'));
+      return;
+    }
+    entries.filter(a => a.action !== 'legacy_snapshot').forEach(a => audit.append(auditCard(a)));
+    const technical = entries.filter(a => a.action === 'legacy_snapshot');
+    if (technical.length) {
+      const group = node('details', undefined, 'schedule-audit-system');
+      group.append(node('summary', 'Системные записи ('+technical.length+')'));
+      technical.forEach(a => group.append(auditCard(a)));
+      audit.append(group);
+    }
   }
   function renderTeam(grid) {
     const filter = $('schedule-employee'), value = filter.value;
@@ -148,25 +212,57 @@
     const scroll = grid.querySelector('.schedule-team-scroll');
     if (scroll && position) {scroll.scrollLeft = position.left; scroll.scrollTop = position.top;}
   }
+  function routeCountText(count) {
+    const word = count % 10 === 1 && count % 100 !== 11 ? 'маршрут' :
+      count % 10 >= 2 && count % 10 <= 4 && (count % 100 < 12 || count % 100 > 14) ? 'маршрута' : 'маршрутов';
+    return count+' '+word;
+  }
   function renderDetails() {
     const r = row(), d = day(), details = $('schedule-details');
     details.hidden = !d || !!intent;
     if (!d) return;
-    const statusText = d.status === 'outside' ? '' : `${d.label}${d.today?' · Сегодня':''} · `;
-    details.replaceChildren(node('h2', `${personal?'':r.name+' · '}${dateText(d.date, {weekday:'long', day:'numeric', month:'long'})}`), node('p', `${statusText}Маршрутов: ${d.run_count}`));
+    details.replaceChildren(node('h2', (personal?'':r.name+' · ')+
+      dateText(d.date, {weekday:'long', day:'numeric', month:'long'})));
+    const badges = node('div', undefined, 'schedule-detail-badges');
+    if (d.status !== 'outside') badges.append(node('span',
+      d.label+(d.today?' · Сегодня':''), 'schedule-detail-badge '+d.status));
+    badges.append(node('span', routeCountText(d.run_count), 'schedule-detail-badge'));
+    details.append(badges);
     const note = (d.comment || '').trim();
-    if (d.day_off && note && note !== '.') details.append(node('p', `Комментарий к выходному: ${note}`));
-    if (d.loose_deliveries) details.append(node('p', `Отдельных доставок без маршрута: ${d.loose_deliveries}`));
-    if (d.last_activity) details.append(node('p', `Последнее выполнение: ${new Date(d.last_activity).toLocaleString('ru-RU')}`));
-    const links = node('div', undefined, 'schedule-route-links');
-    d.routes.forEach(route => {const a = node(route.url?'a':'span', route.name); if(route.url) a.href = route.url; links.append(a);});
-    details.append(links);
-    const actions = node('div', undefined, 'schedule-actions'), edit = node('button', d.past?'Исправить прошедший день':d.day_off?'Изменить график':'Запланировать выходной', d.past?'btn alt schedule-history-action':'btn');
+    if (d.day_off && note && note !== '.') details.append(node('p', 'Комментарий к выходному: '+note, 'schedule-detail-note'));
+    if (d.loose_deliveries) details.append(node('p', 'Отдельных доставок без маршрута: '+d.loose_deliveries, 'schedule-detail-note'));
+    if (d.last_activity) {
+      const last = new Date(d.last_activity), info = node('p', undefined, 'schedule-detail-info');
+      const value = Number.isNaN(last.getTime()) ? d.last_activity :
+        last.toLocaleString('ru-RU', {day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit'});
+      info.append(node('small', 'Последнее выполнение'), node('strong', value));
+      details.append(info);
+    }
+    if (d.routes.length) {
+      const section = node('div', undefined, 'schedule-route-section'), links = node('div', undefined, 'schedule-route-links');
+      section.append(node('div', d.routes.length === 1 ? 'Маршрут' : 'Маршруты', 'schedule-route-heading'));
+      d.routes.forEach(route => {
+        const a = node(route.url?'a':'span', route.name);
+        if (route.url) a.href = route.url;
+        links.append(a);
+      });
+      section.append(links);
+      details.append(section);
+    }
+    const actions = node('div', undefined, 'schedule-actions');
+    const edit = node('button', d.past ? 'Исправить прошедший день' : d.day_off ? 'Изменить график' : 'Запланировать выходной',
+      d.past ? 'btn alt schedule-history-action' : 'btn');
     edit.type = 'button'; edit.dataset.begin = d.past?'history':'plan'; actions.append(edit);
     if (!personal) {
-      const a = node('a', 'Личный график ↗', 'btn alt'); a.href = `${r.url}?month=${data.month}&date=${d.date}`; actions.append(a);
-      const team = node('details'), list = node('ul'); team.append(node('summary', 'Команда на эту дату'));
-      data.rows.forEach(c => {const item = c.days.find(x => x.date === d.date); list.append(node('li', `${c.name}${item.status === 'outside'?'':': '+item.label}${item.run_count?' · маршрутов: '+item.run_count:''}`));});
+      const a = node('a', 'Личный график ↗', 'btn alt');
+      a.href = r.url+'?month='+data.month+'&date='+d.date;
+      actions.append(a);
+      const team = node('details'), list = node('ul');
+      team.append(node('summary', 'Команда на эту дату'));
+      data.rows.forEach(c => {
+        const item = c.days.find(x => x.date === d.date);
+        list.append(node('li', c.name+(item.status === 'outside'?'':': '+item.label)+(item.run_count?' · маршрутов: '+item.run_count:'')));
+      });
       team.append(list); details.append(team);
     }
     details.append(actions);
