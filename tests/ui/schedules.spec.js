@@ -207,6 +207,15 @@ test('month picker crosses year boundary and team employee filter clears editing
   await page.locator('#schedule-month').fill('2032-02');
   await expect(page.locator('.schedule-day')).toHaveCount(29);
   await expect(page.locator('.schedule-month-picker')).not.toHaveAttribute('open','');
+  // This test verifies filter reset, not full-team rendering. Keep the iPhone
+  // WebKit fixture bounded: earlier scenarios create many couriers in shared SQLite.
+  await page.route('**/couriers/schedule/data/**',async route=>{
+    const response=await route.fetch(),payload=await response.json();
+    const employee=payload.rows.find(row=>row.id===c.id);
+    expect(employee).toBeTruthy();
+    payload.rows=[employee,...payload.rows.filter(row=>row.id!==c.id).slice(0,2)];
+    await route.fulfill({response,json:payload});
+  });
   await page.goto('/dispatcher/couriers/schedule/?month=2032-02');
   await expect(page.locator('#courier-schedule')).toHaveAttribute('data-loaded','true');
   await page.locator('#schedule-employee').selectOption(String(c.id));
@@ -215,6 +224,7 @@ test('month picker crosses year boundary and team employee filter clears editing
   await page.locator('#schedule-employee').selectOption('');
   await expect(page.locator('#schedule-edit')).toBeHidden();
   await expect(page.locator('#schedule-details')).toBeHidden();
+  await expect(page.locator('.schedule-team tbody tr')).toHaveCount(3);
   await expect(page.locator('.schedule-team tbody tr a')).toContainText([c.username]);
   await noOverflow(page);
 });
