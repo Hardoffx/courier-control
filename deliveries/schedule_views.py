@@ -27,8 +27,8 @@ def schedule_data(request, pk=None):
         couriers = [get_object_or_404(couriers, pk=pk)]
     else:
         couriers = couriers.filter(archived_at__isnull=True)
-    elif request.GET.get('active') == '1':
-        couriers = couriers.filter(is_active=True)
+        if request.GET.get('active') == '1':
+            couriers = couriers.filter(is_active=True)
     data = month_data(couriers, first, last)
     if pk:
         data['audit'] = [{'action': a.action, 'actor': (a.actor.get_full_name() or a.actor.username) if a.actor else 'Система',
