@@ -48,18 +48,17 @@ class PersistentRouteCheckboxTests(TestCase):
         next_run = generate_route_run(self.template, self.today + timedelta(days=3), courier=self.courier)
         self.assertTrue(next_run.deliveries.filter(point=self.point).exists())
 
-    def test_today_open_run_detaches_delivery_but_keeps_events(self):
+    def test_existing_run_is_unchanged_and_keeps_events(self):
         run = generate_route_run(self.template, self.today, courier=self.courier)
         delivery = run.deliveries.get(point=self.point)
         event = DeliveryEvent.objects.create(delivery=delivery, actor=self.dispatcher,
                                              action='note', note='Сохранить историю')
         self.assertEqual(self.toggle(False).status_code, 200)
         delivery.refresh_from_db()
-        self.assertIsNone(delivery.route_run_id)
+        self.assertEqual(delivery.route_run_id, run.pk)
         self.assertTrue(DeliveryEvent.objects.filter(pk=event.pk, delivery=delivery).exists())
-        self.assertTrue(DeliveryEvent.objects.filter(
-            delivery=delivery, action='template_point_excluded',
-        ).exists())
+        self.item.refresh_from_db()
+        self.assertFalse(self.item.enabled_by_default)
 
     def test_completed_today_is_not_deleted_when_future_template_excluded(self):
         run = generate_route_run(self.template, self.today, courier=self.courier)
