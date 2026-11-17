@@ -40,7 +40,20 @@ class FlexibleExcelImportTests(TestCase):
             '14:00-18:00',
         ])
         self.assertEqual(rows[0]['address'], 'Москва, пер 3-й Митинский 7')
-        self.assertEqual(rows[2]['address'], 'Москва, ш Пятницкое 15к3')
+        self.assertEqual(rows[2]['address'], 'Москва, Пятницкое шоссе 15к3')
+
+    def test_highway_address_uses_full_suffix_for_all_common_spellings(self):
+        for raw in (
+            'Москва, ш Пятницкое 15к3',
+            'Москва, ш. Пятницкое 15к3',
+            'Москва, Пятницкое ш 15к3',
+            'Москва, Пятницкое шоссе 15к3',
+        ):
+            with self.subTest(raw=raw):
+                self.assertEqual(
+                    normalize_delivery_address(raw),
+                    'Москва, Пятницкое шоссе 15к3',
+                )
 
     def test_columns_are_detected_by_content_not_fixed_position(self):
         content = self.workbook([
