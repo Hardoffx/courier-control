@@ -86,27 +86,33 @@ function pointFilterUrl(form){
 let pointFilterTimer=null;
 let pointFilterController=null;
 async function runPointFilter(form,historyMode='replace'){
+  // Keep the search form itself mounted. Replacing a focused input on iOS
+  // immediately dismisses the software keyboard even when the query succeeds.
   if(pointFilterController)pointFilterController.abort();
-  pointFilterController=new AbortController();
+  const controller=new AbortController();
+  pointFilterController=controller;
   const url=pointFilterUrl(form);
-  const workspace=document.getElementById('point-directory-workspace');
-  workspace?.classList.add('is-refreshing');
+  const results=document.getElementById('point-directory-results');
+  results?.classList.add('is-refreshing');
   try{
-    const response=await fetch(url,{headers:{'X-Requested-With':'XMLHttpRequest'},signal:pointFilterController.signal});
+    const response=await fetch(url,{headers:{'X-Requested-With':'XMLHttpRequest'},signal:controller.signal});
     if(!response.ok)throw new Error('Не удалось обновить справочник');
     const html=await response.text();
-    if(pointFilterController.signal.aborted)return;
-    const fresh=new DOMParser().parseFromString(html,'text/html').getElementById('point-directory-workspace');
-    if(!fresh)throw new Error('Не удалось обновить справочник');
-    workspace?.replaceWith(fresh);
+    if(controller.signal.aborted)return;
+    const incoming=new DOMParser().parseFromString(html,'text/html')
+      .getElementById('point-directory-results');
+    const current=document.getElementById('point-directory-results');
+    if(!incoming||!current)throw new Error('Не удалось обновить справочник');
+    current.replaceWith(incoming);
     if(historyMode==='push')window.history.pushState({},'',url);
     else if(historyMode==='replace')window.history.replaceState({},'',url);
-    bindPointFilters();
   }catch(err){
     if(err.name!=='AbortError')toast(err.message,true);
   }finally{
-    document.getElementById('point-directory-workspace')?.classList.remove('is-refreshing');
-    pointFilterController=null;
+    if(pointFilterController===controller){
+      pointFilterController=null;
+      results?.classList.remove('is-refreshing');
+    }
   }
 }
 

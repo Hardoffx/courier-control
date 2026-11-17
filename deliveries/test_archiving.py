@@ -167,6 +167,29 @@ class ArchiveLifecycleTests(TestCase):
         restore_route(self.route.pk, self.dispatcher)
         self.assertTrue(Route.objects.get(pk=self.route.pk).is_active)
 
+    def test_editing_disabled_courier_does_not_reenable_access(self):
+        self.courier.is_active = False
+        self.courier.save(update_fields=['is_active'])
+        response = self.client.post(reverse('courier_manage_edit', args=[self.courier.pk]), {
+            'username': self.courier.username,
+            'first_name': 'Исправлено',
+            'last_name': 'Имя',
+            'phone': '',
+            'password': '',
+        })
+        self.assertEqual(response.status_code, 302)
+        self.courier.refresh_from_db()
+        self.assertFalse(self.courier.is_active)
+        self.assertEqual(self.courier.first_name, 'Исправлено')
+
+    def test_settings_pages_own_archiving_controls_not_list_cards(self):
+        route_list = self.client.get(reverse('route_list'))
+        self.assertNotContains(route_list, 'name="reason"')
+        self.assertContains(self.client.get(reverse('route_edit',args=[self.route.pk])), 'route-archive-dialog')
+        courier_list = self.client.get(reverse('courier_manage_list'))
+        self.assertNotContains(courier_list, 'name="reason"')
+        self.assertContains(self.client.get(reverse('courier_manage_edit',args=[self.courier.pk])), 'courier-archive-dialog')
+
     def test_permissions_and_methods_on_archive_actions(self):
         self.assertEqual(self.client.get(reverse('route_archive', args=[self.route.pk])).status_code, 405)
         self.assertEqual(self.client.get(reverse('courier_restore', args=[self.courier.pk])).status_code, 405)

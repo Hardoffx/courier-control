@@ -11,6 +11,21 @@ def normalize(value):
     return ' '.join(value.split())
 
 
+def normalize_address(value):
+    """Comparison-only key: legacy 'ш Пятницкое' matches 'Пятницкое шоссе'.
+
+    Do not rewrite the address shown to the user when doing a match.
+    """
+    text=normalize(value)
+    text=re.sub(r'\bш\b', 'шоссе', text)
+    text=re.sub(
+        r'\bшоссе\s+([а-яa-z-]+(?:\s+[а-яa-z-]+){0,3})\s+(\d+[а-яa-z0-9]*)',
+        lambda match: f'{match.group(1)} шоссе {match.group(2)}',
+        text,
+    )
+    return text
+
+
 def normalize_code(value):
     return re.sub(r'\s+','',normalize(value))
 
@@ -30,9 +45,9 @@ def match_point(label='',address=''):
         code=normalize_code(label)
         matches=[p for p in active if p.code and normalize_code(p.code)==code]
         if len(matches)==1: return PointMatch(matches[0],'code')
-    naddr=normalize(address)
+    naddr=normalize_address(address)
     if naddr:
-        matches=[p for p in active if normalize(p.address)==naddr]
+        matches=[p for p in active if normalize_address(p.address)==naddr]
         if len(matches)==1: return PointMatch(matches[0],'address')
         nlabel=normalize(label)
         if len(matches)>1 and nlabel:

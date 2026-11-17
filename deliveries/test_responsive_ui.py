@@ -73,7 +73,7 @@ class ResponsiveOperationalUiTests(TestCase):
         })
         self.assertEqual(response.status_code, 302)
         point = DeliveryPoint.objects.get(code='1370/4628/5180')
-        self.assertEqual(point.address, 'Москва, ул Митинская 17к4')
+        self.assertEqual(point.address, 'Москва г, Митинская ул, дом № 17, корпус 4')
         item = RouteTemplateItem.objects.get(template=self.template, point=point)
         self.assertEqual(item.time_window, '12:00-15:00')
         self.assertEqual(item.comment, 'Тест')

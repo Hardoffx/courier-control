@@ -14,8 +14,8 @@
 .route-actions .btn:first-child{flex:1}
 .archive-tabs{display:flex;gap:8px;margin:12px 0}
 .archive-meta{font-size:12px;color:var(--muted);line-height:1.4}
-.archive-controls{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
-.archive-controls input{min-width:0;flex:1 1 140px;font-size:13px}
+.archive-controls{margin-top:10px;width:100%}
+.archive-controls .btn{display:block;width:100%}
 @media(max-width:700px){.page-head h1{font-size:23px}.page-head>.btn{width:100%}.route-grid{grid-template-columns:1fr}.route-card{min-height:0}}
 </style>
 {% endblock %}
@@ -35,8 +35,6 @@
 <div class="route-actions"><a class="btn" href="{% url 'route_detail' route.pk %}">{% if show_archive %}История{% else %}Открыть маршрут{% endif %}</a>{% if not show_archive %}<a class="btn alt" href="{% url 'route_edit' route.pk %}">Настройки</a>{% endif %}</div>
 {% if show_archive %}
 <form class="archive-controls" method="post" action="{% url 'route_restore' route.pk %}" onsubmit="return confirm('Восстановить маршрут из архива?')">{% csrf_token %}<button class="btn alt" type="submit">Восстановить</button></form>
-{% else %}
-<form class="archive-controls" method="post" action="{% url 'route_archive' route.pk %}" onsubmit="return confirm('Отправить маршрут в архив? История останется доступна.')">{% csrf_token %}<input name="reason" maxlength="500" aria-label="Причина архивирования" placeholder="Причина (необязательно)"><button class="btn alt" type="submit">В архив</button></form>
 {% endif %}
 </article>
 {% empty %}<div class="card"><h2>{% if show_archive %}Архив пуст{% else %}Маршрутов ещё нет{% endif %}</h2>{% if not show_archive %}<a class="btn" href="{% url 'route_create' %}">Создать маршрут</a>{% endif %}</div>{% endfor %}

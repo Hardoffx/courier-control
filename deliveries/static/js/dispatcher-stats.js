@@ -55,6 +55,11 @@ function bindStatsControls(){
       void refreshStats(statsUrl(form),{historyMode:'push'});
     });
     form.querySelectorAll('input[type=date]').forEach(input=>input.addEventListener('change',()=>{
+      const label=input.closest('.stats-date-field')?.querySelector('.stats-date-readable');
+      if(label&&input.value){
+        const [year,month,day]=input.value.split('-');
+        label.textContent=[day,month,year].join('.');
+      }
       const from=form.querySelector('[name=from]')?.value||'';
       const to=form.querySelector('[name=to]')?.value||'';
       if(from&&to)void refreshStats(statsUrl(form),{historyMode:'replace'});

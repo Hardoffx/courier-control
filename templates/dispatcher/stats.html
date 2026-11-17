@@ -3,7 +3,7 @@
 {% block title %}Статистика · Courier Control{% endblock %}
 {% block head %}
 <link rel="stylesheet" href="{% static 'css/dispatcher-professional.css' %}?v=20260924-1">
-<link rel="stylesheet" href="{% static 'css/stats.css' %}?v=20260924-2">
+<link rel="stylesheet" href="{% static 'css/stats.css' %}?v=20261117-2">
 {% endblock %}
 {% block content %}
 <div class="stats-dashboard" id="stats-live-workspace">
@@ -14,8 +14,8 @@
 
   <section class="card period-card">
     <form method="get" class="stats-live-filter">
-      <label>С<input type="date" name="from" value="{{ start|date:'Y-m-d' }}"></label>
-      <label>По<input type="date" name="to" value="{{ end|date:'Y-m-d' }}"></label>
+      <label class="stats-date-field">С<span class="stats-date-box"><span class="stats-date-readable" aria-hidden="true">{{ start|date:"d.m.Y" }}</span><input type="date" name="from" value="{{ start|date:'Y-m-d' }}" aria-label="Начало периода"></span></label>
+      <label class="stats-date-field">По<span class="stats-date-box"><span class="stats-date-readable" aria-hidden="true">{{ end|date:"d.m.Y" }}</span><input type="date" name="to" value="{{ end|date:'Y-m-d' }}" aria-label="Конец периода"></span></label>
       <button class="btn">Показать</button>
     </form>
     <nav class="period-links stats-live-presets"><a href="?period=1">Сегодня</a><a href="?period=7">7 дней</a><a href="?period=30">30 дней</a></nav>
@@ -79,4 +79,4 @@
   </section>
 </div>
 {% endblock %}
-{% block scripts %}<script type="module" src="{% static 'js/dispatcher-stats.js' %}?v=20260924-1"></script>{% endblock %}
+{% block scripts %}<script type="module" src="{% static 'js/dispatcher-stats.js' %}?v=20261117-2"></script>{% endblock %}

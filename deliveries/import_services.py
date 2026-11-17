@@ -311,28 +311,39 @@ def normalize_delivery_address(raw_address):
     )
 
     # Dotted street abbreviations.
-    for marker, canonical in (('ул.', 'ул'), ('пер.', 'пер'), ('наб.', 'наб'), ('пл.', 'пл'), ('ш.', 'ш')):
+    for marker, canonical in (('ул.', 'ул'), ('пер.', 'пер'), ('наб.', 'наб'), ('пл.', 'пл'), ('ш.', 'шоссе')):
         value = re.sub(
             rf'(?iu)(?<![А-ЯЁа-яёA-Za-z]){re.escape(marker)}(?=\s)',
             canonical,
             value,
         )
 
+    # Highway is displayed in full, after its name (Пятницкое шоссе).
+    value = re.sub(r'(?iu)\bш\b', 'шоссе', value)
+
     # Street words: normalize spelling but do not reorder uncertain components.
     street_aliases = (
         (r'улица|ул\.', 'ул'), (r'бульвар|б-р', 'б-р'),
         (r'проспект|пр-?т', 'пр-т'), (r'переулок|пер\.', 'пер'),
-        (r'шоссе|ш\.', 'ш'), (r'набережная|наб\.', 'наб'),
+        (r'шоссе|ш\.', 'шоссе'), (r'набережная|наб\.', 'наб'),
         (r'площадь|пл\.', 'пл'), (r'проезд|пр-д', 'проезд'),
     )
     for pattern, canonical in street_aliases:
         value = re.sub(rf'(?iu)\b(?:{pattern})\b\.?', canonical, value)
 
     # Canonical street order: marker first, so equivalent source forms converge.
-    street_markers = r'ул|пер|б-р|пр-т|ш|наб|пл|проезд'
+    street_markers = r'ул|пер|б-р|пр-т|наб|пл|проезд'
     value = re.sub(
         rf"(?iu)(?P<prefix>^|,\s*)(?P<name>[А-ЯЁA-Z][А-ЯЁа-яёA-Za-z0-9 .'-]*?)\s+(?P<marker>{street_markers})(?=\s+\d|\s*,|$)",
         lambda m: f"{m.group('prefix')}{m.group('marker')} {m.group('name').strip()}",
+        value,
+    )
+
+    # Older spreadsheets sometimes put the highway marker first: "ш Пятницкое 15к3".
+    # Reverse that ordering without touching already correctly written highways.
+    value = re.sub(
+        r"(?iu)(?P<prefix>^|,\s*)шоссе\s+(?P<name>[А-ЯЁA-Z][А-ЯЁа-яёA-Za-z0-9 .'\-]*?)(?=\s+\d|\s*,|$)",
+        lambda m: f"{m.group('prefix')}{m.group('name').strip()} шоссе",
         value,
     )
 

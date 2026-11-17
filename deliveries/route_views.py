@@ -11,7 +11,7 @@ from django.views.decorators.http import require_POST
 from accounts.models import User
 from .models import ArchiveEvent, Delivery, DeliveryEvent, DeliveryPoint, Route, RouteOrderSuggestion, RouteRun, RouteTemplate, RouteTemplateItem
 from .route_services import generate_route_run, reassign_route_run, learn_template_from_run, dissolve_route_run, suggestion_comparison, sync_template_order_from_run
-from .import_services import normalize_delivery_address
+from .point_matching import normalize_address
 from .schedule_services import availability
 
 
@@ -114,7 +114,7 @@ def _point_from_post(request):
 
     raw_code = request.POST.get('code', '').strip()[:100]
     raw_name = request.POST.get('name', '').strip()[:255]
-    address = normalize_delivery_address(request.POST.get('address', ''))[:500]
+    address = ' '.join(request.POST.get('address', '').split())[:500]
     phone = request.POST.get('phone', '').strip()[:64]
     if not address:
         raise ValueError('Укажите адрес новой точки')
@@ -137,12 +137,12 @@ def _point_from_post(request):
         code = ''
         name = raw_name or address[:255]
 
-    exact = DeliveryPoint.objects.filter(address=address, is_active=True)
+    exact = DeliveryPoint.objects.filter(is_active=True)
     if code:
         exact = exact.filter(code=code)
     else:
         exact = exact.filter(code='', kind=kind, name__iexact=name)
-    point = exact.first()
+    point = next((candidate for candidate in exact if normalize_address(candidate.address) == normalize_address(address)), None)
     if point:
         return point, False
 
@@ -347,7 +347,7 @@ def template_item_update(request, pk):
         item.save(update_fields=['time_window', 'comment'])
         payload.update({'time_window': item.time_window, 'comment': item.comment})
     elif action == 'point_address':
-        address = normalize_delivery_address(request.POST.get('address', ''))[:500]
+        address = ' '.join(request.POST.get('address', '').split())[:500]
         if not address:
             if _wants_json(request):
                 return JsonResponse({'ok': False, 'error': 'Укажите адрес точки'}, status=400)
@@ -387,8 +387,8 @@ def template_item_day_toggle(request, pk):
     return JsonResponse({
         'ok': True,
         'enabled': item.enabled_by_default,
-        'message': 'Точка постоянно включена в маршрут' if item.enabled_by_default
-                   else 'Точка постоянно исключена из маршрута',
+        'message': 'Точка включена в маршрут' if item.enabled_by_default
+                   else 'Точка исключена из маршрута',
     })
 
 

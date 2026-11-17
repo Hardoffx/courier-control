@@ -128,7 +128,7 @@ test('route-editor: pencil edits address inline without page reload', async ({ d
   await form.locator('input[name="address"]').fill('Москва, ул Тестовая, д. 22');
   await form.locator('.editor-address-apply').click();
   await expect(form).toBeHidden();
-  await expect(address).toHaveText('Москва, ул Тестовая 22');
+  await expect(address).toHaveText('Москва, ул Тестовая, д. 22');
   await expect.poll(() => page.evaluate(() => window.__inlineAddressMarker || '')).toBe('alive');
   await expect(card).toHaveAttribute('open', '');
   // A sticky header can cover scrolled-away controls without any layout overlap.
