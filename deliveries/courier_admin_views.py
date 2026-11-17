@@ -53,7 +53,7 @@ def courier_edit(request,pk=None):
             courier=courier or User(role=User.Role.COURIER)
             courier.username=username; courier.first_name=first_name; courier.last_name=last_name; courier.phone=phone
             courier.is_reserve_courier=request.POST.get('is_reserve_courier')=='on'
-            courier.is_active=request.POST.get('is_active')=='on'
+            if not courier.pk: courier.is_active=request.POST.get('is_active')=='on'
             if password: courier.set_password(password)
             elif not courier.pk: courier.set_unusable_password()
             courier.save(update_fields=['username', 'first_name', 'last_name', 'phone', 'is_reserve_courier', 'is_active', 'password'] if courier.pk else None)
