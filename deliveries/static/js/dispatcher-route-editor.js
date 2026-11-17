@@ -206,22 +206,6 @@ function setupEditor(root){
     const cancel=e.target.closest('.move-cancel');
     if(cancel){clearInsertZones(root.querySelector('.route-editor-list'));return}
 
-    const toggle=e.target.closest('.toggle-default');
-    if(toggle){
-      e.preventDefault();
-      try{
-        const payload=await post(toggle.dataset.url,{action:'toggle'});
-        const card=toggle.closest('.route-editor-item');
-        toggle.dataset.enabled=payload.enabled?'1':'0';
-        toggle.textContent=payload.enabled?'✓ По умолчанию включена':'— По умолчанию выключена';
-        card.classList.toggle('is-disabled',!payload.enabled);
-        const defaultMeta=card.querySelector('.meta-default');
-        if(defaultMeta) defaultMeta.hidden=payload.enabled;
-        toast('Настройка сохранена');
-      }catch(err){toast(err.message,true)}
-      return;
-    }
-
     const ajaxAction=e.target.closest('.ajax-action');
     if(ajaxAction){
       e.preventDefault();
@@ -305,21 +289,20 @@ function bindDayToggles(scope=document){
   scope.querySelectorAll('.day-item-toggle:not([data-bound])').forEach(toggle=>{
     toggle.dataset.bound='1';
     toggle.addEventListener('change',async()=>{
-      const form=document.getElementById('generate-route-form');
-      const date=form?.querySelector('[name="run_date"]')?.value||'';
-      if(!date){
-        toggle.checked=!toggle.checked;
-        toast('Сначала выберите дату',true);
-        return;
-      }
       const previous=!toggle.checked;
       toggle.disabled=true;
       toggle.closest('.day-toggle')?.classList.add('is-saving');
       try{
-        const payload=await post(toggle.dataset.dayToggleUrl,{run_date:date,enabled:toggle.checked?'1':'0'});
+        const payload=await post(toggle.dataset.dayToggleUrl,{enabled:toggle.checked?'1':'0'});
+        const card=toggle.closest('.route-editor-item');
         const label=toggle.closest('.day-toggle')?.querySelector('span');
-        if(label)label.textContent=toggle.checked?'В этот день':'Исключена на день';
-        toast(payload.message||(toggle.checked?'Точка добавлена':'Точка убрана'));
+        if(label)label.textContent=payload.enabled?'В маршруте':'Исключена';
+        if(card){
+          card.classList.toggle('is-disabled',!payload.enabled);
+          const meta=card.querySelector('.meta-default');
+          if(meta)meta.hidden=payload.enabled;
+        }
+        toast(payload.message||'Состав маршрута сохранён');
       }catch(err){
         toggle.checked=previous;
         toast(err.message,true);
