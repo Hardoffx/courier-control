@@ -373,47 +373,22 @@ def template_item_update(request, pk):
 @require_POST
 @active_route_resource('item')
 def template_item_day_toggle(request, pk):
-    """Save permanent membership of one route template; preserve completed work."""
-    from .route_services import _reset_detached_delivery
-
+    """Persist the template setting without rewriting already generated runs."""
     enabled = request.POST.get('enabled')
     if enabled not in ('0', '1'):
         return JsonResponse({'ok': False, 'error': 'Некорректное состояние точки'}, status=400)
-    enabled = enabled == '1'
     with transaction.atomic():
         item = get_object_or_404(
-            RouteTemplateItem.objects.select_for_update().select_related('template__route', 'point'), pk=pk,
+            RouteTemplateItem.objects.select_for_update().select_related('template__route'),
+            pk=pk,
         )
-        today = timezone.localdate()
-        # Update an already generated, open *today* run. Past and future runs
-        # are snapshots and must not be rewritten by a template setting.
-        run = (RouteRun.objects.select_for_update()
-               .filter(route=item.template.route, template=item.template, run_date=today)
-               .exclude(status=RouteRun.Status.DONE)
-               .order_by('-created_at', '-id').first())
-        delivery = run.deliveries.filter(point=item.point).order_by('id').first() if run else None
-        item.enabled_by_default = enabled
+        item.enabled_by_default = enabled == '1'
         item.save(update_fields=['enabled_by_default'])
-        if run and enabled and not delivery:
-            last = run.deliveries.order_by('-route_order').first()
-            delivery = _add_point_to_run(
-                run, item.point, item.time_window, request.user,
-                (last.route_order + 1 if last else 1),
-            )
-            delivery.comment = item.comment
-            delivery.save(update_fields=['comment', 'updated_at'])
-        elif run and not enabled and delivery:
-            # Keep Delivery and its events in the database; remove only its
-            # active route assignment, never cascade-delete historical events.
-            _reset_detached_delivery(delivery)
-            DeliveryEvent.objects.create(
-                delivery=delivery, actor=request.user, action='template_point_excluded',
-                note='Точка исключена из постоянного шаблона и текущего рейса',
-            )
-            _save_order(list(run.deliveries.order_by('route_order', 'id')))
     return JsonResponse({
-        'ok': True, 'enabled': enabled,
-        'message': 'Точка постоянно включена в маршрут' if enabled else 'Точка постоянно исключена из маршрута',
+        'ok': True,
+        'enabled': item.enabled_by_default,
+        'message': 'Точка постоянно включена в маршрут' if item.enabled_by_default
+                   else 'Точка постоянно исключена из маршрута',
     })
 
 
