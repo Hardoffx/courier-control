@@ -38,6 +38,12 @@ class RouteTemplateAdmin(admin.ModelAdmin):
 
 @admin.register(Route)
 class RouteAdmin(admin.ModelAdmin):
+    def has_change_permission(self, request, obj=None):
+        if obj and obj.archived_at:
+            return False
+        return super().has_change_permission(request, obj)
+
+
     list_display=('name','default_courier','is_active','archived_at'); list_filter=('is_active','archived_at');
 
     def has_delete_permission(self, request, obj=None):
