@@ -8,7 +8,7 @@ from django.utils import timezone
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from accounts.models import User
-from .models import Delivery, DeliveryEvent, DeliveryPoint, Route, RouteOrderSuggestion, RouteRun, RouteTemplate, RouteTemplateItem
+from .models import ArchiveEvent, Delivery, DeliveryEvent, DeliveryPoint, Route, RouteOrderSuggestion, RouteRun, RouteTemplate, RouteTemplateItem
 from .route_services import generate_route_run, reassign_route_run, learn_template_from_run, dissolve_route_run, suggestion_comparison, sync_template_order_from_run
 from .import_services import normalize_delivery_address
 from .schedule_services import availability
@@ -24,7 +24,7 @@ def dispatcher_required(view):
 
 
 def _couriers():
-    return User.objects.filter(role=User.Role.COURIER, is_active=True, is_superuser=False).order_by('-is_reserve_courier', 'first_name', 'username')
+    return User.objects.filter(role=User.Role.COURIER, is_active=True, is_superuser=False, archived_at__isnull=True).order_by('-is_reserve_courier', 'first_name', 'username')
 
 
 def _ids(raw):
@@ -151,12 +151,17 @@ def _point_from_post(request):
 
 @dispatcher_required
 def route_list(request):
-    return render(request, 'dispatcher/routes/list.html', {'routes': Route.objects.filter(is_active=True).select_related('default_courier').prefetch_related('templates')})
+    archived = request.GET.get('view') == 'archive'
+    routes = Route.objects.filter(archived_at__isnull=not archived)
+    if not archived:
+        routes = routes.filter(is_active=True)
+    routes = routes.select_related('default_courier', 'archived_by').prefetch_related('templates')
+    return render(request, 'dispatcher/routes/list.html', {'routes': routes, 'show_archive': archived})
 
 
 @dispatcher_required
 def route_edit(request, pk=None):
-    route = get_object_or_404(Route, pk=pk) if pk else None
+    route = get_object_or_404(Route.objects.filter(archived_at__isnull=True), pk=pk) if pk else None
     couriers = _couriers()
     if request.method == 'POST':
         name = request.POST.get('name', '').strip()[:120]
@@ -182,6 +187,12 @@ def route_edit(request, pk=None):
 @dispatcher_required
 def route_detail(request, pk):
     route = get_object_or_404(Route, pk=pk)
+    if route.archived_at:
+        runs = route.runs.select_related('assigned_courier').order_by('-run_date', '-id')[:100]
+        events = ArchiveEvent.objects.filter(kind=ArchiveEvent.Kind.ROUTE, object_id=route.pk)[:30]
+        return render(request, 'dispatcher/routes/archive_detail.html', {
+            'route': route, 'runs': runs, 'archive_events': events,
+        })
     planning_date = timezone.localdate()
     raw_date = request.GET.get('date', '').strip()
     if raw_date:
