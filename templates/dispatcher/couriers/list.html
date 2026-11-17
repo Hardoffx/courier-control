@@ -81,11 +81,7 @@
             {% else %}
             <a class="btn alt" href="{% url 'courier_preview' c.pk %}" target="_blank">Просмотр как курьер</a>
             <a class="btn alt" href="{% url 'courier_schedule' c.pk %}">График</a>
-            <a class="btn alt" href="{% url 'courier_manage_edit' c.pk %}">Редактировать</a>
-            <form class="ajax-state-toggle" method="post" action="{% url 'courier_manage_toggle' c.pk %}">{% csrf_token %}
-              <button class="btn {% if c.is_active %}bad{% else %}good{% endif %}">{% if c.is_active %}Отключить{% else %}Включить{% endif %}</button>
-            </form>
-            <form class="archive-controls" method="post" action="{% url 'courier_archive' c.pk %}" onsubmit="return confirm('Переместить курьера в архив? История сохранится.')">{% csrf_token %}<input name="reason" maxlength="500" placeholder="Причина (необязательно)" aria-label="Причина архивирования"><button class="btn alt" type="submit">В архив</button></form>
+            <a class="btn alt" href="{% url 'courier_manage_edit' c.pk %}">Настройки</a>
             {% endif %}
           </div></td>
         </tr>
@@ -122,11 +118,7 @@
           {% else %}
           <a class="btn alt preview" href="{% url 'courier_preview' c.pk %}" target="_blank">Просмотр как курьер</a>
           <a class="btn alt" href="{% url 'courier_schedule' c.pk %}">График</a>
-            <a class="btn alt" href="{% url 'courier_manage_edit' c.pk %}">Редактировать</a>
-          <form class="ajax-state-toggle" method="post" action="{% url 'courier_manage_toggle' c.pk %}">{% csrf_token %}
-            <button class="btn {% if c.is_active %}bad{% else %}good{% endif %}">{% if c.is_active %}Отключить{% else %}Включить{% endif %}</button>
-          </form>
-          <form class="archive-controls" method="post" action="{% url 'courier_archive' c.pk %}" onsubmit="return confirm('Переместить курьера в архив? История сохранится.')">{% csrf_token %}<input name="reason" maxlength="500" placeholder="Причина (необязательно)" aria-label="Причина архивирования"><button class="btn alt" type="submit">В архив</button></form>
+            <a class="btn alt" href="{% url 'courier_manage_edit' c.pk %}">Настройки</a>
           {% endif %}
         </div>
       </div>
