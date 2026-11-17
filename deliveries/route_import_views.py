@@ -11,10 +11,11 @@ from .route_import_services import (
     preview_route_workbook,
 )
 from .route_services import decide_order_suggestion
-from .route_views import dispatcher_required
+from .route_views import dispatcher_required, active_route_resource
 
 
 @dispatcher_required
+@active_route_resource('template')
 def template_import_excel(request, pk):
     template = get_object_or_404(RouteTemplate.objects.select_related('route'), pk=pk)
     summary = None
@@ -59,6 +60,7 @@ def template_import_excel(request, pk):
 
 
 @dispatcher_required
+@active_route_resource('run')
 def run_import_excel(request, pk):
     run = get_object_or_404(RouteRun.objects.select_related('route', 'template', 'assigned_courier'), pk=pk)
     summary = None
@@ -104,6 +106,7 @@ def run_import_excel(request, pk):
 
 @dispatcher_required
 @require_POST
+@active_route_resource('suggestion')
 def order_suggestion_decide(request, pk):
     suggestion = get_object_or_404(
         RouteOrderSuggestion.objects.select_related('run__route', 'run__template', 'courier'),

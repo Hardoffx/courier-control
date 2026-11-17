@@ -1,7 +1,12 @@
 from django import forms
 from .models import Delivery, DeliveryPoint
+from accounts.models import User
 
 class DeliveryForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['courier'].queryset = User.objects.filter(role=User.Role.COURIER, is_superuser=False, is_active=True, archived_at__isnull=True)
+
     class Meta:
         model = Delivery
         fields = ('delivery_date','source_label','address','organization','recipient','phone','comment','time_window','row_color','courier','route_order','status')

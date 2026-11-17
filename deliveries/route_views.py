@@ -1,4 +1,5 @@
 from datetime import date
+from functools import wraps
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
@@ -8,7 +9,7 @@ from django.utils import timezone
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from accounts.models import User
-from .models import Delivery, DeliveryEvent, DeliveryPoint, Route, RouteOrderSuggestion, RouteRun, RouteTemplate, RouteTemplateItem
+from .models import ArchiveEvent, Delivery, DeliveryEvent, DeliveryPoint, Route, RouteOrderSuggestion, RouteRun, RouteTemplate, RouteTemplateItem
 from .route_services import generate_route_run, reassign_route_run, learn_template_from_run, dissolve_route_run, suggestion_comparison, sync_template_order_from_run
 from .import_services import normalize_delivery_address
 from .schedule_services import availability
@@ -23,8 +24,31 @@ def dispatcher_required(view):
     return wrapped
 
 
+def active_route_resource(kind):
+    """Prevent direct edits through old URLs after a route is archived."""
+    def decorator(view):
+        @wraps(view)
+        def guarded(request, pk, *args, **kwargs):
+            if kind == 'route':
+                route_id = pk
+            elif kind == 'template':
+                route_id = get_object_or_404(RouteTemplate, pk=pk).route_id
+            elif kind == 'item':
+                route_id = get_object_or_404(RouteTemplateItem, pk=pk).template.route_id
+            elif kind == 'suggestion':
+                route_id = get_object_or_404(RouteOrderSuggestion, pk=pk).run.route_id
+            else:
+                route_id = get_object_or_404(RouteRun, pk=pk).route_id
+            route = get_object_or_404(Route, pk=route_id)
+            if route.archived_at or not route.is_active:
+                raise PermissionDenied('Архивный маршрут доступен только для просмотра.')
+            return view(request, pk, *args, **kwargs)
+        return guarded
+    return decorator
+
+
 def _couriers():
-    return User.objects.filter(role=User.Role.COURIER, is_active=True, is_superuser=False).order_by('-is_reserve_courier', 'first_name', 'username')
+    return User.objects.filter(role=User.Role.COURIER, is_active=True, is_superuser=False, archived_at__isnull=True).order_by('-is_reserve_courier', 'first_name', 'username')
 
 
 def _ids(raw):
@@ -151,12 +175,17 @@ def _point_from_post(request):
 
 @dispatcher_required
 def route_list(request):
-    return render(request, 'dispatcher/routes/list.html', {'routes': Route.objects.filter(is_active=True).select_related('default_courier').prefetch_related('templates')})
+    archived = request.GET.get('view') == 'archive'
+    routes = Route.objects.filter(archived_at__isnull=not archived)
+    if not archived:
+        routes = routes.filter(is_active=True)
+    routes = routes.select_related('default_courier', 'archived_by').prefetch_related('templates')
+    return render(request, 'dispatcher/routes/list.html', {'routes': routes, 'show_archive': archived})
 
 
 @dispatcher_required
 def route_edit(request, pk=None):
-    route = get_object_or_404(Route, pk=pk) if pk else None
+    route = get_object_or_404(Route.objects.filter(archived_at__isnull=True), pk=pk) if pk else None
     couriers = _couriers()
     if request.method == 'POST':
         name = request.POST.get('name', '').strip()[:120]
@@ -182,6 +211,12 @@ def route_edit(request, pk=None):
 @dispatcher_required
 def route_detail(request, pk):
     route = get_object_or_404(Route, pk=pk)
+    if route.archived_at:
+        runs = route.runs.select_related('assigned_courier').order_by('-run_date', '-id')[:100]
+        events = ArchiveEvent.objects.filter(kind=ArchiveEvent.Kind.ROUTE, object_id=route.pk)[:30]
+        return render(request, 'dispatcher/routes/archive_detail.html', {
+            'route': route, 'runs': runs, 'archive_events': events,
+        })
     planning_date = timezone.localdate()
     raw_date = request.GET.get('date', '').strip()
     if raw_date:
@@ -248,6 +283,7 @@ def route_detail(request, pk):
 
 @dispatcher_required
 @require_POST
+@active_route_resource('template')
 def template_add_point(request, pk):
     template = get_object_or_404(RouteTemplate, pk=pk)
     point_ids = _posted_point_ids(request)
@@ -283,6 +319,7 @@ def template_add_point(request, pk):
 
 @dispatcher_required
 @require_POST
+@active_route_resource('template')
 def template_create_point(request, pk):
     template = get_object_or_404(RouteTemplate.objects.select_related('route'), pk=pk)
     try:
@@ -314,6 +351,7 @@ def template_create_point(request, pk):
 
 @dispatcher_required
 @require_POST
+@active_route_resource('item')
 def template_item_update(request, pk):
     item = get_object_or_404(RouteTemplateItem.objects.select_related('template', 'point'), pk=pk)
     action = request.POST.get('action')
@@ -361,6 +399,7 @@ def template_item_update(request, pk):
 
 @dispatcher_required
 @require_POST
+@active_route_resource('item')
 def template_item_day_toggle(request, pk):
     item=get_object_or_404(RouteTemplateItem.objects.select_related('template__route','point'),pk=pk)
     try:
@@ -397,6 +436,7 @@ def template_item_day_toggle(request, pk):
 
 @dispatcher_required
 @require_POST
+@active_route_resource('template')
 def template_reorder(request, pk):
     template = get_object_or_404(RouteTemplate, pk=pk)
     items = list(template.items.order_by('route_order', 'id'))
@@ -412,6 +452,7 @@ def template_reorder(request, pk):
 
 @dispatcher_required
 @require_POST
+@active_route_resource('route')
 def route_generate(request, pk):
     route = get_object_or_404(Route, pk=pk)
     template = get_object_or_404(RouteTemplate, pk=request.POST.get('template_id'), route=route)
@@ -435,6 +476,10 @@ def route_generate(request, pk):
 def run_detail(request, pk):
     run = get_object_or_404(RouteRun.objects.select_related('route', 'template', 'assigned_courier'), pk=pk)
     deliveries = run.deliveries.select_related('point', 'courier').prefetch_related('events__actor').order_by('route_order', 'id')
+    if run.route.archived_at:
+        return render(request, 'dispatcher/routes/archive_run_detail.html', {
+            'run': run, 'deliveries': deliveries,
+        })
     points = DeliveryPoint.objects.filter(is_active=True).order_by('kind', 'name')
     previous = RouteRun.objects.filter(route=run.route, run_date__lt=run.run_date).order_by('-run_date').first()
     templates = run.route.templates.filter(is_active=True).order_by('kind', 'id')
@@ -538,6 +583,7 @@ def _add_point_to_run(run, point, requested_time, actor, order):
 
 @dispatcher_required
 @require_POST
+@active_route_resource('run')
 def run_add_point(request, pk):
     run = get_object_or_404(RouteRun, pk=pk)
     point_ids = _posted_point_ids(request)
@@ -570,6 +616,7 @@ def run_add_point(request, pk):
 
 @dispatcher_required
 @require_POST
+@active_route_resource('run')
 def run_create_point(request, pk):
     run = get_object_or_404(RouteRun.objects.select_related('route', 'template'), pk=pk)
     try:
@@ -615,6 +662,7 @@ def run_create_point(request, pk):
 
 @dispatcher_required
 @require_POST
+@active_route_resource('run')
 def run_copy_previous(request, pk):
     run = get_object_or_404(RouteRun, pk=pk)
     previous = RouteRun.objects.filter(route=run.route, run_date__lt=run.run_date).order_by('-run_date').first()
@@ -648,6 +696,7 @@ def run_copy_previous(request, pk):
 
 @dispatcher_required
 @require_POST
+@active_route_resource('run')
 def run_learn_template(request, pk):
     run = get_object_or_404(RouteRun, pk=pk)
     template = get_object_or_404(RouteTemplate, pk=request.POST.get('template_id'), route=run.route, is_active=True)
@@ -667,6 +716,7 @@ def run_learn_template(request, pk):
 
 @dispatcher_required
 @require_POST
+@active_route_resource('run')
 def run_reassign(request, pk):
     run = get_object_or_404(RouteRun, pk=pk)
     courier_id = request.POST.get('courier_id', '')
@@ -696,6 +746,7 @@ def run_reassign(request, pk):
 
 @dispatcher_required
 @require_POST
+@active_route_resource('run')
 def run_dissolve(request, pk):
     run = get_object_or_404(RouteRun.objects.select_related('route'), pk=pk)
     run_date = run.run_date
@@ -717,6 +768,7 @@ def run_dissolve(request, pk):
 
 @dispatcher_required
 @require_POST
+@active_route_resource('run')
 def run_delivery_move(request, pk, delivery_pk):
     run = get_object_or_404(RouteRun, pk=pk)
     delivery = get_object_or_404(Delivery, pk=delivery_pk, route_run=run)
@@ -766,6 +818,7 @@ def run_delivery_move(request, pk, delivery_pk):
 
 @dispatcher_required
 @require_POST
+@active_route_resource('run')
 def run_reorder(request, pk):
     run = get_object_or_404(RouteRun, pk=pk)
     items = list(run.deliveries.exclude(status=Delivery.Status.DONE).order_by('route_order', 'id'))

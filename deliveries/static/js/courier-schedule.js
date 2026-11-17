@@ -3,6 +3,7 @@
   if (!root) return;
   const $ = id => document.getElementById(id);
   const personal = !!root.dataset.courier;
+  const archived = root.dataset.archived === '1';
   const symbols = {worked:'✓', off:'−', shift:'↗', unplanned:'·', outside:'', conflict:'!'};
   const month = $('schedule-month');
   const initial = new URL(location.href);
@@ -162,7 +163,7 @@
     d.routes.forEach(route => {const a = node(route.url?'a':'span', route.name); if(route.url) a.href = route.url; links.append(a);});
     details.append(links);
     const actions = node('div', undefined, 'schedule-actions'), edit = node('button', d.past?'Исправить прошедший день':d.day_off?'Изменить график':'Запланировать выходной', d.past?'btn alt schedule-history-action':'btn');
-    edit.type = 'button'; edit.dataset.begin = d.past?'history':'plan'; actions.append(edit);
+    edit.type = 'button'; edit.dataset.begin = d.past?'history':'plan'; if (!archived) actions.append(edit);
     if (!personal) {
       const a = node('a', 'Личный график ↗', 'btn alt'); a.href = `${r.url}?month=${data.month}&date=${d.date}`; actions.append(a);
       const team = node('details'), list = node('ul'); team.append(node('summary', 'Команда на эту дату'));

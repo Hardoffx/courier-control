@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+{% block title %}Архивный рейс · {{ run.route.name }}{% endblock %}
+{% block content %}
+<section class="card" style="max-width:900px;margin:auto">
+<a class="btn alt" href="{% url 'route_detail' run.route_id %}">← Архив маршрута</a>
+<h1>{{ run.route.name }} · {{ run.run_date|date:'d.m.Y' }}</h1>
+<p class="muted">Архивный рейс, только просмотр. Курьер: {% if run.assigned_courier %}{{ run.assigned_courier.get_full_name|default:run.assigned_courier.username }}{% else %}Не назначен{% endif %}</p>
+<p><b>Состояние:</b> {{ run.get_status_display }}</p>
+<h2>Доставки и события</h2>
+{% for d in deliveries %}
+<article style="padding:12px 0;border-bottom:1px solid #d9e3ed">
+<b>№{{ d.route_order }} · {{ d.address }}</b> · {{ d.get_status_display }}
+<div class="muted">{{ d.source_label }}{% if d.completed_at %} · Выполнена {{ d.completed_at|date:'d.m.Y H:i' }}{% endif %}</div>
+{% if d.comment %}<p>{{ d.comment }}</p>{% endif %}
+<a href="{% url 'delivery_history' d.pk %}">История доставки</a>
+<details><summary>События</summary><ul>{% for event in d.events.all %}<li>{{ event.created_at|date:'d.m.Y H:i' }} · {{ event.action }} · {{ event.note }}</li>{% empty %}<li>Нет событий</li>{% endfor %}</ul></details>
+</article>
+{% empty %}<p>Доставок нет.</p>{% endfor %}
+</section>
+{% endblock %}
