@@ -95,23 +95,6 @@ def _template_kind_for_date(run_date):
     return RouteTemplate.Kind.WEEKDAY
 
 
-def _day_selection_key(template_id, run_date):
-    return f'route-day-selection:{template_id}:{run_date.isoformat()}'
-
-
-def _day_selection_overrides(request, template_id, run_date):
-    raw = request.session.get(_day_selection_key(template_id, run_date), {})
-    result = {}
-    if not isinstance(raw, dict):
-        return result
-    for item_id, enabled in raw.items():
-        try:
-            result[int(item_id)] = bool(enabled)
-        except (TypeError, ValueError):
-            continue
-    return result
-
-
 def _duration_label(delta):
     if delta is None:
         return ''
@@ -247,7 +230,6 @@ def route_detail(request, pk):
     points = DeliveryPoint.objects.filter(is_active=True).order_by('kind', 'name')
     planning_run = None
     day_point_ids = set()
-    day_enabled_item_ids = set()
     if template:
         planning_run = (
             RouteRun.objects.filter(route=route, template=template, run_date=planning_date)
@@ -255,17 +237,8 @@ def route_detail(request, pk):
             .order_by('-created_at')
             .first()
         )
-        items = list(template.items.all())
         if planning_run:
             day_point_ids = set(planning_run.deliveries.values_list('point_id', flat=True))
-            day_enabled_item_ids = {item.pk for item in items if item.point_id in day_point_ids}
-        else:
-            day_enabled_item_ids = {item.pk for item in items if item.enabled_by_default}
-            for item_id, enabled in _day_selection_overrides(request, template.pk, planning_date).items():
-                if enabled:
-                    day_enabled_item_ids.add(item_id)
-                else:
-                    day_enabled_item_ids.discard(item_id)
 
     return render(request, 'dispatcher/routes/detail.html', {
         'route': route,
@@ -278,7 +251,6 @@ def route_detail(request, pk):
         'planning_date': planning_date,
         'planning_run': planning_run,
         'day_point_ids': day_point_ids,
-        'day_enabled_item_ids': day_enabled_item_ids,
     })
 
 @dispatcher_required
@@ -401,37 +373,60 @@ def template_item_update(request, pk):
 @require_POST
 @active_route_resource('item')
 def template_item_day_toggle(request, pk):
-    item=get_object_or_404(RouteTemplateItem.objects.select_related('template__route','point'),pk=pk)
-    try:
-        run_date=date.fromisoformat(request.POST.get('run_date',''))
-    except (TypeError,ValueError):
-        return JsonResponse({'ok':False,'error':'Сначала выберите дату маршрута'},status=400)
-    enabled=request.POST.get('enabled','1') in ('1','true','on','yes')
-    run=(RouteRun.objects.filter(route=item.template.route,template=item.template,run_date=run_date)
-         .exclude(status=RouteRun.Status.DONE).order_by('-created_at').first())
-    if not run:
-        key = _day_selection_key(item.template_id, run_date)
-        overrides = request.session.get(key, {})
-        if not isinstance(overrides, dict):
-            overrides = {}
-        overrides[str(item.pk)] = enabled
-        request.session[key] = overrides
-        return JsonResponse({'ok':True,'pending':True,'enabled':enabled,'message':'Состав сохранён для выбранного дня'})
-    delivery=run.deliveries.filter(point=item.point).order_by('id').first()
-    if enabled:
-        if not delivery:
-            last=run.deliveries.order_by('-route_order').first()
-            delivery=_add_point_to_run(run,item.point,item.time_window,request.user,(last.route_order+1 if last else 1))
-            delivery.comment=item.comment
-            delivery.save(update_fields=['comment','updated_at'])
-        return JsonResponse({'ok':True,'enabled':True,'run_id':run.pk,'delivery_id':delivery.pk,'message':'Точка добавлена в маршрут на этот день'})
-    if delivery and delivery.status==Delivery.Status.DONE:
-        return JsonResponse({'ok':False,'error':'Выполненную точку нельзя убрать из маршрута'},status=409)
-    if delivery:
-        DeliveryEvent.objects.create(delivery=delivery,actor=request.user,action='day_point_removed',note='Точка исключена диспетчером из маршрута на этот день')
-        delivery.delete()
-        _save_order(list(run.deliveries.order_by('route_order','id')))
-    return JsonResponse({'ok':True,'enabled':False,'run_id':run.pk,'message':'Точка убрана из маршрута на этот день'})
+    """Save permanent membership of one route template; preserve completed work."""
+    from .route_services import _reset_detached_delivery
+
+    enabled = request.POST.get('enabled')
+    if enabled not in ('0', '1'):
+        return JsonResponse({'ok': False, 'error': 'Некорректное состояние точки'}, status=400)
+    enabled = enabled == '1'
+    with transaction.atomic():
+        item = get_object_or_404(
+            RouteTemplateItem.objects.select_for_update().select_related('template__route', 'point'), pk=pk,
+        )
+        today = timezone.localdate()
+        # A completed delivery is historical evidence: never remove or rewrite it.
+        if not enabled and Delivery.objects.filter(
+            route_run__template=item.template, route_run__run_date__lte=today,
+            point=item.point, status=Delivery.Status.DONE,
+        ).exists():
+            # Past completed work does not prevent future template exclusions.
+            pass
+        # Update an already generated, open *today* run. Past and future runs
+        # are snapshots and must not be rewritten by a template setting.
+        run = (RouteRun.objects.select_for_update()
+               .filter(route=item.template.route, template=item.template, run_date=today)
+               .exclude(status=RouteRun.Status.DONE)
+               .order_by('-created_at', '-id').first())
+        delivery = run.deliveries.filter(point=item.point).order_by('id').first() if run else None
+        if not enabled and delivery and delivery.status == Delivery.Status.DONE:
+            return JsonResponse({
+                'ok': False,
+                'error': 'Точка уже выполнена сегодня. Её нельзя исключить из текущего рейса.',
+            }, status=409)
+        item.enabled_by_default = enabled
+        item.save(update_fields=['enabled_by_default'])
+        if run and enabled and not delivery:
+            last = run.deliveries.order_by('-route_order').first()
+            delivery = _add_point_to_run(
+                run, item.point, item.time_window, request.user,
+                (last.route_order + 1 if last else 1),
+            )
+            delivery.comment = item.comment
+            delivery.save(update_fields=['comment', 'updated_at'])
+        elif run and not enabled and delivery:
+            # Keep Delivery and its events in the database; remove only its
+            # active route assignment, never cascade-delete historical events.
+            _reset_detached_delivery(delivery)
+            DeliveryEvent.objects.create(
+                delivery=delivery, actor=request.user, action='template_point_excluded',
+                note='Точка исключена из постоянного шаблона и текущего рейса',
+            )
+            _save_order(list(run.deliveries.order_by('route_order', 'id')))
+    return JsonResponse({
+        'ok': True, 'enabled': enabled,
+        'message': 'Точка постоянно включена в маршрут' if enabled else 'Точка постоянно исключена из маршрута',
+    })
 
 
 @dispatcher_required
@@ -466,8 +461,7 @@ def route_generate(request, pk):
         from django.http import Http404
         raise Http404
     courier = get_object_or_404(_couriers(), pk=courier_id) if courier_id else route.default_courier
-    run = generate_route_run(template, run_date, courier=courier, enabled_item_ids=request.POST.getlist('enabled_items'))
-    request.session.pop(_day_selection_key(template.pk, run_date), None)
+    run = generate_route_run(template, run_date, courier=courier)
     messages.success(request, f'{route.name}: сформировано {run.deliveries.count()} точек на {run_date:%d.%m.%Y}')
     return redirect(f'/dispatcher/?date={run_date.isoformat()}')
 
