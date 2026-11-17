@@ -2,7 +2,8 @@
 {% block title %}График курьеров · Courier Control{% endblock %}
 {% block head %}<link rel="stylesheet" href="{% static 'css/courier-schedule.css' %}?v=4">{% endblock %}
 {% block content %}
-<section id="courier-schedule" data-courier="{{ courier.pk|default:'' }}" data-api="{% if courier %}{% url 'courier_schedule_data' courier.pk %}{% else %}{% url 'courier_team_schedule_data' %}{% endif %}">
+<section id="courier-schedule" data-courier="{{ courier.pk|default:'' }}" data-archived="{% if courier and courier.archived_at %}1{% else %}0{% endif %}" data-api="{% if courier %}{% url 'courier_schedule_data' courier.pk %}{% else %}{% url 'courier_team_schedule_data' %}{% endif %}">
+  {% if courier and courier.archived_at %}<div class="card" role="status">Курьер находится в архиве. График и история доступны только для просмотра.</div>{% endif %}
   <header class="schedule-head{% if not courier %} schedule-team-head{% endif %}">
     <div class="schedule-identity">
       <div class="schedule-name-line">

@@ -85,7 +85,7 @@ def _run_timing(rows, now=None, live=True):
 def dispatcher_dashboard(request):
     selected_date=_dashboard_date(request)
     base=Delivery.objects.filter(delivery_date=selected_date).select_related('courier','point','route_run__route')
-    couriers=User.objects.filter(role=User.Role.COURIER,is_active=True,is_superuser=False).order_by('first_name','username')
+    couriers=User.objects.filter(role=User.Role.COURIER,is_active=True,is_superuser=False,archived_at__isnull=True).order_by('first_name','username')
     couriers=availability(couriers, selected_date)
     counts={key:base.filter(status=key).count() for key,_ in Delivery.Status.choices}
     route_q=request.GET.get('route_q','').strip()
@@ -178,7 +178,7 @@ def dispatcher_deliveries(request):
     if route_filter.isdigit():
         deliveries=deliveries.filter(route_run_id=int(route_filter))
     deliveries=list(deliveries.order_by('route_run__route__name','courier_id','route_order','id'))
-    couriers=User.objects.filter(role=User.Role.COURIER,is_active=True,is_superuser=False).order_by('first_name','username')
+    couriers=User.objects.filter(role=User.Role.COURIER,is_active=True,is_superuser=False,archived_at__isnull=True).order_by('first_name','username')
     runs=RouteRun.objects.filter(run_date=selected_date).select_related('route','assigned_courier').order_by('route__name')
     return render(request,'dispatcher/deliveries.html',{
         'deliveries':deliveries,'total_count':base.count(),'couriers':couriers,'runs':runs,
@@ -193,7 +193,7 @@ def _resolve_courier(courier_id):
     if not str(courier_id).isdigit():
         from django.http import Http404
         raise Http404
-    return get_object_or_404(User,pk=courier_id,role=User.Role.COURIER,is_active=True,is_superuser=False)
+    return get_object_or_404(User,pk=courier_id,role=User.Role.COURIER,is_active=True,is_superuser=False,archived_at__isnull=True)
 
 @transaction.atomic
 def _assign(delivery,courier,actor,action='assigned'):

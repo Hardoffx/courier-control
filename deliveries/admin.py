@@ -24,7 +24,11 @@ class RouteTemplateAdmin(admin.ModelAdmin):
 
 @admin.register(Route)
 class RouteAdmin(admin.ModelAdmin):
-    list_display=('name','default_courier','is_active'); list_filter=('is_active',); search_fields=('name','default_courier__username','default_courier__first_name')
+    list_display=('name','default_courier','is_active','archived_at'); list_filter=('is_active','archived_at');
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+ search_fields=('name','default_courier__username','default_courier__first_name')
 
 @admin.register(RouteRun)
 class RouteRunAdmin(admin.ModelAdmin):
