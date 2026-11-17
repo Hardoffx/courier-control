@@ -280,10 +280,99 @@ function setupEditor(root){
   root.querySelectorAll('.day-toggle').forEach(x=>x.addEventListener('click',e=>e.stopPropagation()));
 }
 
+// The visible time field keeps its dimensions. Only a compact native time-picker
+// dialog is opened, avoiding manual punctuation and the iOS software keyboard.
+let timeWindowDialog=null;
+let timeWindowTarget=null;
+function prepareTimeInputs(scope=document){
+  scope.querySelectorAll('.admin-route-editor input[name="time_window"],.ajax-template-form input[name="time_window"],.ajax-run-form input[name="time_window"]').forEach(input=>{
+    input.readOnly=true;
+    input.inputMode='none';
+    input.classList.add('time-window-trigger');
+    input.setAttribute('aria-haspopup','dialog');
+    input.setAttribute('title','Выбрать интервал времени');
+  });
+}
+function getTimeWindowDialog(){
+  if(timeWindowDialog)return timeWindowDialog;
+  const dialog=document.createElement('dialog');
+  dialog.className='time-window-dialog';
+  dialog.setAttribute('aria-labelledby','time-window-title');
+  dialog.innerHTML=`<form method="dialog" class="time-window-form">
+    <h2 id="time-window-title">Интервал работы</h2>
+    <p class="muted">Выберите время начала и окончания</p>
+    <div class="time-window-fields">
+      <label>Начало<input type="time" name="start" step="300" required></label>
+      <label>Окончание<input type="time" name="end" step="300" required></label>
+    </div>
+    <div class="time-window-error" role="alert" aria-live="polite" hidden></div>
+    <div class="time-window-actions">
+      <button type="button" class="btn alt" data-time-cancel>Отмена</button>
+      <button type="button" class="btn alt" data-time-clear>Очистить</button>
+      <button type="submit" class="btn" data-time-apply>Применить</button>
+    </div>
+  </form>`;
+  document.body.appendChild(dialog);
+  dialog.querySelector('[data-time-cancel]').addEventListener('click',()=>dialog.close());
+  dialog.querySelector('[data-time-clear]').addEventListener('click',()=>{
+    if(timeWindowTarget){
+      timeWindowTarget.value='';
+      timeWindowTarget.dispatchEvent(new Event('input',{bubbles:true}));
+      timeWindowTarget.dispatchEvent(new Event('change',{bubbles:true}));
+    }
+    dialog.close();
+  });
+  dialog.querySelector('form').addEventListener('submit',event=>{
+    event.preventDefault();
+    if(!timeWindowTarget)return dialog.close();
+    const start=dialog.querySelector('[name=start]').value;
+    const end=dialog.querySelector('[name=end]').value;
+    const error=dialog.querySelector('.time-window-error');
+    error.hidden=true;
+    if(!start||!end||end<=start){
+      error.textContent='Окончание должно быть позже начала';
+      error.hidden=false;
+      return;
+    }
+    if(Number(start.slice(-2))%5!==0||Number(end.slice(-2))%5!==0){
+      error.textContent='Выберите минуты с шагом 5';
+      error.hidden=false;
+      return;
+    }
+    timeWindowTarget.value=start+'-'+end;
+    timeWindowTarget.dispatchEvent(new Event('input',{bubbles:true}));
+    timeWindowTarget.dispatchEvent(new Event('change',{bubbles:true}));
+    dialog.close();
+  });
+  timeWindowDialog=dialog;
+  return dialog;
+}
+function showTimeWindowPicker(input){
+  const dialog=getTimeWindowDialog();
+  timeWindowTarget=input;
+  const found=(input.value||'').match(/^\s*(\d{1,2}:\d{2})\s*[-–—]\s*(\d{1,2}:\d{2})\s*$/);
+  dialog.querySelector('[name=start]').value=found?found[1]:'09:00';
+  dialog.querySelector('[name=end]').value=found?found[2]:'18:00';
+  dialog.querySelector('.time-window-error').hidden=true;
+  if(!dialog.open)dialog.showModal();
+}
+document.addEventListener('click',event=>{
+  const input=event.target.closest('input.time-window-trigger');
+  if(input)showTimeWindowPicker(input);
+});
+document.addEventListener('keydown',event=>{
+  const input=event.target.closest('input.time-window-trigger');
+  if(input&&(event.key==='Enter'||event.key===' ')){
+    event.preventDefault();
+    showTimeWindowPicker(input);
+  }
+});
+
 function initEditors(scope=document){
   scope.querySelectorAll('.admin-route-editor').forEach(setupEditor);
 }
 initEditors();
+prepareTimeInputs();
 
 function bindDayToggles(scope=document){
   scope.querySelectorAll('.day-item-toggle:not([data-bound])').forEach(toggle=>{
@@ -433,6 +522,7 @@ async function refreshTemplateWorkspace(){
     if(!fresh)throw new Error('Не удалось обновить редактор маршрута');
     workspace.innerHTML=fresh.innerHTML;
     initEditors(workspace);
+    prepareTimeInputs(workspace);
     bindDayToggles(workspace);
     bindPointSearch(workspace);
     bindAddSourceAccordions(workspace);
@@ -459,6 +549,7 @@ async function refreshRunWorkspace(){
     if(!fresh)throw new Error('Не удалось обновить интерфейс маршрута');
     workspace.innerHTML=fresh.innerHTML;
     initEditors(workspace);
+    prepareTimeInputs(workspace);
     bindRunReassign(workspace);
     bindPointSearch(workspace);
     void bindPressables(workspace.querySelectorAll('.btn,.insert-zone'));
