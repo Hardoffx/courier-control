@@ -387,8 +387,8 @@ def template_item_day_toggle(request, pk):
     return JsonResponse({
         'ok': True,
         'enabled': item.enabled_by_default,
-        'message': 'Точка постоянно включена в маршрут' if item.enabled_by_default
-                   else 'Точка постоянно исключена из маршрута',
+        'message': 'Точка включена в маршрут' if item.enabled_by_default
+                   else 'Точка исключена из маршрута',
     })
 
 
