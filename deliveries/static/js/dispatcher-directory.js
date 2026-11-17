@@ -92,8 +92,8 @@ async function runPointFilter(form,historyMode='replace'){
   const controller=new AbortController();
   pointFilterController=controller;
   const url=pointFilterUrl(form);
-  const workspace=document.getElementById('point-directory-workspace');
-  workspace?.classList.add('is-refreshing');
+  const results=document.getElementById('point-directory-results');
+  results?.classList.add('is-refreshing');
   try{
     const response=await fetch(url,{headers:{'X-Requested-With':'XMLHttpRequest'},signal:controller.signal});
     if(!response.ok)throw new Error('Не удалось обновить справочник');
@@ -111,7 +111,7 @@ async function runPointFilter(form,historyMode='replace'){
   }finally{
     if(pointFilterController===controller){
       pointFilterController=null;
-      workspace?.classList.remove('is-refreshing');
+      results?.classList.remove('is-refreshing');
     }
   }
 }
