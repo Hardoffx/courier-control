@@ -231,22 +231,24 @@ class RouteWorkflowV2Tests(TestCase):
         self.assertContains(response, self.p1.address)
         self.assertEqual(int(self.client.session['_auth_user_id']), self.dispatcher.pk)
 
-    def test_day_checkbox_updates_existing_run_immediately(self):
+    def test_template_checkbox_preserves_existing_run(self):
         run=generate_route_run(self.template,self.day,courier=self.courier)
         self.client.force_login(self.dispatcher)
         response=self.client.post(
             reverse('template_item_day_toggle',args=[self.i1.pk]),
-            {'run_date':self.day.isoformat(),'enabled':'0'},
-            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+            {'enabled':'0'}, HTTP_X_REQUESTED_WITH='XMLHttpRequest',
         )
         self.assertEqual(response.status_code,200)
-        self.assertFalse(run.deliveries.filter(point=self.p1).exists())
+        self.i1.refresh_from_db()
+        self.assertFalse(self.i1.enabled_by_default)
+        self.assertTrue(run.deliveries.filter(point=self.p1).exists())
         response=self.client.post(
             reverse('template_item_day_toggle',args=[self.i1.pk]),
-            {'run_date':self.day.isoformat(),'enabled':'1'},
-            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+            {'enabled':'1'}, HTTP_X_REQUESTED_WITH='XMLHttpRequest',
         )
         self.assertEqual(response.status_code,200)
+        self.i1.refresh_from_db()
+        self.assertTrue(self.i1.enabled_by_default)
         self.assertTrue(run.deliveries.filter(point=self.p1).exists())
 
     def test_run_reassign_supports_ajax_without_redirect(self):

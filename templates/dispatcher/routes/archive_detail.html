@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% block title %}Архив · {{ route.name }} · Courier Control{% endblock %}
+{% block content %}
+<div class="card" style="max-width:900px;margin:auto">
+<a class="btn alt" href="{% url 'route_list' %}?view=archive">← Архив маршрутов</a>
+<h1>{{ route.name }} <span class="status-chip">Архив</span></h1>
+<p class="muted">Маршрут архивирован {{ route.archived_at|date:'d.m.Y H:i' }}. История доступна только для просмотра.</p>
+{% if route.archive_reason %}<p><b>Причина:</b> {{ route.archive_reason }}</p>{% endif %}
+{% if route.default_courier %}<p><b>Закреплённый курьер:</b> {{ route.default_courier.get_full_name|default:route.default_courier.username }}</p>{% endif %}
+<h2>История рейсов</h2>
+<ul>{% for run in runs %}<li><a href="{% url 'run_detail' run.pk %}">{{ run.run_date|date:'d.m.Y' }}</a> · {{ run.get_status_display }} · {% if run.assigned_courier %}{{ run.assigned_courier.get_full_name|default:run.assigned_courier.username }}{% else %}Без курьера{% endif %}</li>{% empty %}<li>Рейсов ещё не было</li>{% endfor %}</ul>
+<h2>Журнал архива</h2>
+<ul>{% for entry in archive_events %}<li>{{ entry.created_at|date:'d.m.Y H:i' }} · {{ entry.get_action_display }} · {% if entry.actor %}{{ entry.actor.get_full_name|default:entry.actor.username }}{% else %}Система{% endif %}{% if entry.reason %} · {{ entry.reason }}{% endif %}</li>{% empty %}<li>Записей нет</li>{% endfor %}</ul>
+</div>
+{% endblock %}

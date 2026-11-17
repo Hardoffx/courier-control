@@ -35,6 +35,12 @@
   .courier-actions button{width:100%;margin:0}
   .courier-actions .preview{grid-column:1/-1}
 }
+.archive-tabs{display:flex;gap:8px;margin:12px 0}
+.archive-meta{color:var(--muted);font-size:12px;line-height:1.5;margin-top:5px}
+.archive-controls{display:flex;flex-wrap:wrap;gap:7px;margin:7px 0}
+.archive-controls input{flex:1 1 135px;min-width:0;font-size:13px}
+.archive-controls button{flex:0 0 auto;min-width:90px}
+@media(max-width:1280px){.courier-actions .archive-controls{grid-column:1/-1}.courier-actions .archive-controls button{width:auto}}
 </style>
 {% endblock %}
 
@@ -45,9 +51,13 @@
     <div class="muted">Постоянные и резервные исполнители. Отключение доступа сохраняет историю доставок.</div>
   </div>
   <a class="btn alt" href="{% url 'courier_team_schedule' %}">График команды</a>
-  <a class="btn" href="{% url 'courier_manage_create' %}">+ Добавить курьера</a>
+  {% if not show_archive %}<a class="btn" href="{% url 'courier_manage_create' %}">+ Добавить курьера</a>{% endif %}
 </div>
 
+<nav class="archive-tabs" aria-label="Разделы курьеров">
+  <a class="btn {% if show_archive %}alt{% endif %}" href="{% url 'courier_manage_list' %}">Рабочие</a>
+  <a class="btn {% if not show_archive %}alt{% endif %}" href="{% url 'courier_manage_list' %}?view=archive">Архив</a>
+</nav>
 {% if messages %}{% for message in messages %}<div class="card">{{ message }}</div>{% endfor %}{% endif %}
 
 <div class="card" id="courier-list-workspace">
@@ -59,17 +69,24 @@
         <tr>
           <td><div class="courier-name"><span class="avatar">{{ c.get_full_name|default:c.username|slice:':1' }}</span><b>{{ c.get_full_name|default:c.username }}</b></div></td>
           <td>{{ c.phone|default:'—' }}</td>
-          <td>{{ c.username }}</td>
+          <td>{{ c.username }}{% if show_archive %}<div class="archive-meta">Архив: {{ c.archived_at|date:'d.m.Y H:i' }}{% if c.archive_reason %} · {{ c.archive_reason }}{% endif %}</div>{% endif %}</td>
           <td>{% if c.is_reserve_courier %}<span class="type">Резерв</span>{% else %}Постоянный{% endif %}</td>
           <td>{{ c.route_count }}</td>
-          <td>{% if c.is_active %}<span class="active-state">Активен</span>{% else %}<span class="muted">Отключён</span>{% endif %}</td>
+          <td>{% if show_archive %}<span class="muted">Архив</span>{% elif c.is_active %}<span class="active-state">Активен</span>{% else %}<span class="muted">Отключён</span>{% endif %}</td>
           <td><div class="courier-desktop-actions">
+            {% if show_archive %}
+              <a class="btn alt" href="{% url 'courier_preview' c.pk %}" target="_blank">История доставок</a>
+              <a class="btn alt" href="{% url 'courier_schedule' c.pk %}">График</a>
+              <form class="archive-controls" method="post" action="{% url 'courier_restore' c.pk %}" onsubmit="return confirm('Восстановить курьера из архива?')">{% csrf_token %}<button class="btn alt" type="submit">Восстановить</button></form>
+            {% else %}
             <a class="btn alt" href="{% url 'courier_preview' c.pk %}" target="_blank">Просмотр как курьер</a>
             <a class="btn alt" href="{% url 'courier_schedule' c.pk %}">График</a>
             <a class="btn alt" href="{% url 'courier_manage_edit' c.pk %}">Редактировать</a>
             <form class="ajax-state-toggle" method="post" action="{% url 'courier_manage_toggle' c.pk %}">{% csrf_token %}
               <button class="btn {% if c.is_active %}bad{% else %}good{% endif %}">{% if c.is_active %}Отключить{% else %}Включить{% endif %}</button>
             </form>
+            <form class="archive-controls" method="post" action="{% url 'courier_archive' c.pk %}" onsubmit="return confirm('Переместить курьера в архив? История сохранится.')">{% csrf_token %}<input name="reason" maxlength="500" placeholder="Причина (необязательно)" aria-label="Причина архивирования"><button class="btn alt" type="submit">В архив</button></form>
+            {% endif %}
           </div></td>
         </tr>
       {% empty %}<tr><td colspan="7">Курьеров пока нет.</td></tr>{% endfor %}
@@ -86,7 +103,7 @@
             <span class="avatar">{{ c.get_full_name|default:c.username|slice:':1' }}</span>
             <div class="courier-summary-copy"><b>{{ c.get_full_name|default:c.username }}</b><div class="muted">@{{ c.username }}</div></div>
           </div>
-          {% if c.is_active %}<span class="active-state">Активен</span>{% else %}<span class="muted">Отключён</span>{% endif %}
+          {% if show_archive %}<span class="muted">Архив</span>{% elif c.is_active %}<span class="active-state">Активен</span>{% else %}<span class="muted">Отключён</span>{% endif %}
         </div>
       </summary>
       <div class="courier-card-body">
@@ -97,12 +114,20 @@
           <div><span>Доступ</span>{% if c.is_active %}Разрешён{% else %}Отключён{% endif %}</div>
         </div>
         <div class="courier-actions">
+          {% if show_archive %}
+          <a class="btn alt preview" href="{% url 'courier_preview' c.pk %}" target="_blank">История доставок</a>
+          <a class="btn alt" href="{% url 'courier_schedule' c.pk %}">График</a>
+          <div class="archive-meta">{{ c.archived_at|date:'d.m.Y H:i' }} · {{ c.archive_reason|default:'Без причины' }}</div>
+          <form class="archive-controls" method="post" action="{% url 'courier_restore' c.pk %}" onsubmit="return confirm('Восстановить курьера?')">{% csrf_token %}<button class="btn alt" type="submit">Восстановить</button></form>
+          {% else %}
           <a class="btn alt preview" href="{% url 'courier_preview' c.pk %}" target="_blank">Просмотр как курьер</a>
           <a class="btn alt" href="{% url 'courier_schedule' c.pk %}">График</a>
             <a class="btn alt" href="{% url 'courier_manage_edit' c.pk %}">Редактировать</a>
           <form class="ajax-state-toggle" method="post" action="{% url 'courier_manage_toggle' c.pk %}">{% csrf_token %}
             <button class="btn {% if c.is_active %}bad{% else %}good{% endif %}">{% if c.is_active %}Отключить{% else %}Включить{% endif %}</button>
           </form>
+          <form class="archive-controls" method="post" action="{% url 'courier_archive' c.pk %}" onsubmit="return confirm('Переместить курьера в архив? История сохранится.')">{% csrf_token %}<input name="reason" maxlength="500" placeholder="Причина (необязательно)" aria-label="Причина архивирования"><button class="btn alt" type="submit">В архив</button></form>
+          {% endif %}
         </div>
       </div>
     </details>

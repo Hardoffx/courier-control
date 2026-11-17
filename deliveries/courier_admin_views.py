@@ -26,13 +26,17 @@ def _courier_users():
 
 @dispatcher_required
 def courier_list(request):
-    couriers=_courier_users().annotate(route_count=Count('default_routes',filter=Q(default_routes__is_active=True))).order_by('-is_active','-is_reserve_courier','first_name','username')
-    return render(request,'dispatcher/couriers/list.html',{'couriers':couriers})
+    archived = request.GET.get('view') == 'archive'
+    couriers = _courier_users().filter(archived_at__isnull=not archived)
+    couriers = couriers.annotate(
+        route_count=Count('default_routes', filter=Q(default_routes__is_active=True, default_routes__archived_at__isnull=True))
+    ).order_by('-is_active', '-is_reserve_courier', 'first_name', 'username')
+    return render(request, 'dispatcher/couriers/list.html', {'couriers': couriers, 'show_archive': archived})
 
 
 @dispatcher_required
 def courier_edit(request,pk=None):
-    courier=get_object_or_404(_courier_users(),pk=pk) if pk else None
+    courier=get_object_or_404(_courier_users().filter(archived_at__isnull=True),pk=pk) if pk else None
     if request.method=='POST':
         username=request.POST.get('username','').strip()
         first_name=request.POST.get('first_name','').strip()[:150]
@@ -76,7 +80,7 @@ def courier_preview(request,pk):
 @dispatcher_required
 @require_POST
 def courier_toggle(request,pk):
-    courier=get_object_or_404(_courier_users(),pk=pk)
+    courier=get_object_or_404(_courier_users().filter(archived_at__isnull=True),pk=pk)
     courier.is_active=not courier.is_active
     courier.save(update_fields=['is_active'])
     message='Курьер активирован' if courier.is_active else 'Курьер отключён. История маршрутов сохранена.'

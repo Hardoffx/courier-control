@@ -34,7 +34,14 @@ def _ordered_for_courier(template, items, courier):
 
 @transaction.atomic
 def generate_route_run(template, run_date, courier=None, enabled_item_ids=None):
-    courier = courier or template.route.default_courier
+    # Read current DB state: callers may hold a template with a cached Route
+    # from before archiving (e.g. another tab or a long-running request).
+    route = template.route.__class__.objects.select_for_update().get(pk=template.route_id)
+    if route.archived_at or not route.is_active or not template.is_active:
+        raise ValueError('Архивный или отключённый маршрут нельзя сформировать.')
+    courier = courier or route.default_courier
+    if courier and (courier.archived_at or not courier.is_active):
+        raise ValueError('Закреплённый курьер недоступен; сначала назначьте активного.')
     # Reuse an open run while it still has work. Once every delivery in the
     # latest run is completed, a new assignment on the same date becomes a
     # separate trip instead of silently reopening/reusing the completed run.
@@ -148,7 +155,11 @@ def _reorder_run_by_preference(run, courier):
 
 @transaction.atomic
 def reassign_route_run(run, courier):
-    run = RouteRun.objects.select_for_update().get(pk=run.pk)
+    run = RouteRun.objects.select_for_update().select_related('route').get(pk=run.pk)
+    if run.route.archived_at or not run.route.is_active:
+        raise ValueError('Архивный маршрут нельзя изменять.')
+    if courier and (courier.archived_at or not courier.is_active):
+        raise ValueError('Нельзя назначить архивного или отключённого курьера.')
     run.assigned_courier = courier
     run.save(update_fields=['assigned_courier', 'updated_at'])
     for delivery in run.deliveries.exclude(status=Delivery.Status.DONE):

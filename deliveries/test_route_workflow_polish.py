@@ -48,15 +48,14 @@ class RouteWorkflowPolishTests(TestCase):
         )
         self.client.force_login(self.dispatcher)
 
-    def test_pending_day_toggle_survives_adding_another_template_point(self):
-        run_date = timezone.localdate()
+    def test_persistent_checkbox_survives_adding_another_template_point(self):
         response = self.client.post(
             reverse('template_item_day_toggle', args=[self.item_a.pk]),
-            {'run_date': run_date.isoformat(), 'enabled': '0'},
-            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+            {'enabled': '0'}, HTTP_X_REQUESTED_WITH='XMLHttpRequest',
         )
         self.assertEqual(response.status_code, 200)
-        self.assertTrue(response.json()['pending'])
+        self.item_a.refresh_from_db()
+        self.assertFalse(self.item_a.enabled_by_default)
 
         extra = DeliveryPoint.objects.create(
             name='Сторонняя лаборатория',
@@ -65,19 +64,12 @@ class RouteWorkflowPolishTests(TestCase):
         )
         response = self.client.post(
             reverse('template_add_point', args=[self.template.pk]),
-            {'point_id': extra.pk},
-            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+            {'point_id': extra.pk}, HTTP_X_REQUESTED_WITH='XMLHttpRequest',
         )
         self.assertEqual(response.status_code, 200)
-
-        response = self.client.get(
-            reverse('route_detail', args=[self.route.pk]),
-            {'template': self.template.pk, 'date': run_date.isoformat()},
-        )
-        enabled = response.context['day_enabled_item_ids']
-        self.assertNotIn(self.item_a.pk, enabled)
-        self.assertIn(self.item_b.pk, enabled)
-        self.assertIn(self.template.items.get(point=extra).pk, enabled)
+        self.assertFalse(self.template.items.get(pk=self.item_a.pk).enabled_by_default)
+        self.assertTrue(self.template.items.get(pk=self.item_b.pk).enabled_by_default)
+        self.assertTrue(self.template.items.get(point=extra).enabled_by_default)
 
     def test_new_route_gets_independent_saturday_and_sunday_templates(self):
         response = self.client.post(reverse('route_create'), {'name': 'Weekend split route'})
