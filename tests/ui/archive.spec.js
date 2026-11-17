@@ -62,6 +62,9 @@ test('dispatcher archives and restores route and courier with accessible history
   await expect(courier).toContainText('Архив');
   await noPageOverflow(page);
   await page.screenshot({path:testInfo.outputPath('courier-archive-mobile.png'),fullPage:true});
+  if (await courier.evaluate(el => el.tagName.toLowerCase() === 'details')) {
+    await courier.locator('summary').click();
+  }
   page.once('dialog',d=>d.accept());
   await courier.locator('form[action$="/restore/"] button').click();
   await page.goto('/dispatcher/couriers/');
