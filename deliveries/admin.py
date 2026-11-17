@@ -20,6 +20,20 @@ class RouteTemplateItemInline(admin.TabularInline):
 
 @admin.register(RouteTemplate)
 class RouteTemplateAdmin(admin.ModelAdmin):
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        if obj and obj.route.archived_at:
+            return False
+        return super().has_change_permission(request, obj)
+
+    def save_model(self, request, obj, form, change):
+        from django.core.exceptions import PermissionDenied
+        if obj.route.archived_at:
+            raise PermissionDenied('Архивный шаблон нельзя изменять.')
+        super().save_model(request, obj, form, change)
+
     list_display=('route','kind','name','is_active'); list_filter=('kind','is_active'); inlines=(RouteTemplateItemInline,)
 
 @admin.register(Route)

@@ -195,8 +195,15 @@ def _resolve_courier(courier_id):
         raise Http404
     return get_object_or_404(User,pk=courier_id,role=User.Role.COURIER,is_active=True,is_superuser=False,archived_at__isnull=True)
 
+def ensure_delivery_not_archived(delivery):
+    if delivery.route_run_id and delivery.route_run.route.archived_at:
+        from django.core.exceptions import PermissionDenied
+        raise PermissionDenied('Архивный маршрут доступен только для просмотра.')
+
+
 @transaction.atomic
 def _assign(delivery,courier,actor,action='assigned'):
+    ensure_delivery_not_archived(delivery)
     old=delivery.courier; delivery.courier=courier
     if courier and delivery.status==Delivery.Status.NEW: delivery.status=Delivery.Status.IN_PROGRESS
     elif not courier and delivery.status==Delivery.Status.IN_PROGRESS: delivery.status=Delivery.Status.NEW
@@ -234,7 +241,7 @@ def dispatcher_bulk_assign(request):
 @dispatcher_required
 @require_POST
 def dispatcher_quick_edit(request,pk):
-    delivery=get_object_or_404(Delivery,pk=pk); changed=[]; label=request.POST.get('source_label','').strip()[:255]; address=normalize_delivery_address(request.POST.get('address',''))[:500]; phone=request.POST.get('phone','').strip()[:64]
+    delivery=get_object_or_404(Delivery,pk=pk); ensure_delivery_not_archived(delivery); changed=[]; label=request.POST.get('source_label','').strip()[:255]; address=normalize_delivery_address(request.POST.get('address',''))[:500]; phone=request.POST.get('phone','').strip()[:64]
     if not address: messages.error(request,'Адрес не может быть пустым'); return redirect('dispatcher_dashboard')
     match=resolve_point(label,address,phone,create=True); canonical=canonical_delivery_values(match.point,label,address,phone); values={'point':match.point,'source_label':canonical['source_label'],'address':canonical['address'],'time_window':request.POST.get('time_window','').strip()[:64],'phone':canonical['phone'],'row_color':request.POST.get('row_color','')}; allowed_colors={v for v,_ in Delivery.RowColor.choices}
     if values['row_color'] not in allowed_colors: values['row_color']=''
@@ -251,7 +258,9 @@ def delivery_create(request):
 
 @dispatcher_required
 def delivery_edit(request,pk):
-    delivery=get_object_or_404(Delivery,pk=pk); form=DeliveryForm(request.POST or None,instance=delivery)
+    delivery=get_object_or_404(Delivery,pk=pk)
+    if request.method=='POST': ensure_delivery_not_archived(delivery)
+    form=DeliveryForm(request.POST or None,instance=delivery)
     if request.method=='POST' and form.is_valid(): form.save(); DeliveryEvent.objects.create(delivery=delivery,actor=request.user,action='edited'); return redirect('dispatcher_dashboard')
     return render(request,'dispatcher/delivery_form.html',{'form':form,'title':'Редактирование заявки'})
 
