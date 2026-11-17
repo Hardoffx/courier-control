@@ -392,11 +392,6 @@ def template_item_day_toggle(request, pk):
                .exclude(status=RouteRun.Status.DONE)
                .order_by('-created_at', '-id').first())
         delivery = run.deliveries.filter(point=item.point).order_by('id').first() if run else None
-        if not enabled and delivery and delivery.status == Delivery.Status.DONE:
-            return JsonResponse({
-                'ok': False,
-                'error': 'Точка уже выполнена сегодня. Её нельзя исключить из текущего рейса.',
-            }, status=409)
         item.enabled_by_default = enabled
         item.save(update_fields=['enabled_by_default'])
         if run and enabled and not delivery:
