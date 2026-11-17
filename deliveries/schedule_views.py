@@ -25,6 +25,8 @@ def schedule_data(request, pk=None):
     couriers = _courier_users().order_by('first_name', 'username')
     if pk:
         couriers = [get_object_or_404(couriers, pk=pk)]
+    else:
+        couriers = couriers.filter(archived_at__isnull=True)
     elif request.GET.get('active') == '1':
         couriers = couriers.filter(is_active=True)
     data = month_data(couriers, first, last)
@@ -39,6 +41,8 @@ def schedule_data(request, pk=None):
 @require_POST
 def schedule_change(request, pk):
     courier = get_object_or_404(_courier_users(), pk=pk)
+    if courier.archived_at:
+        return JsonResponse({'ok': False, 'error': 'Архивный курьер доступен только для просмотра.'}, status=409)
     if len(request.body) > 20000:
         return JsonResponse({'ok': False, 'error': 'Слишком большой запрос'}, status=400)
     try:
@@ -60,7 +64,7 @@ def schedule_availability(request):
         day = date.fromisoformat(request.GET.get('date', str(timezone.localdate())))
     except ValueError:
         return JsonResponse({'ok': False, 'error': 'Некорректная дата'}, status=400)
-    couriers = availability(_courier_users().filter(is_active=True), day)
+    couriers = availability(_courier_users().filter(is_active=True, archived_at__isnull=True), day)
     return JsonResponse({'ok': True, 'couriers': [{'id': c.pk, 'name': c.get_full_name() or c.username,
         'label': c.schedule_label, 'unavailable': c.schedule_unavailable} for c in couriers]})
 

@@ -45,7 +45,7 @@ def require_available(courier_id, day):
     if not courier_id:
         return
     courier = lock_courier(courier_id)
-    if courier.role != User.Role.COURIER or courier.is_superuser:
+    if courier.role != User.Role.COURIER or courier.is_superuser or courier.archived_at or not courier.is_active:
         raise ScheduleConflict('Выберите курьера', courier, day)
     if courier.tracking_end_date and day > courier.tracking_end_date:
         raise ScheduleConflict('Дата за пределами периода работы курьера. Проверьте границы учёта.', courier, day)
@@ -186,6 +186,8 @@ def month_data(couriers, first, last):
 
 @transaction.atomic
 def mutate_schedule(courier, payload, actor):
+    if User.objects.filter(pk=courier.pk, archived_at__isnull=False).exists():
+        raise ScheduleConflict('Архивный курьер доступен только для просмотра.')
     import uuid
     try:
         request_id = uuid.UUID(payload['request_id'])
@@ -290,7 +292,7 @@ def replacement_warnings(day=None):
     for run in RouteRun.objects.filter(run_date=tomorrow):
         by_route[run.route_id].append(run)
     kind = 'weekday' if tomorrow.weekday() < 5 else ('saturday' if tomorrow.weekday() == 5 else 'sunday')
-    for route in Route.objects.filter(is_active=True, default_courier_id__in=off).select_related('default_courier').prefetch_related('templates__items'):
+    for route in Route.objects.filter(is_active=True, archived_at__isnull=True, default_courier_id__in=off).select_related('default_courier').prefetch_related('templates__items'):
         runs = by_route[route.pk]
         unresolved = [r for r in runs if not r.assigned_courier_id or r.assigned_courier_id in off]
         if runs and not unresolved:
