@@ -50,6 +50,9 @@ test('dispatcher archives and restores route and courier with accessible history
   await page.goto('/dispatcher/couriers/');
   let courier=await activeCourierRow(page,username);
   await expect(courier).toBeVisible();
+  if (await courier.evaluate(el => el.tagName.toLowerCase() === 'details')) {
+    await courier.locator('summary').click();
+  }
   await courier.locator('input[name=reason]').fill('Резерв больше не нужен');
   page.once('dialog',d=>d.accept());
   await courier.locator('form[action$="/archive/"] button').click();
