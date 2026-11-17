@@ -6,6 +6,11 @@ class User(AbstractUser):
     tracking_start_date = models.DateField(default=timezone.localdate)
     tracking_end_date = models.DateField(null=True, blank=True)
     schedule_revision = models.PositiveIntegerField(default=0, editable=False)
+    archived_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    archived_by = models.ForeignKey('self', null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    archive_reason = models.CharField(max_length=500, blank=True)
+    archived_was_active = models.BooleanField(default=False)
+    archived_previous_tracking_end_date = models.DateField(null=True, blank=True)
 
     def save(self, *args, **kwargs):
         if kwargs.get('update_fields') is not None and not {'tracking_start_date', 'tracking_end_date', 'is_active'}.intersection(kwargs['update_fields']):

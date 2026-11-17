@@ -31,6 +31,10 @@ class Route(models.Model):
     name=models.CharField(max_length=120,unique=True)
     default_courier=models.ForeignKey(settings.AUTH_USER_MODEL,null=True,blank=True,on_delete=models.SET_NULL,related_name='default_routes',limit_choices_to={'role':'courier'})
     is_active=models.BooleanField(default=True)
+    archived_at=models.DateTimeField(null=True,blank=True,db_index=True)
+    archived_by=models.ForeignKey(settings.AUTH_USER_MODEL,null=True,blank=True,on_delete=models.SET_NULL,related_name='+')
+    archive_reason=models.CharField(max_length=500,blank=True)
+    archived_was_active=models.BooleanField(default=False)
     notes=models.TextField(blank=True)
     created_at=models.DateTimeField(auto_now_add=True); updated_at=models.DateTimeField(auto_now=True)
     class Meta: ordering=('name',)
@@ -229,3 +233,27 @@ class CourierScheduleAudit(models.Model):
     class Meta:
         constraints = [models.UniqueConstraint(fields=('courier', 'request_id'), name='unique_schedule_request')]
 
+
+
+class ArchiveEvent(models.Model):
+    """Append-only record of archive/restore operations; no historic FK is detached."""
+    class Kind(models.TextChoices):
+        ROUTE = 'route', 'Маршрут'
+        COURIER = 'courier', 'Курьер'
+
+    class Action(models.TextChoices):
+        ARCHIVE = 'archive', 'В архив'
+        RESTORE = 'restore', 'Восстановлен'
+
+    kind = models.CharField(max_length=12, choices=Kind.choices)
+    object_id = models.PositiveBigIntegerField()
+    object_label = models.CharField(max_length=255)
+    action = models.CharField(max_length=12, choices=Action.choices)
+    actor = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True,
+                              on_delete=models.SET_NULL, related_name='+')
+    reason = models.CharField(max_length=500, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ('-id',)
+        indexes = [models.Index(fields=('kind', 'object_id'), name='archive_event_object_idx')]
