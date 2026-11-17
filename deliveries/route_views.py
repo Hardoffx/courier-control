@@ -385,13 +385,6 @@ def template_item_day_toggle(request, pk):
             RouteTemplateItem.objects.select_for_update().select_related('template__route', 'point'), pk=pk,
         )
         today = timezone.localdate()
-        # A completed delivery is historical evidence: never remove or rewrite it.
-        if not enabled and Delivery.objects.filter(
-            route_run__template=item.template, route_run__run_date__lte=today,
-            point=item.point, status=Delivery.Status.DONE,
-        ).exists():
-            # Past completed work does not prevent future template exclusions.
-            pass
         # Update an already generated, open *today* run. Past and future runs
         # are snapshots and must not be rewritten by a template setting.
         run = (RouteRun.objects.select_for_update()
