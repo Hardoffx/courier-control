@@ -3,7 +3,11 @@
 .stats-head h1{margin:0;font-size:28px;letter-spacing:-.035em}
 .stats-head p{margin:4px 0 0;color:#74839a;font-size:14px}
 .period-card{margin:0 0 14px;padding:13px}
-.period-card form{display:grid;grid-template-columns:1fr 1fr auto;gap:9px;align-items:end}
+.period-card form{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;gap:9px;align-items:end}
+.period-card .stats-date-field{min-width:0;display:block}
+.stats-date-box{display:block;min-width:0;width:100%;position:relative}
+.stats-date-box input{width:100%;max-width:100%;min-width:0;box-sizing:border-box}
+.stats-date-readable{display:none}
 .period-links{display:flex;gap:7px;margin-top:10px;flex-wrap:wrap}
 .period-links a{padding:7px 11px;border-radius:9px;background:#eef3f8;color:#263951;font-size:12px;font-weight:800}
 .stats-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:22px}
@@ -53,9 +57,13 @@
 }
 @media(max-width:700px){
  .stats-head h1{font-size:24px}
- .period-card form{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+ .period-card form{grid-template-columns:repeat(2,minmax(0,1fr));column-gap:10px}
+ .period-card .stats-date-field{min-width:0;width:100%}
  .period-card button{grid-column:1/-1}
- .period-card input[type=date]{display:block;box-sizing:border-box;width:100%;min-width:0;height:46px;padding:0 8px;font-size:14px}
+ .stats-date-box{display:flex;align-items:center;height:46px;overflow:hidden;border:1px solid #cfdaea;border-radius:11px;background:#fff}
+ .stats-date-readable{display:flex;align-items:center;padding:0 9px;font-weight:750;color:#152942;font-size:clamp(12px,3.5vw,15px);letter-spacing:0;white-space:nowrap;pointer-events:none}
+ .stats-date-box input[type=date]{position:absolute;inset:0;display:block;opacity:0;z-index:1;box-sizing:border-box;width:100%;height:100%;padding:0;cursor:pointer;min-width:0}
+ .stats-date-box:focus-within{outline:2px solid #3478ee;outline-offset:2px}
  .stats-kpis{grid-template-columns:1fr 1fr;gap:9px}
  .stat-kpi{padding:13px;min-height:106px}
  .stat-kpi strong{font-size:29px}
